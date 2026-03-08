@@ -28,7 +28,7 @@ export function JobsTable({ jobs }: { jobs: TranslationJob[] }) {
             <TableHead>Job</TableHead>
             <TableHead>Sequence</TableHead>
             <TableHead>Template</TableHead>
-            <TableHead>Preservation</TableHead>
+            <TableHead>Analysis</TableHead>
             <TableHead>Updated</TableHead>
             <TableHead className="text-right">Open</TableHead>
           </TableRow>
@@ -37,7 +37,7 @@ export function JobsTable({ jobs }: { jobs: TranslationJob[] }) {
           {jobs.map((job) => {
             const bundle = getBundle(job.sourceBundleId);
             const template = getTemplate(job.templateId);
-            const report = getReport(job.preservationReportId);
+            const report = getReport(job.analysisReportId);
 
             return (
               <TableRow key={job.id}>
@@ -52,7 +52,7 @@ export function JobsTable({ jobs }: { jobs: TranslationJob[] }) {
                 </TableCell>
                 <TableCell>
                   <p className="font-medium text-foreground">{bundle?.sequenceName ?? job.sourceSnapshot.sequenceName}</p>
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted">{bundle?.fps ?? "23.976"} fps</p>
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted">{bundle?.fps ?? "24"} fps</p>
                 </TableCell>
                 <TableCell>
                   <p>{template?.name ?? "No template"}</p>
@@ -60,7 +60,7 @@ export function JobsTable({ jobs }: { jobs: TranslationJob[] }) {
                 </TableCell>
                 <TableCell>
                   <p>{report?.summary.totalFindings ?? 0} findings</p>
-                  <p className="text-xs text-muted">{report?.summary.operatorDecisionCount ?? 0} need operator decision</p>
+                  <p className="text-xs text-muted">{report?.highRiskCount ?? 0} high risk / {report?.blockedCount ?? 0} blocked</p>
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted">{job.updatedOn}</TableCell>
                 <TableCell className="text-right">

@@ -1,14 +1,50 @@
 # Bundle Spec
 
 ## Purpose
-A `SourceBundle` models the intake package an operator receives from picture editorial before Conform Bridge does any real parsing.
+Conform Bridge models two distinct packages around one canonical internal layer:
+- Intake Package: what arrives from Resolve and editorial.
+- Delivery Package: what Conform Bridge plans to hand off for Nuendo.
 
-## Workflow Shape
-Resolve exports in. Nuendo-ready bundle out.
+Direction must be represented explicitly. Do not infer inbound versus outbound from file kind alone.
 
-## Expected Bundle Assets
-A bundle may include:
+## Direction Contract
+- `stage` determines whether an asset belongs to intake or delivery.
+- `origin` records who created or supplied the asset.
+- `fileKind` describes the format only.
+- `fileRole` describes the purpose only.
+
+## Intake Package
+Modeled by `SourceBundle` and `IntakeAsset`.
+
+### Intake expectations
+A realistic intake package may include:
 - `AAF`
+- `FCPXML` or generic `XML`
+- `EDL`
+- `metadata CSV`
+- `reference video`
+- `production audio` assets such as `BWF`, `WAV`, or polywav rolls
+
+### Intake examples
+- `SHOW_203_LOCK.aaf`
+- `SHOW_203_LOCK.fcpxml`
+- `SHOW_203_AUDIO_PULL.edl`
+- `SHOW_203_METADATA.csv`
+- `SHOW_203_REF.mov`
+- `ROLL_054A_01.BWF`
+- `ROLL_054A_LAV.WAV`
+
+### Intake status values
+- `present`
+- `missing`
+- `placeholder`
+
+## Delivery Package
+Modeled by `DeliveryPackage` and `DeliveryArtifact`.
+
+### Delivery expectations
+A planned Nuendo delivery package may include:
+- `Nuendo-ready AAF`
 - `marker EDL`
 - `marker CSV`
 - `metadata CSV`
@@ -17,25 +53,8 @@ A bundle may include:
 - `reference video`
 - `field recorder matching report`
 
-## Asset Status Values
-- `present`: available in the package and ready for placeholder review.
-- `missing`: expected for workflow completeness but not supplied.
-- `placeholder`: intentionally represented without a real file for phase 1.
-
-## Required Facts Surfaced In UI
-- Timeline name
-- Frame rate
-- Start timecode
-- Track count
-- Clip count
-- Marker count
-- Handles expectation
-- Reference video state
-- Field recorder matching report state
-
-## Naming Guidance
-Mock assets should look like real turnover materials, for example:
-- `SHOW_203_LOCK.aaf`
+### Delivery examples
+- `SHOW_203_NUENDO_READY.aaf`
 - `SHOW_203_MARKERS.edl`
 - `SHOW_203_MARKERS.csv`
 - `SHOW_203_METADATA.csv`
@@ -44,5 +63,48 @@ Mock assets should look like real turnover materials, for example:
 - `SHOW_203_REF.mov`
 - `SHOW_203_FIELD_RECORDER_REPORT.csv`
 
+### Delivery status values
+- `planned`
+- `blocked`
+- `placeholder`
+
+## Shared File Kinds
+The following file kinds may appear on either side of the workflow depending on `stage` and `origin`:
+- `aaf`
+- `xml`
+- `fcpxml`
+- `edl`
+- `csv`
+- `mov`
+- `mp4`
+- `json`
+- `txt`
+- `wav`
+- `bwf`
+- `otio`
+- `otioz`
+
+## Shared Roles That Need Explicit Direction
+The following roles may appear as intake or delivery artifacts depending on the workflow context:
+- `timeline_exchange`
+- `marker_export`
+- `metadata_export`
+- `reference_video`
+- `production_audio`
+- `field_recorder_report`
+
+## Explicit Rule About Manifests, Readmes, And Reports
+- `manifest.json`, delivery `README`, and delivery `field recorder report` are outbound delivery artifacts by default.
+- They must not be modeled as intake assets unless `stage` and `origin` explicitly mark them as inbound for a real workflow reason.
+- Phase 1 mock data should keep them in the delivery package.
+
+## Required Facts Surfaced In The UI
+- Intake package name and sequence name
+- Frame rate, sample rate, start timecode, and handles expectation
+- Track, clip, and marker totals from the canonical model
+- Intake completeness summary
+- Delivery readiness summary
+- Planned delivery artifact states
+
 ## Phase 1 Constraint
-Bundles are display-only fixtures. No file system inspection, no parsing, and no write-back behavior should be implied by the scaffold.
+Packages are display-only fixtures. No file system inspection, parsing, write-back behavior, or fake backend processing should be implied by the scaffold.

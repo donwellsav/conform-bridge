@@ -7,16 +7,17 @@ import { Button } from "@/components/ui/button";
 import { activityFeed, dashboardMetrics, getBundle, getExportArtifacts, getOutputPreset, jobs } from "@/lib/mock-data";
 
 export default function DashboardPage() {
-  const intakeBundle = getBundle(jobs[0].sourceBundleId);
-  const outputPreset = getOutputPreset(jobs[2].outputPresetId ?? jobs[2].templateId);
-  const plannedArtifacts = getExportArtifacts(jobs[2].id);
+  const currentJob = jobs[0];
+  const intakePackage = getBundle(currentJob.sourceBundleId);
+  const outputPreset = getOutputPreset(currentJob.outputPresetId ?? currentJob.templateId);
+  const plannedArtifacts = getExportArtifacts(currentJob.id);
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Dashboard"
-        title="Resolve intake to Nuendo-ready bundle-out"
-        description="Desktop-first operator overview of intake bundles, routing risk, field recorder readiness, and planned output artifacts. All content is deterministic mock data."
+        title="Resolve intake to Nuendo delivery planning"
+        description="Desktop-first operator overview of intake packages, canonical timing assumptions, field recorder readiness, and planned delivery artifacts. All content is deterministic mock data."
         actions={
           <>
             <Button asChild variant="secondary">
@@ -45,17 +46,17 @@ export default function DashboardPage() {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[1.18fr_0.82fr]">
-        <SectionCard eyebrow="Intake bundle" title="Current bundle placeholder" description="This panel shows the shape of the Resolve handoff package without parsing any real files.">
+        <SectionCard eyebrow="Intake Package" title="Current intake package" description="This panel shows the inbound Resolve and editorial handoff without parsing any real files.">
           <div className="space-y-3">
             <div className="rounded-2xl border border-border/80 bg-panel-strong p-4">
-              <p className="font-semibold text-foreground">{intakeBundle?.sequenceName}</p>
-              <p className="mt-2 text-sm text-muted">{intakeBundle?.fps} fps, {intakeBundle?.handlesFrames} frame handles, {intakeBundle?.sampleRate} Hz</p>
+              <p className="font-semibold text-foreground">{intakePackage?.sequenceName}</p>
+              <p className="mt-2 text-sm text-muted">{intakePackage?.fps} fps, {intakePackage?.handlesFrames} frame handles, {intakePackage?.sampleRate} Hz</p>
             </div>
-            {intakeBundle?.sourceFiles.map((asset) => (
+            {intakePackage?.assets.map((asset) => (
               <div key={asset.id} className="flex flex-col gap-3 rounded-2xl border border-border/80 bg-panel p-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <p className="font-medium text-foreground">{asset.name}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">{asset.kind.replaceAll("_", " ")} / {asset.sizeLabel}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">{asset.fileRole.replaceAll("_", " ")} / {asset.fileKind} / {asset.sizeLabel}</p>
                 </div>
                 <Badge variant={asset.status === "missing" ? "danger" : asset.status === "placeholder" ? "warning" : "accent"}>{asset.status}</Badge>
               </div>
@@ -64,7 +65,7 @@ export default function DashboardPage() {
         </SectionCard>
 
         <div className="space-y-5">
-          <SectionCard eyebrow="Bundle-out placeholder" title="Planned Nuendo package" description={outputPreset ? `Preset: ${outputPreset.name}` : "No output preset selected."} aside={<Badge variant="accent">Frontend only</Badge>}>
+          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo package" description={outputPreset ? `Preset: ${outputPreset.name}` : "No output preset selected."} aside={<Badge variant="accent">Frontend only</Badge>}>
             <div className="space-y-3">
               {plannedArtifacts.map((artifact) => (
                 <div key={artifact.id} className="rounded-2xl border border-border/80 bg-panel p-4">

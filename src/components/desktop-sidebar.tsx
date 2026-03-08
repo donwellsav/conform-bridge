@@ -33,7 +33,7 @@ export function DesktopSidebar() {
       <div className="border-b border-border/80 pb-5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">Operator shell</p>
         <h2 className="mt-2 text-xl font-semibold tracking-[0.02em] text-foreground">Dark desktop-first scaffold</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">Realistic turnover fixtures, strong placeholders, and no fake backend behavior.</p>
+        <p className="mt-2 text-sm leading-6 text-muted">Realistic turnover fixtures, explicit intake and delivery boundaries, and no fake backend behavior.</p>
       </div>
 
       <nav className="mt-5 flex-1 space-y-2">
@@ -52,7 +52,7 @@ export function DesktopSidebar() {
                   : "border-transparent bg-transparent text-muted hover:border-border hover:bg-panel hover:text-foreground",
               )}
             >
-              <span className={cn("mt-0.5 rounded-md border p-2", active ? "border-accent/30 bg-panel-strong text-accent" : "border-border bg-panel-strong") }>
+              <span className={cn("mt-0.5 rounded-md border p-2", active ? "border-accent/30 bg-panel-strong text-accent" : "border-border bg-panel-strong")}>
                 <Icon className="h-4 w-4" />
               </span>
               <span className="min-w-0">
@@ -71,7 +71,7 @@ export function DesktopSidebar() {
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4 text-sm leading-6 text-muted">
           <p className="font-semibold text-foreground">No parser. No writer. No backend.</p>
-          <p className="mt-2">The scaffold models intake bundles and Nuendo-ready bundle-out placeholders strictly from fixed mock data.</p>
+          <p className="mt-2">The scaffold models intake packages, a canonical translation layer, and Nuendo delivery planning strictly from fixed mock data.</p>
         </div>
       </div>
     </aside>

@@ -50,7 +50,7 @@ export function NewJobWizard({
   return (
     <div className="grid gap-5 xl:grid-cols-[1.6fr_0.9fr]">
       <div className="space-y-5">
-        <SectionCard eyebrow="Wizard status" title="New translation job" description="Front-end only flow for bundle intake, template selection, mapping assumptions, and validation.">
+        <SectionCard eyebrow="Wizard status" title="New translation job" description="Front-end only flow for intake selection, template selection, mapping assumptions, and validation.">
           <div className="grid gap-3 md:grid-cols-4">
             {steps.map((step, index) => (
               <button
@@ -71,7 +71,7 @@ export function NewJobWizard({
         </SectionCard>
 
         {draft.stepIndex === 0 ? (
-          <SectionCard eyebrow="Source intake" title="Pick a mock turnover bundle" description="Use fixed bundle fixtures that represent real Resolve handoff packages.">
+          <SectionCard eyebrow="Source intake" title="Pick a mock intake package" description="Use fixed fixtures that represent real Resolve, editorial, and production-audio handoff materials.">
             <div className="space-y-3">
               {bundles.map((bundle) => (
                 <button
@@ -145,16 +145,16 @@ export function NewJobWizard({
           <SectionCard eyebrow="Validation" title="Stable first-pass review" description="Validation is computed from fixed mock facts only, so the initial render is deterministic.">
             <div className="grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl border border-border/70 bg-panel p-4">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Expected files</p>
-                <p className="mt-2 text-sm text-foreground">{selectedBundle.sourceFiles.length}</p>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Intake assets</p>
+                <p className="mt-2 text-sm text-foreground">{selectedBundle.assets.length}</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-panel p-4">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Missing items</p>
-                <p className="mt-2 text-sm text-foreground">{selectedBundle.sourceFiles.filter((file) => file.status === "missing").length}</p>
+                <p className="mt-2 text-sm text-foreground">{selectedBundle.assets.filter((file) => file.status === "missing").length}</p>
               </div>
               <div className="rounded-2xl border border-border/70 bg-panel p-4">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Reference video</p>
-                <p className="mt-2 text-sm text-foreground">{selectedTemplate.exportDefaults.includeReferenceVideo ? "Included" : "Skipped"}</p>
+                <p className="mt-2 text-sm text-foreground">{selectedTemplate.exportDefaults.includeReferenceVideo ? "Included in delivery plan" : "Skipped in delivery plan"}</p>
               </div>
             </div>
           </SectionCard>
@@ -169,7 +169,7 @@ export function NewJobWizard({
       <SectionCard eyebrow="Draft summary" title="Current job draft" description="This side summary stays stable while the step content changes.">
         <div className="space-y-4">
           <div className="rounded-2xl border border-border/70 bg-panel p-4">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Bundle</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Intake package</p>
             <p className="mt-2 font-semibold text-foreground">{selectedBundle.sequenceName}</p>
             <p className="mt-1 text-sm text-muted">{selectedBundle.startTimecode} start, {selectedBundle.handlesFrames} frame handles</p>
           </div>

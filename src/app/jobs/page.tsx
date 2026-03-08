@@ -13,7 +13,7 @@ export default function JobsPage() {
       <PageHeader
         eyebrow="Jobs"
         title="Translation job register"
-        description="Current Resolve to Nuendo turnovers with typed mapping snapshots, preservation totals, and bundle health."
+        description="Current Resolve to Nuendo turnovers with separate intake, canonical, and delivery layers visible from the operator shell."
         actions={
           <Button asChild>
             <Link href="/jobs/new">Create draft job</Link>
@@ -27,17 +27,17 @@ export default function JobsPage() {
         </SectionCard>
 
         <div className="space-y-5">
-          <SectionCard eyebrow="Bundle readiness" title="Source bundle inventory" description="Bundle health drives validation messaging in the wizard and job detail pages.">
+          <SectionCard eyebrow="Intake readiness" title="Intake package inventory" description="Inbound package health drives validation messaging in the wizard and job detail pages.">
             <div className="space-y-3">
               {sourceBundles.map((bundle) => (
                 <div key={bundle.id} className="rounded-2xl border border-border/70 bg-panel p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-semibold text-foreground">{bundle.sequenceName}</p>
-                    <Badge variant={bundle.sourceFiles.some((file) => file.status === "missing") ? "warning" : "accent"}>
-                      {bundle.sourceFiles.some((file) => file.status === "missing") ? "Attention" : "Ready"}
+                    <Badge variant={bundle.assets.some((file) => file.status === "missing") ? "warning" : "accent"}>
+                      {bundle.assets.some((file) => file.status === "missing") ? "Attention" : "Ready"}
                     </Badge>
                   </div>
-                  <p className="mt-2 text-sm text-muted">{bundle.sourceFiles.length} bundle entries, {bundle.handlesFrames} frame handles, {bundle.sampleRate} Hz</p>
+                  <p className="mt-2 text-sm text-muted">{bundle.assets.length} intake assets, {bundle.handlesFrames} frame handles, {bundle.sampleRate} Hz</p>
                 </div>
               ))}
             </div>
@@ -46,8 +46,8 @@ export default function JobsPage() {
           <SectionCard eyebrow="Queue notes" title="Operating assumptions" description="Fixed notes keep the initial view dense and readable without client-only filters.">
             <div className="space-y-3 text-sm leading-6 text-muted">
               <div className="rounded-2xl border border-border/70 bg-panel p-4">All dates are stable fixture strings rather than live timestamps.</div>
-              <div className="rounded-2xl border border-border/70 bg-panel p-4">Preservation findings surface operator decisions before importer/exporter implementations exist.</div>
-              <div className="rounded-2xl border border-border/70 bg-panel p-4">Job detail pages combine preservation and mapping views so operators can inspect a single turnover deeply.</div>
+              <div className="rounded-2xl border border-border/70 bg-panel p-4">Canonical analysis stays separate from raw intake assets and planned delivery artifacts.</div>
+              <div className="rounded-2xl border border-border/70 bg-panel p-4">Job detail pages combine intake, analysis, mapping, and delivery planning without implying real parser or writer behavior.</div>
             </div>
           </SectionCard>
         </div>

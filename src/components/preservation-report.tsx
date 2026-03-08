@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, CircleDashed, Info } from "lucide-react";
+import { AlertTriangle, CircleDashed, Info } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { SectionCard } from "@/components/section-card";
@@ -34,7 +34,7 @@ function FindingCard({ finding }: { finding: PreservationFinding }) {
           <SeverityIcon severity={finding.severity} />
           <div>
             <p className="font-semibold text-foreground">{finding.title}</p>
-            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">{finding.code}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">{finding.code} / {finding.category.replaceAll("-", " ")}</p>
           </div>
         </div>
         <Badge variant={severityVariant(finding.severity)}>{finding.severity}</Badge>
@@ -42,12 +42,22 @@ function FindingCard({ finding }: { finding: PreservationFinding }) {
       <p className="mt-3 text-sm leading-6 text-muted">{finding.description}</p>
       <div className="mt-3 grid gap-3 text-sm leading-6 lg:grid-cols-2">
         <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Source location</p>
+          <p className="mt-1 text-foreground">{finding.sourceLocation}</p>
+        </div>
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Target artifact</p>
+          <p className="mt-1 text-foreground">{finding.targetArtifactName ?? finding.targetArtifactId ?? "Not assigned"}</p>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-3 text-sm leading-6 lg:grid-cols-2">
+        <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Impact</p>
           <p className="mt-1 text-foreground">{finding.impact}</p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Recommendation</p>
-          <p className="mt-1 text-foreground">{finding.recommendation}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Recommended action</p>
+          <p className="mt-1 text-foreground">{finding.recommendedAction}</p>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
@@ -58,9 +68,8 @@ function FindingCard({ finding }: { finding: PreservationFinding }) {
         ))}
       </div>
       {finding.requiresDecision ? (
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-          <CheckCircle2 className="h-4 w-4" />
-          Operator decision required before export stub sign-off.
+        <div className="mt-3 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
+          Operator decision required before delivery sign-off.
         </div>
       ) : null}
     </div>
@@ -70,27 +79,46 @@ function FindingCard({ finding }: { finding: PreservationFinding }) {
 export function PreservationReportView({ report }: { report: PreservationReport }) {
   return (
     <SectionCard
-      eyebrow="Preservation report"
-      title="Translation assumptions and issues"
-      description={`Updated ${report.updatedOn}. Findings are grouped by preservation scope for operator review.`}
-      aside={<Badge variant={report.summary.criticalCount > 0 ? "danger" : "accent"}>{report.summary.totalFindings} findings</Badge>}
+      eyebrow="Analysis Report"
+      title="Preservation assumptions and issues"
+      description={`Updated ${report.updatedOn}. ${report.intakeCompletenessSummary} ${report.deliveryReadinessSummary}`}
+      aside={<Badge variant={report.highRiskCount > 0 ? "danger" : "accent"}>{report.summary.totalFindings} findings</Badge>}
     >
       <div className="grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Critical</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{report.summary.criticalCount}</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">High risk</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{report.highRiskCount}</p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Warnings</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{report.summary.warningCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{report.warningCount}</p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Info</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{report.summary.infoCount}</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Blocked</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{report.blockedCount}</p>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-panel p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Offline assets</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{report.totals.offlineAssetCount}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <div className="rounded-2xl border border-border/70 bg-panel p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Tracks</p>
+          <p className="mt-2 text-sm font-semibold text-foreground">{report.totals.trackCount}</p>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-panel p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Clips</p>
+          <p className="mt-2 text-sm font-semibold text-foreground">{report.totals.clipCount}</p>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-panel p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Markers</p>
+          <p className="mt-2 text-sm font-semibold text-foreground">{report.totals.markerCount}</p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Decisions</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{report.summary.operatorDecisionCount}</p>
+          <p className="mt-2 text-sm font-semibold text-foreground">{report.summary.operatorDecisionCount}</p>
         </div>
       </div>
 

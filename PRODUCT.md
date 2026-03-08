@@ -1,13 +1,16 @@
 # Conform Bridge
 
 ## Summary
-Conform Bridge is a desktop-first internal operator application for Resolve to Nuendo translation workflows. Phase 1 is scaffold-only: stable routes, typed domain models, realistic mock data, and a serious operator UI with no real parser, writer, backend, or external service dependency.
+Conform Bridge is a desktop-first internal operator application for Resolve to Nuendo translation workflows. Phase 1 remains scaffold-only: stable routes, typed domain models, realistic mock data, and an operator-facing shell with no real parser, writer, backend, or external service dependency.
 
 ## Product Goal
-Give post-production operators a clean review surface for intake bundles, mapping assumptions, preservation risks, field recorder readiness, and the shape of a Nuendo-ready output package.
+Give post-production operators a clear review surface for three explicit workflow layers:
+1. Intake package from Resolve and editorial.
+2. Canonical normalized translation model inside Conform Bridge.
+3. Delivery package planned for Nuendo.
 
-## Workflow Focus
-Resolve exports in, Nuendo-ready bundle out.
+## Workflow Shape
+Resolve exports in -> canonical internal model -> Nuendo-ready delivery package out.
 
 ## Primary Users
 - Post coordinators preparing turnovers.
@@ -15,8 +18,15 @@ Resolve exports in, Nuendo-ready bundle out.
 - Dialogue and effects editors reviewing field recorder readiness.
 - ReConform operators checking revision deltas before any real translation logic exists.
 
+## Product Contract For This Phase
+- `SourceBundle` is intake only.
+- `TranslationModel` is the canonical normalized layer used by the app.
+- `DeliveryPackage` is output planning only.
+- Direction must be modeled explicitly with stage and origin metadata.
+- File format alone must not imply whether an asset is inbound or outbound.
+
 ## Non-Goals For Phase 1
-- No real AAF, EDL, CSV, or manifest parsing.
+- No real AAF, XML, FCPXML, EDL, CSV, or manifest parsing.
 - No real Nuendo export writing.
 - No auth, billing, database, or marketing site.
 - No background jobs, queues, or fake API layer.
@@ -29,20 +39,21 @@ Resolve exports in, Nuendo-ready bundle out.
 
 ## Routes
 - Dashboard
-- New Job
 - Jobs
+- New Job
 - Templates
 - Field Recorder
 - ReConform
 - Settings
 
 ## Phase 1 Deliverables
-- Root spec files that define product, schema, bundle shape, contributor rules, and task status.
+- Root spec files that define the layered workflow contract.
 - Next.js App Router scaffold with TypeScript, Tailwind, and shadcn/ui-style reusable primitives.
-- Shared `src/lib/types.ts` domain model.
-- Shared `src/lib/mock-data.ts` with realistic Resolve/Nuendo workflow fixtures.
+- Shared `src/lib/types.ts` domain model with intake, canonical, and delivery entities.
+- Shared `src/lib/mock-data.ts` with one strong Resolve to Nuendo demo project.
 - App shell with sidebar and top bar.
 - Strong placeholder layouts for all required routes.
+- Importer and exporter service boundaries as stubs only.
 
 ## Rendering Rules
 - Initial render must be deterministic and SSR-safe.
@@ -53,7 +64,6 @@ Resolve exports in, Nuendo-ready bundle out.
 
 ## Acceptance For This Task
 - Repo scaffolds cleanly and builds.
-- All requested routes exist.
-- Domain concepts are modeled in TypeScript.
-- Mock bundles reflect real turnover contents.
-- UI is visibly ready for phase 2 without pretending that parsing or export writing exists.
+- All requested routes exist and keep the current operator shell intact.
+- Intake, canonical, and delivery layers are explicit in docs, types, and mock data.
+- Mock packages reflect real Resolve and Nuendo turnover contents without pretending parsing or export writing already exists.

@@ -7,7 +7,7 @@ import { PreservationReportView } from "@/components/preservation-report";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getBundle, getExportArtifacts, getJob, getMappingProfile, getOutputPreset, getReport, getTimeline, jobs } from "@/lib/mock-data";
+import { getBundle, getExportArtifacts, getJob, getMappingProfile, getOutputPreset, getReport, getTimelineForJob, jobs } from "@/lib/mock-data";
 
 export function generateStaticParams() {
   return jobs.map((job) => ({ jobId: job.id }));
@@ -22,9 +22,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
   }
 
   const bundle = getBundle(job.sourceBundleId);
-  const report = getReport(job.preservationReportId);
+  const report = getReport(job.analysisReportId);
   const mapping = getMappingProfile(job.id);
-  const timeline = getTimeline(job.timelineId);
+  const timeline = getTimelineForJob(job.id);
   const outputPreset = getOutputPreset(job.outputPresetId ?? job.templateId);
   const artifacts = getExportArtifacts(job.id);
 
@@ -59,9 +59,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
           </div>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Timeline</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Canonical timeline</p>
           <p className="mt-3 text-sm font-semibold text-foreground">{timeline.name}</p>
           <p className="mt-2 font-mono text-xs text-muted">{timeline.startTimecode} / {timeline.durationTimecode}</p>
+          <p className="mt-2 text-xs text-muted">{timeline.startFrame} start frame / {timeline.durationFrames} frames</p>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Output preset</p>
@@ -69,23 +70,23 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
           <p className="mt-2 text-xs text-muted">{outputPreset.exportDefaults.destinationLabel}</p>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Planned artifacts</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Planned delivery artifacts</p>
           <p className="mt-3 text-sm font-semibold text-foreground">{artifacts.length} items</p>
-          <p className="mt-2 text-xs text-muted">Placeholder output only</p>
+          <p className="mt-2 text-xs text-muted">Separate from intake assets</p>
         </div>
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
         <div className="space-y-5">
-          <SectionCard eyebrow="Bundle inventory" title="Resolve handoff package" description="Bundle assets are mocked explicitly so missing and placeholder states stay visible.">
+          <SectionCard eyebrow="Intake Package" title="Resolve and editorial handoff" description="Inbound assets are listed separately from canonical analysis and delivery planning.">
             <div className="space-y-3 text-sm text-muted">
-              {bundle.sourceFiles.map((asset) => (
+              {bundle.assets.map((asset) => (
                 <div key={asset.id} className="rounded-2xl border border-border/80 bg-panel p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium text-foreground">{asset.name}</p>
                     <Badge variant={asset.status === "missing" ? "danger" : asset.status === "placeholder" ? "warning" : "accent"}>{asset.status}</Badge>
                   </div>
-                  <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">{asset.kind.replaceAll("_", " ")} / {asset.sizeLabel}</p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">{asset.fileRole.replaceAll("_", " ")} / {asset.fileKind} / {asset.origin}</p>
                   <p className="mt-2 text-sm leading-6 text-muted">{asset.note}</p>
                 </div>
               ))}
@@ -95,7 +96,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         </div>
 
         <div className="space-y-5">
-          <SectionCard eyebrow="Nuendo-ready bundle-out" title="Output placeholder" description="Artifacts are listed as planned outputs only. No writer implementation exists in phase 1.">
+          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo outputs" description="Artifacts are listed as planned delivery outputs only. No writer implementation exists in phase 1.">
             <div className="space-y-3">
               {artifacts.map((artifact) => (
                 <div key={artifact.id} className="rounded-2xl border border-border/80 bg-panel p-4">
@@ -103,6 +104,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                     <p className="font-mono text-xs text-muted">{artifact.fileName}</p>
                     <Badge variant={artifact.status === "blocked" ? "danger" : artifact.status === "placeholder" ? "warning" : "accent"}>{artifact.status}</Badge>
                   </div>
+                  <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">{artifact.fileRole.replaceAll("_", " ")} / {artifact.fileKind}</p>
                   <p className="mt-2 text-sm leading-6 text-muted">{artifact.note}</p>
                 </div>
               ))}
@@ -114,3 +116,4 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     </div>
   );
 }
+

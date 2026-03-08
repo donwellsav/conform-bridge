@@ -1,57 +1,83 @@
 # Conform Bridge Schema
 
-## Core Entities
-
-### TranslationJob
-Operator-facing record for one Resolve to Nuendo translation attempt.
-- `id`
-- `jobCode`
-- `title`
-- `status`
-- `priority`
-- `sourceBundleId`
-- `timelineId`
-- `outputPresetId`
-- `createdOn`
-- `updatedOn`
-- `notes`
+## Layer 1: Intake Package
 
 ### SourceBundle
-Logical intake package from picture editorial.
+Represents the inbound package received from Resolve or picture editorial.
 - `id`
 - `name`
-- `timelineId`
+- `stage` = `intake`
+- `receivedFrom`
+- `sequenceName`
 - `pictureLock`
 - `fps`
 - `startTimecode`
+- `startFrame`
+- `durationTimecode`
+- `durationFrames`
+- `trackCount`
+- `clipCount`
+- `markerCount`
 - `sampleRate`
 - `handlesFrames`
 - `dropFrame`
 - `assets`
 
-### SourceAsset
-Discrete asset inside a bundle.
+### IntakeAsset
+Represents one inbound file or production-audio element.
 - `id`
 - `bundleId`
-- `kind`
+- `stage` = `intake`
+- `origin`
+- `fileKind`
+- `fileRole`
 - `name`
-- `status`
 - `sizeLabel`
+- `status`
 - `note`
+- `channelCount`
+- `channelLayout`
+- `durationTimecode`
+- `durationFrames`
+- `sampleRate`
+- `isPolyWav`
+- `hasBwf`
+- `hasIXml`
 
-### Timeline
-Imported Resolve timeline summary.
+## Layer 2: Canonical Normalized Model
+
+### TranslationModel
+Canonical normalized project model produced from intake analysis.
 - `id`
-- `bundleId`
+- `jobId`
+- `sourceBundleId`
+- `workflow`
+- `name`
+- `primaryTimelineId`
+- `normalizedTimelineIds`
+- `analysisReportId`
+- `deliveryPackageId`
+
+### CanonicalProject
+Alias of `TranslationModel`. Both names refer to the same canonical layer.
+
+### NormalizedTimeline
+Normalized timeline representation used by translation and delivery planning.
+- `id`
+- `translationModelId`
 - `name`
 - `fps`
+- `sampleRate`
+- `dropFrame`
 - `startTimecode`
 - `durationTimecode`
+- `startFrame`
+- `durationFrames`
 - `trackIds`
 - `markerIds`
 
-### Track
-Timeline track summary.
+### NormalizedTrack
+Normalized track representation.
 - `id`
 - `timelineId`
 - `name`
@@ -61,38 +87,68 @@ Timeline track summary.
 - `clipEventIds`
 
 ### ClipEvent
-Timeline event summary.
+Normalized event with both timecode and frame-domain values.
 - `id`
+- `timelineId`
 - `trackId`
 - `sourceAssetId`
 - `clipName`
-- `recordIn`
-- `recordOut`
-- `sourceTimecode`
+- `sourceFileName`
+- `reel`
+- `tape`
 - `scene`
 - `take`
+- `eventDescription`
+- `clipNotes`
+- `recordIn`
+- `recordOut`
+- `sourceIn`
+- `sourceOut`
+- `recordInFrames`
+- `recordOutFrames`
+- `sourceInFrames`
+- `sourceOutFrames`
+- `channelCount`
+- `channelLayout`
+- `isPolyWav`
+- `hasBwf`
+- `hasIXml`
+- `isOffline`
+- `isNested`
+- `isFlattened`
+- `hasSpeedEffect`
+- `hasFadeIn`
+- `hasFadeOut`
 
 ### Marker
-Resolve marker metadata.
+Normalized marker event.
 - `id`
 - `timelineId`
 - `name`
 - `timecode`
+- `frame`
 - `color`
 - `note`
 
-### FieldRecorderCandidate
-Potential production audio relink target.
+### AnalysisReport
+Canonical analysis summary for operator review.
 - `id`
 - `jobId`
-- `clipEventId`
-- `matchKeys`
-- `status`
-- `candidateAssetName`
-- `note`
+- `translationModelId`
+- `updatedOn`
+- `totals.trackCount`
+- `totals.clipCount`
+- `totals.markerCount`
+- `totals.offlineAssetCount`
+- `highRiskCount`
+- `warningCount`
+- `blockedCount`
+- `intakeCompletenessSummary`
+- `deliveryReadinessSummary`
+- `groups`
 
 ### MappingRule
-Rule or decision that maps source structure to Nuendo structure.
+Operator-visible mapping decision in the canonical layer.
 - `id`
 - `jobId`
 - `scope`
@@ -103,42 +159,99 @@ Rule or decision that maps source structure to Nuendo structure.
 - `note`
 
 ### PreservationIssue
-Operator-visible preservation risk or informational note.
+Granular preservation result used in the analysis report.
 - `id`
 - `jobId`
+- `category` = `preserved | downgraded | dropped | manual-review`
 - `severity`
 - `scope`
 - `title`
 - `description`
+- `sourceLocation`
 - `impact`
-- `recommendation`
+- `targetArtifactId`
+- `targetArtifactName`
+- `recommendedAction`
+- `requiresDecision`
+- `affectedItems`
 
-### OutputPreset
-Reusable template for how a Nuendo-ready bundle should be shaped.
-- `id`
-- `name`
-- `category`
-- `description`
-- `destinationLabel`
-- `includeReferenceVideo`
-- `includeHandles`
-- `fieldRecorderEnabled`
-
-### ExportArtifact
-Planned output artifact for a translation job.
+### ReConformChange
+Minimal canonical change-event record for revision workflows.
 - `id`
 - `jobId`
-- `kind`
+- `changeType` = `insert | delete | move | trim | replace`
+- `oldTimecode`
+- `newTimecode`
+- `oldFrame`
+- `newFrame`
+- `note`
+
+### ConformChangeEvent
+Alias of `ReConformChange`.
+
+## Layer 3: Delivery Package
+
+### DeliveryPackage
+Represents the planned outbound package for Nuendo.
+- `id`
+- `jobId`
+- `stage` = `delivery`
+- `destination`
+- `outputPresetId`
+- `name`
+- `includeReferenceVideo`
+- `includeHandles`
+- `deliverySummary`
+- `artifacts`
+
+### DeliveryArtifact
+Represents one planned output file.
+- `id`
+- `deliveryPackageId`
+- `jobId`
+- `stage` = `delivery`
+- `origin`
+- `fileKind`
+- `fileRole`
 - `fileName`
 - `status`
 - `note`
 
+## Orchestration Entity
+
+### TranslationJob
+Operator-facing record that ties the three layers together.
+- `id`
+- `jobCode`
+- `title`
+- `status`
+- `priority`
+- `workflow`
+- `sourceBundleId`
+- `translationModelId`
+- `deliveryPackageId`
+- `templateId`
+- `outputPresetId`
+- `analysisReportId`
+- `createdOn`
+- `updatedOn`
+- `notes`
+
+## Direction Rules
+- File direction is determined by `stage` and `origin`.
+- `fileKind` describes the concrete format only.
+- `fileRole` describes the artifact purpose only.
+- The same `fileKind` may appear in intake or delivery.
+- The same `fileRole` may appear in intake or delivery.
+
 ## Relationships
-- One `TranslationJob` references one `SourceBundle`, one `Timeline`, and one `OutputPreset`.
-- One `SourceBundle` contains many `SourceAsset` records.
-- One `Timeline` contains many `Track` and `Marker` records.
-- One `Track` contains many `ClipEvent` records.
-- One `TranslationJob` contains many `MappingRule`, `FieldRecorderCandidate`, `PreservationIssue`, and `ExportArtifact` records.
+- One `TranslationJob` references one `SourceBundle`, one `TranslationModel`, one `AnalysisReport`, and one `DeliveryPackage`.
+- One `SourceBundle` contains many `IntakeAsset` records.
+- One `TranslationModel` contains one or more `NormalizedTimeline` records.
+- One `NormalizedTimeline` contains many `NormalizedTrack`, `ClipEvent`, and `Marker` records.
+- One `AnalysisReport` contains many `PreservationIssue` records grouped for operator review.
+- One `DeliveryPackage` contains many `DeliveryArtifact` records.
+- One `TranslationJob` may contain many `MappingRule`, `FieldRecorderCandidate`, and `ConformChangeEvent` records.
 
 ## Phase 1 Rules
 - IDs are fixed string literals.

@@ -1,19 +1,16 @@
-import type { ReactNode } from "react";
-
 export type JobStatus = "draft" | "queued" | "validating" | "attention" | "ready" | "exported";
 export type JobPriority = "low" | "normal" | "high" | "urgent";
 export type WorkflowKind = "resolve_to_nuendo";
 export type FrameRate = "23.976" | "24" | "25" | "29.97";
-export type SourceAssetKind =
-  | "aaf"
-  | "marker_edl"
-  | "marker_csv"
-  | "metadata_csv"
-  | "manifest"
-  | "readme"
-  | "reference_video"
-  | "field_recorder_report";
-export type AssetStatus = "present" | "missing" | "placeholder";
+export type SampleRate = 48000 | 96000;
+
+export type AssetStage = "intake" | "delivery";
+export type AssetOrigin = "resolve" | "editorial" | "production-audio" | "conform-bridge" | "nuendo";
+export type FileKind = "aaf" | "fcpxml" | "xml" | "edl" | "csv" | "wav" | "bwf" | "mov" | "mp4" | "json" | "txt" | "otio" | "otioz";
+export type FileRole = "timeline_exchange" | "marker_export" | "metadata_export" | "reference_video" | "production_audio" | "delivery_manifest" | "delivery_readme" | "field_recorder_report";
+export type IntakeAssetStatus = "present" | "missing" | "placeholder";
+export type DeliveryArtifactStatus = "planned" | "blocked" | "placeholder";
+
 export type TemplateCategory = "dialogue" | "full_mix" | "turnovers" | "reconform";
 export type TrackGrouping = "by_role" | "by_index" | "flatten";
 export type MultichannelMode = "preserve" | "split" | "stereo_fold";
@@ -26,10 +23,11 @@ export type FieldRecorderKey = "tape" | "reel" | "scene" | "take" | "sound_roll"
 export type ChannelAssignment = "poly_preserve" | "mono_expand" | "template_route";
 export type FieldRecorderFallback = "skip" | "keep_production_mix" | "mark_unresolved";
 export type TargetFormat = "nuendo_bundle_placeholder";
-export type PreservationScope = "tracks" | "clips" | "metadata" | "routing" | "automation" | "field_recorder";
+export type PreservationScope = "intake" | "timeline" | "tracks" | "clips" | "markers" | "metadata" | "routing" | "field_recorder" | "delivery" | "reconform";
+export type PreservationCategory = "preserved" | "downgraded" | "dropped" | "manual-review";
 export type Severity = "critical" | "warning" | "info";
 export type SourceRole = "dx" | "fx" | "mx" | "vo" | "printmaster" | "guide";
-export type ChannelLayout = "mono" | "stereo" | "lcr" | "5.1";
+export type ChannelLayout = "mono" | "stereo" | "lcr" | "5.1" | "poly_4" | "poly_8";
 export type MappingAction = "preserve" | "remap" | "merge" | "ignore";
 export type TargetType = "audio_track" | "folder" | "group";
 export type MetadataField = "clip_name" | "reel" | "scene" | "take" | "notes" | "track_name" | "source_tc";
@@ -39,11 +37,11 @@ export type PullMode = "none" | "up" | "down";
 export type FieldRecorderOverrideStatus = "linked" | "unresolved" | "ignored";
 export type SettingsReportGrouping = "severity" | "scope";
 export type MarkerColor = "blue" | "green" | "yellow" | "red" | "purple";
-export type MappingScope = "track" | "metadata" | "field_recorder" | "marker";
+export type MappingScope = "track" | "metadata" | "field_recorder" | "marker" | "delivery";
 export type MappingRuleStatus = "locked" | "review" | "issue";
 export type FieldRecorderCandidateStatus = "linked" | "candidate" | "missing";
-export type ExportArtifactKind = "nuendo_session_plan" | "marker_package" | "metadata_package" | "import_readme" | "field_recorder_report" | "reference_video";
-export type ExportArtifactStatus = "planned" | "blocked" | "placeholder";
+export type DeliveryDestination = "nuendo";
+export type ChangeType = "insert" | "delete" | "move" | "trim" | "replace";
 
 export interface SourceSnapshot {
   sequenceName: string;
@@ -60,32 +58,64 @@ export interface MappingSnapshot {
   fieldRecorderLinkedCount: number;
 }
 
-export interface SourceAsset {
+export interface IntakeAsset {
   id: string;
   bundleId: string;
-  kind: SourceAssetKind;
+  stage: "intake";
+  origin: AssetOrigin;
+  fileKind: FileKind;
+  fileRole: FileRole;
   name: string;
   sizeLabel: string;
-  status: AssetStatus;
+  status: IntakeAssetStatus;
   note: string;
+  channelCount?: number;
+  channelLayout?: ChannelLayout;
+  durationTimecode?: string;
+  durationFrames?: number;
+  sampleRate?: SampleRate;
+  isPolyWav?: boolean;
+  hasBwf?: boolean;
+  hasIXml?: boolean;
 }
 
-export type BundleFile = SourceAsset;
-export type BundleFileKind = SourceAssetKind;
-export type FileStatus = AssetStatus;
-
-export interface Timeline {
+export interface SourceBundle {
   id: string;
-  bundleId: string;
   name: string;
+  stage: "intake";
+  receivedFrom: AssetOrigin;
+  sequenceName: string;
+  pictureLock: boolean;
   fps: FrameRate;
   startTimecode: string;
+  startFrame: number;
   durationTimecode: string;
+  durationFrames: number;
+  trackCount: number;
+  clipCount: number;
+  markerCount: number;
+  sampleRate: SampleRate;
+  handlesFrames: number;
+  dropFrame: boolean;
+  assets: IntakeAsset[];
+}
+
+export interface NormalizedTimeline {
+  id: string;
+  translationModelId: string;
+  name: string;
+  fps: FrameRate;
+  sampleRate: SampleRate;
+  dropFrame: boolean;
+  startTimecode: string;
+  durationTimecode: string;
+  startFrame: number;
+  durationFrames: number;
   trackIds: string[];
   markerIds: string[];
 }
 
-export interface Track {
+export interface NormalizedTrack {
   id: string;
   timelineId: string;
   name: string;
@@ -97,14 +127,36 @@ export interface Track {
 
 export interface ClipEvent {
   id: string;
+  timelineId: string;
   trackId: string;
   sourceAssetId: string;
   clipName: string;
-  recordIn: string;
-  recordOut: string;
-  sourceTimecode: string;
+  sourceFileName: string;
+  reel?: string;
+  tape?: string;
   scene?: string;
   take?: string;
+  eventDescription: string;
+  clipNotes: string;
+  recordIn: string;
+  recordOut: string;
+  sourceIn: string;
+  sourceOut: string;
+  recordInFrames: number;
+  recordOutFrames: number;
+  sourceInFrames: number;
+  sourceOutFrames: number;
+  channelCount: number;
+  channelLayout: ChannelLayout;
+  isPolyWav: boolean;
+  hasBwf: boolean;
+  hasIXml: boolean;
+  isOffline: boolean;
+  isNested: boolean;
+  isFlattened: boolean;
+  hasSpeedEffect: boolean;
+  hasFadeIn: boolean;
+  hasFadeOut: boolean;
 }
 
 export interface Marker {
@@ -112,26 +164,24 @@ export interface Marker {
   timelineId: string;
   name: string;
   timecode: string;
+  frame: number;
   color: MarkerColor;
   note: string;
 }
 
-export interface SourceBundle {
+export interface TranslationModel {
   id: string;
+  jobId: string;
+  sourceBundleId: string;
+  workflow: WorkflowKind;
   name: string;
-  timelineId?: string;
-  sequenceName: string;
-  pictureLock: boolean;
-  fps: FrameRate;
-  startTimecode: string;
-  trackCount: number;
-  clipCount: number;
-  sampleRate: 48000;
-  handlesFrames: number;
-  dropFrame: boolean;
-  sourceFiles: SourceAsset[];
-  assets?: SourceAsset[];
+  primaryTimelineId: string;
+  normalizedTimelineIds: string[];
+  analysisReportId: string;
+  deliveryPackageId: string;
 }
+
+export type CanonicalProject = TranslationModel;
 
 export interface TrackPolicy {
   trackGrouping: TrackGrouping;
@@ -175,28 +225,41 @@ export interface TranslationTemplate {
 
 export type OutputPreset = TranslationTemplate;
 
-export interface PreservationFinding {
+export interface PreservationIssue {
   id: string;
+  jobId: string;
+  category: PreservationCategory;
   severity: Severity;
+  scope: PreservationScope;
   code: string;
   title: string;
   description: string;
+  sourceLocation: string;
   impact: string;
-  recommendation: string;
+  targetArtifactId?: string;
+  targetArtifactName?: string;
+  recommendedAction: string;
   requiresDecision: boolean;
   affectedItems: string[];
 }
 
-export type PreservationIssue = PreservationFinding;
+export type PreservationFinding = PreservationIssue;
 
-export interface PreservationGroup {
+export interface AnalysisGroup {
   id: string;
   title: string;
   scope: PreservationScope;
-  findings: PreservationFinding[];
+  findings: PreservationIssue[];
 }
 
-export interface PreservationSummary {
+export interface AnalysisTotals {
+  trackCount: number;
+  clipCount: number;
+  markerCount: number;
+  offlineAssetCount: number;
+}
+
+export interface AnalysisSummary {
   totalFindings: number;
   criticalCount: number;
   warningCount: number;
@@ -204,13 +267,22 @@ export interface PreservationSummary {
   operatorDecisionCount: number;
 }
 
-export interface PreservationReport {
+export interface AnalysisReport {
   id: string;
   jobId: string;
-  summary: PreservationSummary;
-  groups: PreservationGroup[];
+  translationModelId: string;
   updatedOn: string;
+  totals: AnalysisTotals;
+  highRiskCount: number;
+  warningCount: number;
+  blockedCount: number;
+  intakeCompletenessSummary: string;
+  deliveryReadinessSummary: string;
+  summary: AnalysisSummary;
+  groups: AnalysisGroup[];
 }
+
+export type PreservationReport = AnalysisReport;
 
 export interface MappingRule {
   id: string;
@@ -275,13 +347,30 @@ export interface MappingProfile {
   fieldRecorderOverrides: FieldRecorderOverride[];
 }
 
-export interface ExportArtifact {
+export interface DeliveryArtifact {
+  id: string;
+  deliveryPackageId: string;
+  jobId: string;
+  stage: "delivery";
+  origin: AssetOrigin;
+  fileKind: FileKind;
+  fileRole: FileRole;
+  fileName: string;
+  status: DeliveryArtifactStatus;
+  note: string;
+}
+
+export interface DeliveryPackage {
   id: string;
   jobId: string;
-  kind: ExportArtifactKind;
-  fileName: string;
-  status: ExportArtifactStatus;
-  note: string;
+  stage: "delivery";
+  destination: DeliveryDestination;
+  outputPresetId: string;
+  name: string;
+  includeReferenceVideo: boolean;
+  includeHandles: boolean;
+  deliverySummary: string;
+  artifacts: DeliveryArtifact[];
 }
 
 export interface TranslationJob {
@@ -292,15 +381,15 @@ export interface TranslationJob {
   priority: JobPriority;
   workflow: WorkflowKind;
   sourceBundleId: string;
-  timelineId?: string;
+  translationModelId: string;
+  deliveryPackageId: string;
   templateId?: string;
   outputPresetId?: string;
-  exportArtifactIds?: string[];
+  analysisReportId: string;
   createdOn: string;
   updatedOn: string;
   sourceSnapshot: SourceSnapshot;
   mappingSnapshot: MappingSnapshot;
-  preservationReportId: string;
   notes: string;
 }
 
@@ -327,19 +416,21 @@ export interface ActivityItem {
   detail: string;
 }
 
-export interface ReconformEvent {
+export interface ConformChangeEvent {
   id: string;
-  turnover: string;
-  sequenceName: string;
-  changedEvents: number;
-  movedEvents: number;
-  deletedEvents: number;
+  jobId: string;
+  changeType: ChangeType;
+  oldTimecode: string;
+  newTimecode: string;
+  oldFrame: number;
+  newFrame: number;
   note: string;
 }
 
-export interface NavItem {
-  title: string;
-  href: string;
-  subtitle: string;
-  icon: ReactNode;
-}
+export type ReConformChange = ConformChangeEvent;
+export type ReconformEvent = ConformChangeEvent;
+
+export type SourceAsset = IntakeAsset;
+export type Timeline = NormalizedTimeline;
+export type Track = NormalizedTrack;
+export type ExportArtifact = DeliveryArtifact;
