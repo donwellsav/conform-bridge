@@ -1,0 +1,57 @@
+import Link from "next/link";
+
+import { JobsTable } from "@/components/jobs-table";
+import { PageHeader } from "@/components/page-header";
+import { SectionCard } from "@/components/section-card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { jobs, sourceBundles } from "@/lib/mock-data";
+
+export default function JobsPage() {
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Jobs"
+        title="Translation job register"
+        description="Current Resolve to Nuendo turnovers with typed mapping snapshots, preservation totals, and bundle health."
+        actions={
+          <Button asChild>
+            <Link href="/jobs/new">Create draft job</Link>
+          </Button>
+        }
+      />
+
+      <div className="grid gap-5 xl:grid-cols-[1.45fr_0.9fr]">
+        <SectionCard eyebrow="Job list" title="Active turnovers" description="Operator-facing list view with direct access to preservation and mapping detail.">
+          <JobsTable jobs={jobs} />
+        </SectionCard>
+
+        <div className="space-y-5">
+          <SectionCard eyebrow="Bundle readiness" title="Source bundle inventory" description="Bundle health drives validation messaging in the wizard and job detail pages.">
+            <div className="space-y-3">
+              {sourceBundles.map((bundle) => (
+                <div key={bundle.id} className="rounded-2xl border border-border/70 bg-panel p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-foreground">{bundle.sequenceName}</p>
+                    <Badge variant={bundle.sourceFiles.some((file) => file.status === "missing") ? "warning" : "accent"}>
+                      {bundle.sourceFiles.some((file) => file.status === "missing") ? "Attention" : "Ready"}
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm text-muted">{bundle.sourceFiles.length} bundle entries, {bundle.handlesFrames} frame handles, {bundle.sampleRate} Hz</p>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard eyebrow="Queue notes" title="Operating assumptions" description="Fixed notes keep the initial view dense and readable without client-only filters.">
+            <div className="space-y-3 text-sm leading-6 text-muted">
+              <div className="rounded-2xl border border-border/70 bg-panel p-4">All dates are stable fixture strings rather than live timestamps.</div>
+              <div className="rounded-2xl border border-border/70 bg-panel p-4">Preservation findings surface operator decisions before importer/exporter implementations exist.</div>
+              <div className="rounded-2xl border border-border/70 bg-panel p-4">Job detail pages combine preservation and mapping views so operators can inspect a single turnover deeply.</div>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+    </div>
+  );
+}
