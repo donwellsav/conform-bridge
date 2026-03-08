@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { jobs, sourceBundles } from "@/lib/mock-data";
+import { jobs, sourceBundles } from "@/lib/data-source";
 
 export default function JobsPage() {
   return (
@@ -47,7 +47,7 @@ export default function JobsPage() {
             <div className="space-y-3 text-sm leading-6 text-muted">
               <div className="rounded-2xl border border-border/70 bg-panel p-4">All dates are stable fixture strings rather than live timestamps.</div>
               <div className="rounded-2xl border border-border/70 bg-panel p-4">Canonical analysis stays separate from raw intake assets and planned delivery artifacts.</div>
-              <div className="rounded-2xl border border-border/70 bg-panel p-4">Job detail pages combine intake, analysis, mapping, and delivery planning without implying real parser or writer behavior.</div>
+              <div className="rounded-2xl border border-border/70 bg-panel p-4">Job detail pages combine real intake analysis, canonical review, mapping, and delivery planning without implying export-writer behavior.</div>
             </div>
           </SectionCard>
         </div>
@@ -55,3 +55,4 @@ export default function JobsPage() {
     </div>
   );
 }
+

@@ -7,7 +7,7 @@ import { PreservationReportView } from "@/components/preservation-report";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getBundle, getExportArtifacts, getJob, getMappingProfile, getOutputPreset, getReport, getTimelineForJob, jobs } from "@/lib/mock-data";
+import { getBundle, getExportArtifacts, getJob, getMappingProfile, getOutputPreset, getReport, getTimelineForJob, jobs } from "@/lib/data-source";
 
 export function generateStaticParams() {
   return jobs.map((job) => ({ jobId: job.id }));
@@ -96,7 +96,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         </div>
 
         <div className="space-y-5">
-          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo outputs" description="Artifacts are listed as planned delivery outputs only. No writer implementation exists in phase 1.">
+          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo outputs" description="Artifacts are listed as planned delivery outputs only. Intake analysis is real in this phase, but no Nuendo writer exists yet.">
             <div className="space-y-3">
               {artifacts.map((artifact) => (
                 <div key={artifact.id} className="rounded-2xl border border-border/80 bg-panel p-4">
@@ -116,4 +116,5 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     </div>
   );
 }
+
 

@@ -7,7 +7,7 @@ export type SampleRate = 48000 | 96000;
 export type AssetStage = "intake" | "delivery";
 export type AssetOrigin = "resolve" | "editorial" | "production-audio" | "conform-bridge" | "nuendo";
 export type FileKind = "aaf" | "fcpxml" | "xml" | "edl" | "csv" | "wav" | "bwf" | "mov" | "mp4" | "json" | "txt" | "otio" | "otioz";
-export type FileRole = "timeline_exchange" | "marker_export" | "metadata_export" | "reference_video" | "production_audio" | "delivery_manifest" | "delivery_readme" | "field_recorder_report";
+export type FileRole = "timeline_exchange" | "marker_export" | "metadata_export" | "reference_video" | "production_audio" | "intake_manifest" | "delivery_manifest" | "delivery_readme" | "field_recorder_report";
 export type IntakeAssetStatus = "present" | "missing" | "placeholder";
 export type DeliveryArtifactStatus = "planned" | "blocked" | "placeholder";
 
@@ -63,6 +63,7 @@ export interface IntakeAsset {
   bundleId: string;
   stage: "intake";
   origin: AssetOrigin;
+  relativePath?: string;
   fileKind: FileKind;
   fileRole: FileRole;
   name: string;
@@ -84,6 +85,7 @@ export interface SourceBundle {
   name: string;
   stage: "intake";
   receivedFrom: AssetOrigin;
+  folderPath?: string;
   sequenceName: string;
   pictureLock: boolean;
   fps: FrameRate;

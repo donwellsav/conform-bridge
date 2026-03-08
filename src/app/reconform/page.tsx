@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
-import { conformChangeEvents, jobs, templates } from "@/lib/mock-data";
+import { conformChangeEvents, jobs, templates } from "@/lib/data-source";
 
 export default function ReconformPage() {
   const reconformTemplate = templates.find((template) => template.category === "reconform") ?? templates[0];
@@ -15,11 +15,11 @@ export default function ReconformPage() {
       <PageHeader
         eyebrow="ReConform"
         title="Revision compare surface"
-        description="Change-event review for revised turnovers, with deterministic mock counts and operator notes derived from the canonical change model."
+        description="Change-event review for revised turnovers, with operator notes derived from imported EDL events when available and deterministic fallback data otherwise."
       />
 
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <SectionCard eyebrow="Change list" title="Revision events" description="Mock compare output simulates the work an operator would do before reconforming Nuendo sessions.">
+        <SectionCard eyebrow="Change list" title="Revision events" description="This compare surface previews the work an operator would do before reconforming Nuendo sessions.">
           <div className="rounded-2xl border border-border/70 bg-panel p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -70,4 +70,5 @@ export default function ReconformPage() {
     </div>
   );
 }
+
 

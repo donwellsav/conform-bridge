@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
-import { fieldRecorderWatchlist, mappingProfiles, templates } from "@/lib/mock-data";
+import { fieldRecorderWatchlist, mappingProfiles, templates } from "@/lib/data-source";
 
 export default function FieldRecorderPage() {
   const activeTemplate = templates[0];
@@ -43,7 +43,7 @@ export default function FieldRecorderPage() {
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow="Watchlist" title="Current relink issues" description="Realistic production audio issues are surfaced here before any real BWF scan exists.">
+        <SectionCard eyebrow="Watchlist" title="Current relink issues" description="Production audio presence and metadata gaps are surfaced here before any deep BWF content parsing exists.">
           <div className="space-y-3">
             {fieldRecorderWatchlist.map((item) => (
               <div key={item.id} className="rounded-2xl border border-border/70 bg-panel p-4">
@@ -60,3 +60,4 @@ export default function FieldRecorderPage() {
     </div>
   );
 }
+

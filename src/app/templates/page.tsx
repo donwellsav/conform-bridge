@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
-import { templates } from "@/lib/mock-data";
+import { templates } from "@/lib/data-source";
 
 export default function TemplatesPage() {
   return (
@@ -48,3 +48,4 @@ export default function TemplatesPage() {
     </div>
   );
 }
+

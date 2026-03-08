@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { activityFeed, dashboardMetrics, getBundle, getExportArtifacts, getOutputPreset, jobs } from "@/lib/mock-data";
+import { activityFeed, dashboardMetrics, dataMode, getBundle, getExportArtifacts, getOutputPreset, jobs } from "@/lib/data-source";
 
 export default function DashboardPage() {
   const currentJob = jobs[0];
@@ -17,7 +17,9 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="Dashboard"
         title="Resolve intake to Nuendo delivery planning"
-        description="Desktop-first operator overview of intake packages, canonical timing assumptions, field recorder readiness, and planned delivery artifacts. All content is deterministic mock data."
+        description={dataMode === "imported"
+          ? "Desktop-first operator overview of real imported intake packages, canonical timing assumptions, field recorder readiness, and planned delivery artifacts."
+          : "Desktop-first operator overview of intake packages, canonical timing assumptions, field recorder readiness, and planned delivery artifacts. Falling back to deterministic mock data because no imported intake fixture is available."}
         actions={
           <>
             <Button asChild variant="secondary">
@@ -36,7 +38,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{metric.label}</p>
               <Badge variant={metric.tone === "danger" ? "danger" : metric.tone === "warning" ? "warning" : metric.tone === "accent" ? "accent" : "neutral"}>
-                Mock
+                {dataMode === "imported" ? "Imported" : "Mock fallback"}
               </Badge>
             </div>
             <p className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-foreground">{metric.value}</p>
@@ -46,7 +48,7 @@ export default function DashboardPage() {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[1.18fr_0.82fr]">
-        <SectionCard eyebrow="Intake Package" title="Current intake package" description="This panel shows the inbound Resolve and editorial handoff without parsing any real files.">
+        <SectionCard eyebrow="Intake Package" title="Current intake package" description={dataMode === "imported" ? "This panel shows the inbound Resolve, editorial, and production-audio handoff scanned from a real local fixture folder." : "This panel shows the inbound Resolve and editorial handoff from fallback mock data because no imported fixture folder is available."}>
           <div className="space-y-3">
             <div className="rounded-2xl border border-border/80 bg-panel-strong p-4">
               <p className="font-semibold text-foreground">{intakePackage?.sequenceName}</p>
@@ -95,3 +97,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

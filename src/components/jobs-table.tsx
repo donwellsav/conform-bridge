@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { JobStatus, TranslationJob } from "@/lib/domain";
-import { getBundle, getReport, getTemplate } from "@/lib/mock-data";
+import { getBundle, getReport, getTemplate } from "@/lib/data-source";
 
 function statusVariant(status: JobStatus) {
   switch (status) {
@@ -76,3 +76,4 @@ export function JobsTable({ jobs }: { jobs: TranslationJob[] }) {
     </div>
   );
 }
+

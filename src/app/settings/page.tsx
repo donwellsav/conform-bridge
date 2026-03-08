@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { SettingsPanel } from "@/components/settings-panel";
-import { defaultSettings, templates } from "@/lib/mock-data";
+import { defaultSettings, templates } from "@/lib/data-source";
 
 export default function SettingsPage() {
   return (
@@ -14,3 +14,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

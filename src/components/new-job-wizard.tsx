@@ -71,7 +71,7 @@ export function NewJobWizard({
         </SectionCard>
 
         {draft.stepIndex === 0 ? (
-          <SectionCard eyebrow="Source intake" title="Pick a mock intake package" description="Use fixed fixtures that represent real Resolve, editorial, and production-audio handoff materials.">
+          <SectionCard eyebrow="Source intake" title="Pick an intake package" description="Use imported local fixture folders when available, with stable fallback bundles only when nothing has been scanned yet.">
             <div className="space-y-3">
               {bundles.map((bundle) => (
                 <button
@@ -88,6 +88,9 @@ export function NewJobWizard({
                     <div>
                       <p className="font-semibold text-foreground">{bundle.sequenceName}</p>
                       <p className="mt-1 text-sm text-muted">{bundle.clipCount} clips, {bundle.trackCount} tracks, {bundle.fps} fps</p>
+                      {bundle.folderPath ? (
+                        <p className="mt-1 font-mono text-[11px] text-muted">{bundle.folderPath}</p>
+                      ) : null}
                     </div>
                     <Badge variant={bundle.pictureLock ? "accent" : "warning"}>{bundle.pictureLock ? "Picture lock" : "Revision pending"}</Badge>
                   </div>
@@ -142,7 +145,7 @@ export function NewJobWizard({
         ) : null}
 
         {draft.stepIndex === 3 ? (
-          <SectionCard eyebrow="Validation" title="Stable first-pass review" description="Validation is computed from fixed mock facts only, so the initial render is deterministic.">
+          <SectionCard eyebrow="Validation" title="Stable first-pass review" description="Validation is computed from imported intake analysis when available, with deterministic fallback data otherwise.">
             <div className="grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl border border-border/70 bg-panel p-4">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Intake assets</p>
@@ -172,6 +175,9 @@ export function NewJobWizard({
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Intake package</p>
             <p className="mt-2 font-semibold text-foreground">{selectedBundle.sequenceName}</p>
             <p className="mt-1 text-sm text-muted">{selectedBundle.startTimecode} start, {selectedBundle.handlesFrames} frame handles</p>
+            {selectedBundle.folderPath ? (
+              <p className="mt-2 font-mono text-[11px] text-muted">{selectedBundle.folderPath}</p>
+            ) : null}
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-4">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Template</p>

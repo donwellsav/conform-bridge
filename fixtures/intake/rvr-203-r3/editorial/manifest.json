@@ -1,0 +1,29 @@
+{
+  "bundleName": "RVR_203_R3_TURNOVER",
+  "jobCode": "RVR203R3",
+  "title": "River Run Episode 203 Revision 3",
+  "sequenceName": "RVR_203_R3",
+  "pictureLock": true,
+  "fps": "23.976",
+  "startTimecode": "01:00:00:00",
+  "durationTimecode": "00:12:44:08",
+  "sampleRate": 48000,
+  "handlesFrames": 12,
+  "dropFrame": false,
+  "templateId": "tpl-dialogue-premix",
+  "outputPresetId": "tpl-dialogue-premix",
+  "expectedFiles": [
+    "RVR_203_R3_LOCK.aaf",
+    "RVR_203_R3_LOCK.fcpxml",
+    "RVR_203_AUDIO_PULL.edl",
+    "RVR_203_METADATA.csv",
+    "RVR_203_MARKERS.csv",
+    "RVR_203_R3_REF.mov",
+    "RVR_203_CHANGELOG.txt"
+  ],
+  "expectedProductionRolls": [
+    "ROLL_054A_01.BWF",
+    "ROLL_054A_LAV_ALT.WAV",
+    "ROLL_054B_02.BWF"
+  ]
+}
