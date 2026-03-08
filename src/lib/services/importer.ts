@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, relative, resolve } from "node:path";
 
+import { parseFcpxmlText } from "../parsers/fcpxml";
 import type {
   AnalysisGroup,
   AnalysisReport,
@@ -916,8 +917,9 @@ function buildAnalysisReport(
   fieldRecorderBlocked: boolean,
   expectedFiles: string[],
   expectedProductionRolls: string[],
+  extraIssues: PreservationIssue[] = [],
 ) {
-  const issues: PreservationIssue[] = [];
+  const issues: PreservationIssue[] = [...extraIssues];
   const missingAssets = sourceBundle.assets.filter((asset) => asset.status === "missing");
   const missingExpectedFiles = missingAssets.filter((asset) => expectedFiles.some((expectedFile) => expectedFile.toLowerCase() === asset.name.toLowerCase()) && asset.fileRole !== "production_audio");
   const missingProductionRollAssets = missingAssets.filter((asset) => asset.fileRole === "production_audio" || expectedProductionRolls.some((roll) => roll.toLowerCase() === asset.name.toLowerCase()));
@@ -1120,6 +1122,273 @@ function hydrateFromMetadataRows(
   };
 }
 
+type PrimaryTimelineSource = "fcpxml" | "xml" | "edl" | "metadata";
+
+interface PrimaryHydrationResult {
+  primarySource: PrimaryTimelineSource;
+  timeline: Timeline;
+  tracks: Track[];
+  clipEvents: ClipEvent[];
+  markers: Marker[];
+}
+
+function findMetadataRowForClip(rows: ParsedMetadataRow[], clipEvent: ClipEvent) {
+  return rows.find((row) => row.clipName === clipEvent.clipName)
+    ?? rows.find((row) => row.sourceFileName === clipEvent.sourceFileName && row.recordIn === clipEvent.recordIn)
+    ?? rows.find((row) => row.sourceFileName === clipEvent.sourceFileName);
+}
+
+function enrichTracksFromMetadata(tracks: Track[], rows: ParsedMetadataRow[]) {
+  return tracks.map((track) => {
+    const matchingRows = rows.filter((row) => row.trackIndex === track.index || row.trackName === track.name);
+    const referenceRow = matchingRows[0];
+
+    if (!referenceRow) {
+      return track;
+    }
+
+    return {
+      ...track,
+      name: referenceRow.trackName ?? track.name,
+      role: referenceRow.role ?? track.role,
+      channelLayout: referenceRow.channelLayout ?? track.channelLayout,
+    } satisfies Track;
+  });
+}
+
+function enrichClipEventsFromMetadata(
+  bundleId: string,
+  clipEvents: ClipEvent[],
+  rows: ParsedMetadataRow[],
+  assets: IntakeAsset[],
+) {
+  return clipEvents.map((clipEvent, index) => {
+    const row = findMetadataRowForClip(rows, clipEvent);
+    const sourceAsset = findAssetByName(assets, row?.sourceFileName ?? clipEvent.sourceFileName);
+
+    if (!row) {
+      return sourceAsset
+        ? {
+            ...clipEvent,
+            sourceAssetId: sourceAsset.id,
+            isOffline: sourceAsset.status === "missing" || clipEvent.isOffline,
+          } satisfies ClipEvent
+        : clipEvent;
+    }
+
+    return {
+      ...clipEvent,
+      sourceAssetId: sourceAsset?.id ?? clipEvent.sourceAssetId ?? `asset-${slugify(bundleId)}-missing-${index + 1}`,
+      clipName: clipEvent.clipName || row.clipName || `Clip ${index + 1}`,
+      sourceFileName: clipEvent.sourceFileName !== "unknown" ? clipEvent.sourceFileName : row.sourceFileName ?? "unknown",
+      reel: clipEvent.reel ?? row.reel,
+      tape: clipEvent.tape ?? row.tape,
+      scene: clipEvent.scene ?? row.scene,
+      take: clipEvent.take ?? row.take,
+      eventDescription: row.eventDescription ?? clipEvent.eventDescription,
+      clipNotes: row.clipNotes ? [clipEvent.clipNotes, row.clipNotes].filter(Boolean).join(" ").trim() : clipEvent.clipNotes,
+      channelCount: row.channelCount ?? clipEvent.channelCount,
+      channelLayout: row.channelLayout ?? clipEvent.channelLayout,
+      isPolyWav: row.isPolyWav ?? clipEvent.isPolyWav,
+      hasBwf: row.hasBwf ?? clipEvent.hasBwf,
+      hasIXml: row.hasIXml ?? clipEvent.hasIXml,
+      isOffline: row.isOffline ?? (sourceAsset ? sourceAsset.status === "missing" : clipEvent.isOffline),
+      isNested: row.isNested ?? clipEvent.isNested,
+      isFlattened: row.isFlattened ?? clipEvent.isFlattened,
+      hasSpeedEffect: row.hasSpeedEffect ?? clipEvent.hasSpeedEffect,
+      hasFadeIn: row.hasFadeIn ?? clipEvent.hasFadeIn,
+      hasFadeOut: row.hasFadeOut ?? clipEvent.hasFadeOut,
+    } satisfies ClipEvent;
+  });
+}
+
+function mergeMarkersWithRows(
+  primaryMarkers: Marker[],
+  markerRows: ParsedMarkerRow[],
+  fps: FrameRate,
+  timelineId: string,
+) {
+  if (primaryMarkers.length === 0) {
+    return createMarkers(fps, timelineId, markerRows);
+  }
+
+  return primaryMarkers.map((marker) => {
+    const matchingRow = markerRows.find((row) => row.timecode === marker.timecode || row.name === marker.name);
+    if (!matchingRow) {
+      return marker;
+    }
+
+    return {
+      ...marker,
+      name: marker.name || matchingRow.name,
+      color: marker.color === "blue" ? matchingRow.color : marker.color,
+      note: marker.note || matchingRow.note,
+    } satisfies Marker;
+  });
+}
+
+function createReconciliationIssues(
+  jobId: string,
+  primarySource: PrimaryTimelineSource,
+  tracks: Track[],
+  clipEvents: ClipEvent[],
+  markers: Marker[],
+  metadataRows: ParsedMetadataRow[],
+  markerRows: ParsedMarkerRow[],
+  assets: IntakeAsset[],
+) {
+  if (primarySource !== "fcpxml" && primarySource !== "xml") {
+    return [] as PreservationIssue[];
+  }
+
+  const issues: PreservationIssue[] = [];
+  const metadataTrackCount = new Set(
+    metadataRows
+      .map((row) => row.trackIndex)
+      .filter((value): value is number => value !== undefined),
+  ).size;
+
+  if (metadataTrackCount > 0 && metadataTrackCount !== tracks.length) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-track-count-mismatch`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "tracks",
+      code: "TRACK_COUNT_MISMATCH",
+      title: "Metadata CSV track count does not match the timeline exchange",
+      description: "The imported FCPXML/XML track layout does not match the track count described by the metadata CSV.",
+      sourceLocation: "timeline exchange vs metadata CSV",
+      impact: "Track naming or routing assumptions may need manual review before delivery sign-off.",
+      recommendedAction: "Use the timeline exchange as the primary source and review any metadata-only tracks manually.",
+      requiresDecision: false,
+      affectedItems: [`timeline tracks=${tracks.length}`, `metadata tracks=${metadataTrackCount}`],
+    });
+  }
+
+  const clipMismatches = metadataRows.flatMap((row) => {
+    const clipEvent = clipEvents.find((candidate) => candidate.clipName === row.clipName)
+      ?? clipEvents.find((candidate) => candidate.sourceFileName === row.sourceFileName);
+
+    if (!clipEvent) {
+      return [];
+    }
+
+    if ((row.recordIn && row.recordIn !== clipEvent.recordIn) || (row.recordOut && row.recordOut !== clipEvent.recordOut)) {
+      return [`${clipEvent.clipName}: ${clipEvent.recordIn}-${clipEvent.recordOut} vs ${row.recordIn ?? "unknown"}-${row.recordOut ?? "unknown"}`];
+    }
+
+    return [];
+  });
+
+  if (clipMismatches.length > 0) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-clip-timecode-mismatch`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "clips",
+      code: "CLIP_TIMECODE_MISMATCH",
+      title: "Metadata CSV timecodes do not match the timeline exchange",
+      description: "One or more metadata rows disagree with the imported FCPXML/XML clip timing, so the timeline exchange remains primary.",
+      sourceLocation: "timeline exchange vs metadata CSV",
+      impact: "Clip placement is preserved from the timeline exchange, but operators should review the mismatched rows.",
+      recommendedAction: "Validate the editorial CSV against the Resolve timeline export before turnover sign-off.",
+      requiresDecision: false,
+      affectedItems: clipMismatches,
+    });
+  }
+
+  if (markerRows.length > 0 && markers.length > 0 && markerRows.length !== markers.length) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-marker-count-mismatch`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "markers",
+      code: "MARKER_COUNT_MISMATCH",
+      title: "Marker CSV count does not match the timeline exchange",
+      description: "The imported FCPXML/XML marker set disagrees with the marker CSV, so marker CSV data is used only for enrichment.",
+      sourceLocation: "timeline exchange vs marker CSV",
+      impact: "Marker exports may require operator review before delivery.",
+      recommendedAction: "Review marker coverage and decide which editorial source should be corrected upstream.",
+      requiresDecision: false,
+      affectedItems: [`timeline markers=${markers.length}`, `marker csv=${markerRows.length}`],
+    });
+  }
+
+  const missingSourceFiles = [...new Set(
+    clipEvents
+      .filter((clipEvent) => {
+        if (clipEvent.sourceFileName === "unknown") {
+          return false;
+        }
+
+        const sourceAsset = findAssetByName(assets, clipEvent.sourceFileName);
+        return !sourceAsset || sourceAsset.status === "missing";
+      })
+      .map((clipEvent) => clipEvent.sourceFileName),
+  )];
+
+  if (missingSourceFiles.length > 0) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-source-missing`,
+      jobId,
+      category: "manual-review",
+      severity: "critical",
+      scope: "intake",
+      code: "SOURCE_FILE_MISSING_FROM_INTAKE",
+      title: "Timeline exchange references source files that are missing from intake",
+      description: "The imported FCPXML/XML clip list references source media that is not present in the intake bundle.",
+      sourceLocation: "timeline exchange clip list",
+      impact: "Some canonical events remain offline even though the timeline exchange parsed successfully.",
+      recommendedAction: "Supply the missing files or confirm that those events should remain offline.",
+      requiresDecision: true,
+      affectedItems: missingSourceFiles,
+    });
+  }
+
+  return issues;
+}
+
+function buildTimelineFromCanonical(
+  translationModelId: string,
+  timelineId: string,
+  name: string,
+  fps: FrameRate,
+  sampleRate: SampleRate,
+  dropFrame: boolean,
+  startTimecode: string,
+  durationTimecodeOverride: string | undefined,
+  tracks: Track[],
+  clipEvents: ClipEvent[],
+  markers: Marker[],
+) {
+  const startFrame = timecodeToFrames(startTimecode, fps);
+  const maxRecordFrame = clipEvents.reduce((currentMax, clipEvent) => Math.max(currentMax, clipEvent.recordOutFrames), startFrame);
+  const durationFrames = durationTimecodeOverride
+    ? timecodeToFrames(durationTimecodeOverride, fps)
+    : maxRecordFrame > startFrame && startFrame >= 0
+      ? maxRecordFrame - startFrame
+      : UNKNOWN_FRAME;
+  const durationTimecode = durationTimecodeOverride ?? framesToTimecode(durationFrames, fps);
+
+  return {
+    id: timelineId,
+    translationModelId,
+    name,
+    fps,
+    sampleRate,
+    dropFrame,
+    startTimecode,
+    durationTimecode,
+    startFrame,
+    durationFrames,
+    trackIds: tracks.map((track) => track.id),
+    markerIds: markers.map((marker) => marker.id),
+  } satisfies Timeline;
+}
+
 export function importTurnoverFolderSync(folderPath: string): IntakeImportResult {
   if (!existsSync(folderPath)) {
     throw new Error(`Intake folder does not exist: ${folderPath}`);
@@ -1139,6 +1408,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   const metadataAssets = scannedAssets.filter((asset) => asset.fileRole === "metadata_export" && asset.fileKind === "csv");
   const markerAsset = scannedAssets.find((asset) => asset.fileRole === "marker_export" && asset.fileKind === "csv");
   const edlAsset = scannedAssets.find((asset) => asset.fileKind === "edl");
+  const fcpxmlAsset = scannedAssets.find((asset) => asset.fileKind === "fcpxml") ?? scannedAssets.find((asset) => asset.fileKind === "xml");
   const metadataRows = metadataAssets.flatMap((asset) => parseMetadataCsvText(readFileSync(join(folderPath, asset.relativePath ?? asset.name), "utf8")));
   const parsedEdl = edlAsset ? parseSimpleEdlText(readFileSync(join(folderPath, edlAsset.relativePath ?? edlAsset.name), "utf8")) : { events: [], markers: [] };
   const markerRows = markerAsset
@@ -1172,21 +1442,129 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   const sequenceName = manifest?.sequenceName ?? metadataRows[0]?.timelineName ?? folderName.toUpperCase();
   const bundleName = manifest?.bundleName ?? `${sequenceName}_TURNOVER`;
   const startTimecode = manifest?.startTimecode ?? metadataRows[0]?.recordIn ?? parsedEdl.events[0]?.recordIn ?? UNKNOWN_TIMECODE;
-  const metadataHydration = metadataRows.length > 0
-    ? hydrateFromMetadataRows(bundleId, timelineId, fps, metadataRows, assets)
-    : createFallbackClipsFromEdl(bundleId, timelineId, fps, parsedEdl.events, assets);
+  const parsedTimelineExchange = fcpxmlAsset
+    ? parseFcpxmlText(
+        readFileSync(join(folderPath, fcpxmlAsset.relativePath ?? fcpxmlAsset.name), "utf8"),
+        {
+          bundleId,
+          translationModelId,
+          timelineId,
+          fileKind: fcpxmlAsset.fileKind === "xml" ? "xml" : "fcpxml",
+          assets,
+          fallbackName: sequenceName,
+          fallbackFps: fps,
+          fallbackSampleRate: sampleRate,
+          fallbackStartTimecode: startTimecode,
+          fallbackDropFrame: manifest?.dropFrame ?? false,
+        },
+      )
+    : null;
+  const metadataHydration = metadataRows.length > 0 ? hydrateFromMetadataRows(bundleId, timelineId, fps, metadataRows, assets) : null;
+  const edlHydration = parsedEdl.events.length > 0 ? createFallbackClipsFromEdl(bundleId, timelineId, fps, parsedEdl.events, assets) : null;
 
-  const tracks = metadataHydration.tracks;
-  const clipEvents = metadataHydration.clipEvents;
-  const startFrame = timecodeToFrames(startTimecode, fps);
-  const maxRecordFrame = clipEvents.reduce((currentMax, clipEvent) => Math.max(currentMax, clipEvent.recordOutFrames), startFrame);
-  const durationFrames = manifest?.durationTimecode
-    ? timecodeToFrames(manifest.durationTimecode, fps)
-    : maxRecordFrame > startFrame && startFrame >= 0
-      ? maxRecordFrame - startFrame
-      : UNKNOWN_FRAME;
-  const durationTimecode = manifest?.durationTimecode ?? framesToTimecode(durationFrames, fps);
-  const markers = createMarkers(fps, timelineId, markerRows);
+  let primaryHydration: PrimaryHydrationResult;
+
+  if (parsedTimelineExchange) {
+    const enrichedTracks = enrichTracksFromMetadata(parsedTimelineExchange.tracks, metadataRows);
+    const enrichedClipEvents = enrichClipEventsFromMetadata(bundleId, parsedTimelineExchange.clipEvents, metadataRows, assets);
+    const mergedMarkers = mergeMarkersWithRows(parsedTimelineExchange.markers, markerRows, parsedTimelineExchange.timeline.fps, timelineId);
+
+    primaryHydration = {
+      primarySource: parsedTimelineExchange.source,
+      timeline: buildTimelineFromCanonical(
+        translationModelId,
+        timelineId,
+        parsedTimelineExchange.timeline.name,
+        parsedTimelineExchange.timeline.fps,
+        parsedTimelineExchange.timeline.sampleRate,
+        parsedTimelineExchange.timeline.dropFrame,
+        parsedTimelineExchange.timeline.startTimecode,
+        parsedTimelineExchange.timeline.durationTimecode,
+        enrichedTracks,
+        enrichedClipEvents,
+        mergedMarkers,
+      ),
+      tracks: enrichedTracks,
+      clipEvents: enrichedClipEvents,
+      markers: mergedMarkers,
+    };
+  } else if (edlHydration) {
+    const enrichedClipEvents = enrichClipEventsFromMetadata(bundleId, edlHydration.clipEvents, metadataRows, assets);
+    primaryHydration = {
+      primarySource: "edl",
+      timeline: buildTimelineFromCanonical(
+        translationModelId,
+        timelineId,
+        sequenceName,
+        fps,
+        sampleRate,
+        manifest?.dropFrame ?? false,
+        startTimecode,
+        manifest?.durationTimecode,
+        edlHydration.tracks,
+        enrichedClipEvents,
+        createMarkers(fps, timelineId, markerRows),
+      ),
+      tracks: enrichTracksFromMetadata(edlHydration.tracks, metadataRows),
+      clipEvents: enrichedClipEvents,
+      markers: createMarkers(fps, timelineId, markerRows),
+    };
+  } else if (metadataHydration) {
+    primaryHydration = {
+      primarySource: "metadata",
+      timeline: buildTimelineFromCanonical(
+        translationModelId,
+        timelineId,
+        sequenceName,
+        fps,
+        sampleRate,
+        manifest?.dropFrame ?? false,
+        startTimecode,
+        manifest?.durationTimecode,
+        metadataHydration.tracks,
+        metadataHydration.clipEvents,
+        createMarkers(fps, timelineId, markerRows),
+      ),
+      tracks: metadataHydration.tracks,
+      clipEvents: metadataHydration.clipEvents,
+      markers: createMarkers(fps, timelineId, markerRows),
+    };
+  } else {
+    primaryHydration = {
+      primarySource: "metadata",
+      timeline: buildTimelineFromCanonical(
+        translationModelId,
+        timelineId,
+        sequenceName,
+        fps,
+        sampleRate,
+        manifest?.dropFrame ?? false,
+        startTimecode,
+        manifest?.durationTimecode,
+        [],
+        [],
+        createMarkers(fps, timelineId, markerRows),
+      ),
+      tracks: [],
+      clipEvents: [],
+      markers: createMarkers(fps, timelineId, markerRows),
+    };
+  }
+
+  const reconciliationIssues = createReconciliationIssues(
+    jobId,
+    primaryHydration.primarySource,
+    primaryHydration.tracks,
+    primaryHydration.clipEvents,
+    primaryHydration.markers,
+    metadataRows,
+    markerRows,
+    assets,
+  );
+  const tracks = primaryHydration.tracks;
+  const clipEvents = primaryHydration.clipEvents;
+  const timeline = primaryHydration.timeline;
+  const markers = primaryHydration.markers;
   const fieldRecorderCandidates = createFieldRecorderCandidates(jobId, clipEvents, assets);
   const fieldRecorderBlocked = fieldRecorderCandidates.some((candidate) => candidate.status !== "linked");
 
@@ -1196,32 +1574,33 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     stage: "intake",
     receivedFrom: "editorial" as const,
     folderPath: normalizeRelativePath(process.cwd(), folderPath),
-    sequenceName,
+    sequenceName: timeline.name,
     pictureLock: manifest?.pictureLock ?? true,
-    fps,
-    startTimecode,
-    startFrame,
-    durationTimecode,
-    durationFrames,
+    fps: timeline.fps,
+    startTimecode: timeline.startTimecode,
+    startFrame: timeline.startFrame,
+    durationTimecode: timeline.durationTimecode,
+    durationFrames: timeline.durationFrames,
     trackCount: tracks.length,
     clipCount: clipEvents.length,
     markerCount: markers.length,
-    sampleRate,
+    sampleRate: timeline.sampleRate,
     handlesFrames: manifest?.handlesFrames ?? 12,
-    dropFrame: manifest?.dropFrame ?? false,
+    dropFrame: timeline.dropFrame,
     assets,
   } satisfies SourceBundle;
 
   const analysis = buildAnalysisReport(
     jobId,
     translationModelId,
-    sequenceName,
+    timeline.name,
     sourceBundle,
     clipEvents,
     markers,
     fieldRecorderBlocked,
     manifest?.expectedFiles ?? [],
     manifest?.expectedProductionRolls ?? [],
+    reconciliationIssues,
   );
 
   const translationModel = {
@@ -1229,27 +1608,12 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     jobId,
     sourceBundleId: sourceBundle.id,
     workflow: "resolve_to_nuendo",
-    name: `${sequenceName} Canonical Model`,
+    name: `${timeline.name} Canonical Model`,
     primaryTimelineId: timelineId,
     normalizedTimelineIds: [timelineId],
     analysisReportId: analysis.report.id,
     deliveryPackageId,
   } satisfies TranslationModel;
-
-  const timeline = {
-    id: timelineId,
-    translationModelId,
-    name: sequenceName,
-    fps,
-    sampleRate,
-    dropFrame: manifest?.dropFrame ?? false,
-    startTimecode,
-    durationTimecode,
-    startFrame,
-    durationFrames,
-    trackIds: tracks.map((track) => track.id),
-    markerIds: markers.map((marker) => marker.id),
-  } satisfies Timeline;
 
   const mappingProfile = createMappingProfile(jobId, tracks, clipEvents, fieldRecorderCandidates, timeline);
   const mappingRules = createMappingRules(jobId, tracks, fieldRecorderCandidates);
@@ -1271,7 +1635,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     createdOn: "2026-03-08",
     updatedOn: "2026-03-08",
     sourceSnapshot: {
-      sequenceName,
+      sequenceName: timeline.name,
       clipCount: clipEvents.length,
       trackCount: tracks.length,
       unresolvedMediaCount: clipEvents.filter((clipEvent) => clipEvent.isOffline).length,

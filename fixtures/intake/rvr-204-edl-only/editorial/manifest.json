@@ -1,0 +1,23 @@
+{
+  "bundleName": "RVR_204_EDL_ONLY_TURNOVER",
+  "jobCode": "RVR204EDL",
+  "title": "River Run Episode 204 EDL Only",
+  "sequenceName": "RVR_204_EDL_ONLY",
+  "pictureLock": true,
+  "fps": "24",
+  "startTimecode": "01:10:00:00",
+  "durationTimecode": "00:08:20:00",
+  "sampleRate": 48000,
+  "handlesFrames": 12,
+  "dropFrame": false,
+  "templateId": "tpl-dialogue-premix",
+  "outputPresetId": "tpl-dialogue-premix",
+  "expectedFiles": [
+    "RVR_204_AUDIO_PULL.edl",
+    "RVR_204_METADATA.csv",
+    "RVR_204_REF.mov"
+  ],
+  "expectedProductionRolls": [
+    "ROLL_061A_01.BWF"
+  ]
+}

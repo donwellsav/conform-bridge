@@ -1,0 +1,420 @@
+import type {
+  ChannelLayout,
+  ClipEvent,
+  FrameRate,
+  IntakeAsset,
+  Marker,
+  MarkerColor,
+  SampleRate,
+  SourceRole,
+  Timeline,
+  Track,
+} from "../types";
+
+const UNKNOWN_TIMECODE = "unknown";
+const UNKNOWN_FRAME = -1;
+
+interface XmlAttributes {
+  [key: string]: string | undefined;
+}
+
+interface ParsedFormat {
+  id: string;
+  fps?: FrameRate;
+  sampleRate?: SampleRate;
+}
+
+interface ParsedAsset {
+  id: string;
+  name?: string;
+  audioChannels?: number;
+}
+
+export interface ParseFcpxmlContext {
+  bundleId: string;
+  translationModelId: string;
+  timelineId: string;
+  fileKind: "fcpxml" | "xml";
+  assets: IntakeAsset[];
+  fallbackName: string;
+  fallbackFps: FrameRate;
+  fallbackSampleRate: SampleRate;
+  fallbackStartTimecode: string;
+  fallbackDropFrame: boolean;
+}
+
+export interface ParsedTimelineSource {
+  source: "fcpxml" | "xml";
+  timeline: Timeline;
+  tracks: Track[];
+  clipEvents: ClipEvent[];
+  markers: Marker[];
+}
+
+function slugify(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function collectTagAttributes(text: string, tagName: string) {
+  const pattern = new RegExp(`<${tagName}\\b([^>]*)\\/?>`, "gi");
+  const matches: XmlAttributes[] = [];
+
+  for (const match of text.matchAll(pattern)) {
+    matches.push(parseAttributes(match[1] ?? ""));
+  }
+
+  return matches;
+}
+
+function parseAttributes(raw: string) {
+  const attributes: XmlAttributes = {};
+  const pattern = /([A-Za-z_:][-A-Za-z0-9_:.]*)="([^"]*)"/g;
+
+  for (const match of raw.matchAll(pattern)) {
+    attributes[match[1]] = match[2];
+  }
+
+  return attributes;
+}
+
+function parseRate(value?: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized.endsWith("k")) {
+    const numeric = Number.parseInt(normalized.slice(0, -1), 10);
+    if (numeric === 48) {
+      return 48000;
+    }
+    if (numeric === 96) {
+      return 96000;
+    }
+  }
+
+  const numeric = Number.parseInt(normalized, 10);
+  if (numeric === 48000 || numeric === 96000) {
+    return numeric;
+  }
+
+  return undefined;
+}
+
+function parseRationalSeconds(value?: string) {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  const stripped = normalized.endsWith("s") ? normalized.slice(0, -1) : normalized;
+
+  if (stripped.includes("/")) {
+    const [numerator, denominator] = stripped.split("/");
+    const top = Number.parseFloat(numerator);
+    const bottom = Number.parseFloat(denominator);
+
+    if (Number.isFinite(top) && Number.isFinite(bottom) && bottom !== 0) {
+      return top / bottom;
+    }
+
+    return undefined;
+  }
+
+  const numeric = Number.parseFloat(stripped);
+  return Number.isFinite(numeric) ? numeric : undefined;
+}
+
+function coerceFrameRateFromDuration(frameDuration?: string): FrameRate | undefined {
+  const secondsPerFrame = parseRationalSeconds(frameDuration);
+  if (!secondsPerFrame || secondsPerFrame <= 0) {
+    return undefined;
+  }
+
+  const fps = 1 / secondsPerFrame;
+  if (Math.abs(fps - 23.976) < 0.02) {
+    return "23.976";
+  }
+  if (Math.abs(fps - 24) < 0.02) {
+    return "24";
+  }
+  if (Math.abs(fps - 25) < 0.02) {
+    return "25";
+  }
+  if (Math.abs(fps - 29.97) < 0.05) {
+    return "29.97";
+  }
+
+  return undefined;
+}
+
+function nominalFramesPerSecond(fps: FrameRate) {
+  switch (fps) {
+    case "23.976":
+    case "24":
+      return 24;
+    case "25":
+      return 25;
+    case "29.97":
+      return 30;
+  }
+}
+
+function secondsToFrames(seconds: number | undefined, fps: FrameRate) {
+  if (seconds === undefined || !Number.isFinite(seconds)) {
+    return UNKNOWN_FRAME;
+  }
+
+  return Math.round(seconds * nominalFramesPerSecond(fps));
+}
+
+function framesToTimecode(frames: number, fps: FrameRate) {
+  if (!Number.isFinite(frames) || frames < 0) {
+    return UNKNOWN_TIMECODE;
+  }
+
+  const frameBase = nominalFramesPerSecond(fps);
+  const totalSeconds = Math.floor(frames / frameBase);
+  const frameRemainder = frames % frameBase;
+  const seconds = totalSeconds % 60;
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  const minutes = totalMinutes % 60;
+  const hours = Math.floor(totalMinutes / 60);
+  return [hours, minutes, seconds, frameRemainder].map((token) => token.toString().padStart(2, "0")).join(":");
+}
+
+function inferLayout(channelCount: number): ChannelLayout {
+  if (channelCount <= 1) {
+    return "mono";
+  }
+  if (channelCount === 2) {
+    return "stereo";
+  }
+  if (channelCount === 3) {
+    return "lcr";
+  }
+  if (channelCount === 6) {
+    return "5.1";
+  }
+  if (channelCount <= 4) {
+    return "poly_4";
+  }
+  return "poly_8";
+}
+
+function inferRole(value?: string): SourceRole {
+  const normalized = value?.trim().toLowerCase() ?? "";
+
+  if (normalized.includes("dialogue") || normalized === "dx") {
+    return "dx";
+  }
+  if (normalized.includes("effects") || normalized.includes("fx")) {
+    return "fx";
+  }
+  if (normalized.includes("music") || normalized.includes("mx")) {
+    return "mx";
+  }
+  if (normalized.includes("voice") || normalized === "vo") {
+    return "vo";
+  }
+  if (normalized.includes("printmaster")) {
+    return "printmaster";
+  }
+
+  return "guide";
+}
+
+function inferMarkerColor(value?: string): MarkerColor {
+  switch (value?.trim().toLowerCase()) {
+    case "green":
+      return "green";
+    case "yellow":
+      return "yellow";
+    case "red":
+      return "red";
+    case "purple":
+      return "purple";
+    default:
+      return "blue";
+  }
+}
+
+function findAssetByName(assets: IntakeAsset[], fileName: string | undefined) {
+  if (!fileName) {
+    return undefined;
+  }
+
+  return assets.find((asset) => asset.name.toLowerCase() === fileName.toLowerCase());
+}
+
+export function parseFcpxmlText(text: string, context: ParseFcpxmlContext): ParsedTimelineSource | null {
+  const normalized = text.replace(/^\uFEFF/, "");
+  const formatMap = new Map<string, ParsedFormat>();
+
+  collectTagAttributes(normalized, "format").forEach((attributes) => {
+    const id = attributes.id;
+    if (!id) {
+      return;
+    }
+
+    formatMap.set(id, {
+      id,
+      fps: coerceFrameRateFromDuration(attributes.frameDuration),
+      sampleRate: parseRate(attributes.audioRate),
+    });
+  });
+
+  const assetMap = new Map<string, ParsedAsset>();
+  collectTagAttributes(normalized, "asset").forEach((attributes) => {
+    const id = attributes.id;
+    if (!id) {
+      return;
+    }
+
+    assetMap.set(id, {
+      id,
+      name: attributes.name,
+      audioChannels: attributes.audioChannels ? Number.parseInt(attributes.audioChannels, 10) : undefined,
+    });
+  });
+
+  const sequenceAttributes = collectTagAttributes(normalized, "sequence")[0];
+  const projectAttributes = collectTagAttributes(normalized, "project")[0];
+
+  if (!sequenceAttributes && !projectAttributes) {
+    return null;
+  }
+
+  const format = sequenceAttributes?.format ? formatMap.get(sequenceAttributes.format) : undefined;
+  const fps = format?.fps ?? context.fallbackFps;
+  const sampleRate = format?.sampleRate ?? context.fallbackSampleRate;
+  const startFrame = secondsToFrames(parseRationalSeconds(sequenceAttributes?.tcStart), fps);
+  const resolvedStartFrame = startFrame >= 0 ? startFrame : secondsToFrames(parseRationalSeconds(sequenceAttributes?.start), fps);
+  const startTimecode = resolvedStartFrame >= 0 ? framesToTimecode(resolvedStartFrame, fps) : context.fallbackStartTimecode;
+  const timelineName = projectAttributes?.name ?? sequenceAttributes?.name ?? context.fallbackName;
+
+  const clipAttributes = [
+    ...collectTagAttributes(normalized, "asset-clip"),
+    ...collectTagAttributes(normalized, "clip"),
+  ];
+
+  const trackMap = new Map<number, Track>();
+  const clipEvents = clipAttributes.map((attributes, index): ClipEvent => {
+    const lane = attributes.lane ? Number.parseInt(attributes.lane, 10) : Number.parseInt(attributes.audioLane ?? "1", 10);
+    const resolvedLane = Number.isFinite(lane) && lane > 0 ? lane : 1;
+    const asset = attributes.ref ? assetMap.get(attributes.ref) : undefined;
+    const sourceFileName = asset?.name ?? attributes.sourceFileName ?? attributes.name ?? "unknown";
+    const sourceAsset = findAssetByName(context.assets, sourceFileName);
+    const durationFrames = secondsToFrames(parseRationalSeconds(attributes.duration), fps);
+    const sourceInFrames = secondsToFrames(parseRationalSeconds(attributes.start), fps);
+    const recordInFrames = (resolvedStartFrame >= 0 ? resolvedStartFrame : 0) + secondsToFrames(parseRationalSeconds(attributes.offset), fps);
+    const sourceOutFrames = sourceInFrames >= 0 && durationFrames >= 0 ? sourceInFrames + durationFrames : UNKNOWN_FRAME;
+    const recordOutFrames = recordInFrames >= 0 && durationFrames >= 0 ? recordInFrames + durationFrames : UNKNOWN_FRAME;
+    const channelCount = asset?.audioChannels
+      ?? (attributes.audioChannels ? Number.parseInt(attributes.audioChannels, 10) : undefined)
+      ?? sourceAsset?.channelCount
+      ?? 1;
+    const trackName = attributes.trackName ?? attributes.roleName ?? `Track ${resolvedLane}`;
+    const role = inferRole(attributes.role ?? attributes.audioRole ?? trackName);
+    const trackId = `track-${slugify(context.bundleId)}-${resolvedLane}`;
+
+    if (!trackMap.has(resolvedLane)) {
+      trackMap.set(resolvedLane, {
+        id: trackId,
+        timelineId: context.timelineId,
+        name: trackName,
+        role,
+        index: resolvedLane,
+        channelLayout: inferLayout(channelCount),
+        clipEventIds: [],
+      });
+    }
+
+    const clipEventId = `clip-${slugify(context.bundleId)}-fcpxml-${index + 1}`;
+    trackMap.get(resolvedLane)?.clipEventIds.push(clipEventId);
+
+    return {
+      id: clipEventId,
+      timelineId: context.timelineId,
+      trackId,
+      sourceAssetId: sourceAsset?.id ?? `asset-${slugify(context.bundleId)}-missing-${index + 1}`,
+      clipName: attributes.name ?? sourceFileName,
+      sourceFileName,
+      reel: attributes.reel,
+      tape: attributes.tape,
+      scene: attributes.scene,
+      take: attributes.take,
+      eventDescription: `${context.fileKind.toUpperCase()} timeline exchange clip imported from ${sourceFileName}.`,
+      clipNotes: attributes.note ?? "",
+      recordIn: framesToTimecode(recordInFrames, fps),
+      recordOut: framesToTimecode(recordOutFrames, fps),
+      sourceIn: framesToTimecode(sourceInFrames, fps),
+      sourceOut: framesToTimecode(sourceOutFrames, fps),
+      recordInFrames,
+      recordOutFrames,
+      sourceInFrames,
+      sourceOutFrames,
+      channelCount,
+      channelLayout: inferLayout(channelCount),
+      isPolyWav: channelCount > 2,
+      hasBwf: sourceFileName.toLowerCase().endsWith(".bwf"),
+      hasIXml: false,
+      isOffline: !sourceAsset || sourceAsset.status === "missing",
+      isNested: attributes.nested === "true",
+      isFlattened: attributes.flattened !== "false",
+      hasSpeedEffect: attributes.speedEffect === "true",
+      hasFadeIn: attributes.fadeIn === "true",
+      hasFadeOut: attributes.fadeOut === "true",
+    };
+  });
+
+  const tracks = [...trackMap.values()].sort((left, right) => left.index - right.index);
+  const maxRecordFrame = clipEvents.reduce((currentMax, clipEvent) => Math.max(currentMax, clipEvent.recordOutFrames), resolvedStartFrame >= 0 ? resolvedStartFrame : 0);
+  const durationFrames = secondsToFrames(parseRationalSeconds(sequenceAttributes?.duration), fps);
+  const resolvedDurationFrames = durationFrames >= 0
+    ? durationFrames
+    : resolvedStartFrame >= 0 && maxRecordFrame > resolvedStartFrame
+      ? maxRecordFrame - resolvedStartFrame
+      : UNKNOWN_FRAME;
+
+  const markerAttributes = collectTagAttributes(normalized, "marker");
+  const markers = markerAttributes.map((attributes, index): Marker => {
+    const markerFrameOffset = secondsToFrames(parseRationalSeconds(attributes.start ?? attributes.offset), fps);
+    const frame = markerFrameOffset >= 0 && resolvedStartFrame >= 0 ? resolvedStartFrame + markerFrameOffset : markerFrameOffset;
+
+    return {
+      id: `marker-${slugify(context.timelineId)}-fcpxml-${index + 1}`,
+      timelineId: context.timelineId,
+      name: attributes.value ?? attributes.name ?? `Marker ${index + 1}`,
+      timecode: framesToTimecode(frame, fps),
+      frame,
+      color: inferMarkerColor(attributes.color),
+      note: attributes.note ?? "",
+    };
+  });
+
+  return {
+    source: context.fileKind,
+    timeline: {
+      id: context.timelineId,
+      translationModelId: context.translationModelId,
+      name: timelineName,
+      fps,
+      sampleRate,
+      dropFrame: context.fallbackDropFrame,
+      startTimecode,
+      durationTimecode: framesToTimecode(resolvedDurationFrames, fps),
+      startFrame: resolvedStartFrame >= 0 ? resolvedStartFrame : secondsToFrames(parseRationalSeconds(sequenceAttributes?.start), fps),
+      durationFrames: resolvedDurationFrames,
+      trackIds: tracks.map((track) => track.id),
+      markerIds: markers.map((marker) => marker.id),
+    },
+    tracks,
+    clipEvents,
+    markers,
+  };
+}

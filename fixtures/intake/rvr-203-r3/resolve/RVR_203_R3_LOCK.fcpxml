@@ -1,9 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <fcpxml version="1.10">
-  <resources />
+  <resources>
+    <format id="fmt-rvr-203" frameDuration="1001/24000s" audioRate="48k" />
+    <asset id="asset-roll-54a" name="ROLL_054A_01.BWF" audioChannels="8" />
+    <asset id="asset-roll-lav" name="ROLL_054A_LAV_ALT.WAV" audioChannels="1" />
+    <asset id="asset-roll-54b" name="ROLL_054B_02.BWF" audioChannels="8" />
+  </resources>
   <library>
     <event name="RVR_203_R3">
-      <project name="RVR_203_R3" />
+      <project name="RVR_203_R3_FCPXML_PRIMARY">
+        <sequence format="fmt-rvr-203" tcStart="86400/24s" duration="18344/24s">
+          <spine>
+            <asset-clip
+              name="BOOM_054A_01_A"
+              ref="asset-roll-54a"
+              lane="1"
+              role="dialogue"
+              trackName="DX BOOM A"
+              offset="296/24s"
+              start="878692/24s"
+              duration="154/24s"
+              reel="054A"
+              tape="R054A"
+              scene="23A"
+              take="2"
+              fadeIn="true"
+            />
+            <asset-clip
+              name="LAV_054A_01_B"
+              ref="asset-roll-lav"
+              lane="2"
+              role="dialogue"
+              trackName="DX LAV A"
+              offset="488/24s"
+              start="879360/24s"
+              duration="108/24s"
+            />
+            <asset-clip
+              name="BOOM_054B_02_A"
+              ref="asset-roll-54b"
+              lane="1"
+              role="dialogue"
+              trackName="DX BOOM A"
+              offset="4560/24s"
+              start="952848/24s"
+              duration="128/24s"
+              reel="054B"
+              scene="23B"
+              take="1"
+              fadeOut="true"
+            />
+            <marker start="1492/24s" value="Kitchen pickup" note="Timeline exchange marker" color="yellow" />
+          </spine>
+        </sequence>
+      </project>
     </event>
   </library>
 </fcpxml>

@@ -5,6 +5,7 @@ import * as dataSource from "./data-source";
 
 test("imported fixture data flows through exporter planning into dashboard and job selectors", () => {
   assert.equal(dataSource.dataMode, "imported");
+  assert.equal(dataSource.jobs.length, 2);
 
   const job = dataSource.jobs[0];
   assert.ok(job);
@@ -18,7 +19,7 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.equal(exportArtifacts.length, 8);
   assert.equal(deliveryPackage?.artifacts.length, 8);
   assert.equal(exportArtifacts.filter((artifact) => artifact.status === "blocked").length, 1);
-  assert.equal(dashboardMetric?.value, "08");
+  assert.equal(dashboardMetric?.value, "16");
   assert.match(dashboardMetric?.note ?? "", /exporter\.ts/);
   assert.match(deliveryActivity?.title ?? "", /exporter plan refreshed/i);
 });
