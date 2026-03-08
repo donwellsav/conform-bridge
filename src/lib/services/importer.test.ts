@@ -35,7 +35,7 @@ test("parseMetadataCsvText preserves known values and explicit unknowns", () => 
   assert.equal(rows[2]?.isOffline, true);
 });
 
-test("importTurnoverFolderSync classifies intake assets and generates analysis findings", () => {
+test("importTurnoverFolderSync classifies intake assets and stops at canonical hydration", () => {
   const result = importer.importTurnoverFolderSync(fixtureRoot);
 
   assert.equal(result.sourceBundle.stage, "intake");
@@ -71,7 +71,5 @@ test("importTurnoverFolderSync classifies intake assets and generates analysis f
   assert.ok(issueCodes.includes("MISSING_PRODUCTION_ROLL"));
   assert.ok(issueCodes.includes("UNRESOLVED_METADATA"));
   assert.ok(issueCodes.includes("DELIVERY_ARTIFACT_BLOCKED"));
-
-  const blockedFieldReport = result.deliveryPackage.artifacts.find((artifact) => artifact.fileRole === "field_recorder_report");
-  assert.equal(blockedFieldReport?.status, "blocked");
+  assert.ok(!("deliveryPackage" in result));
 });

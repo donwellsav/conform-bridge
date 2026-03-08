@@ -2,16 +2,12 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, relative, resolve } from "node:path";
 
 import type {
-  ActivityItem,
   AnalysisGroup,
   AnalysisReport,
   AssetOrigin,
   ChannelLayout,
   ClipEvent,
   ConformChangeEvent,
-  DashboardMetric,
-  DeliveryArtifact,
-  DeliveryPackage,
   FieldRecorderCandidate,
   FileKind,
   FileRole,
@@ -127,7 +123,6 @@ export interface IntakeImportResult {
   clipEvents: ClipEvent[];
   markers: Marker[];
   analysisReport: AnalysisReport;
-  deliveryPackage: DeliveryPackage;
   mappingProfile: MappingProfile;
   mappingRules: MappingRule[];
   fieldRecorderCandidates: FieldRecorderCandidate[];
@@ -135,7 +130,7 @@ export interface IntakeImportResult {
   job: TranslationJob;
 }
 
-export interface ImportedAppData {
+export interface ImportedIntakeData {
   sourceBundles: SourceBundle[];
   sourceAssets: IntakeAsset[];
   translationModels: TranslationModel[];
@@ -145,15 +140,11 @@ export interface ImportedAppData {
   markers: Marker[];
   analysisReports: AnalysisReport[];
   preservationIssues: PreservationIssue[];
-  deliveryPackages: DeliveryPackage[];
-  exportArtifacts: DeliveryArtifact[];
   mappingProfiles: MappingProfile[];
   mappingRules: MappingRule[];
   fieldRecorderCandidates: FieldRecorderCandidate[];
   conformChangeEvents: ConformChangeEvent[];
   jobs: TranslationJob[];
-  dashboardMetrics: DashboardMetric[];
-  activityFeed: ActivityItem[];
   fieldRecorderWatchlist: Array<{
     id: string;
     clip: string;
@@ -794,119 +785,6 @@ function groupIssuesByScope(issues: PreservationIssue[]) {
   }));
 }
 
-function createDeliveryArtifacts(
-  jobId: string,
-  deliveryPackageId: string,
-  sequenceName: string,
-  referenceVideoPresent: boolean,
-  fieldRecorderBlocked: boolean,
-) {
-  const safeSequenceName = sequenceName.replaceAll(" ", "_");
-
-  return [
-    {
-      id: `artifact-${slugify(jobId)}-nuendo-aaf`,
-      deliveryPackageId,
-      jobId,
-      stage: "delivery",
-      origin: "conform-bridge",
-      fileKind: "aaf",
-      fileRole: "timeline_exchange",
-      fileName: `${safeSequenceName}_NUENDO_READY.aaf`,
-      status: "planned",
-      note: "Planned Nuendo-ready timeline exchange generated from the canonical model.",
-    },
-    {
-      id: `artifact-${slugify(jobId)}-marker-edl`,
-      deliveryPackageId,
-      jobId,
-      stage: "delivery",
-      origin: "conform-bridge",
-      fileKind: "edl",
-      fileRole: "marker_export",
-      fileName: `${safeSequenceName}_MARKERS.edl`,
-      status: "planned",
-      note: "Marker EDL projected from imported marker data.",
-    },
-    {
-      id: `artifact-${slugify(jobId)}-marker-csv`,
-      deliveryPackageId,
-      jobId,
-      stage: "delivery",
-      origin: "conform-bridge",
-      fileKind: "csv",
-      fileRole: "marker_export",
-      fileName: `${safeSequenceName}_MARKERS.csv`,
-      status: "planned",
-      note: "Marker CSV projected from imported marker data.",
-    },
-    {
-      id: `artifact-${slugify(jobId)}-metadata-csv`,
-      deliveryPackageId,
-      jobId,
-      stage: "delivery",
-      origin: "conform-bridge",
-      fileKind: "csv",
-      fileRole: "metadata_export",
-      fileName: `${safeSequenceName}_METADATA.csv`,
-      status: "planned",
-      note: "Metadata CSV projected from imported clip metadata.",
-    },
-    {
-      id: `artifact-${slugify(jobId)}-manifest`,
-      deliveryPackageId,
-      jobId,
-      stage: "delivery",
-      origin: "conform-bridge",
-      fileKind: "json",
-      fileRole: "delivery_manifest",
-      fileName: "manifest.json",
-      status: "planned",
-      note: "Delivery manifest summarizing canonical counts and planned artifacts.",
-    },
-    {
-      id: `artifact-${slugify(jobId)}-readme`,
-      deliveryPackageId,
-      jobId,
-      stage: "delivery",
-      origin: "conform-bridge",
-      fileKind: "txt",
-      fileRole: "delivery_readme",
-      fileName: "README_NUENDO_IMPORT.txt",
-      status: "planned",
-      note: "Import instructions for Nuendo delivery remain planned only in Phase 2A.",
-    },
-    {
-      id: `artifact-${slugify(jobId)}-reference-video`,
-      deliveryPackageId,
-      jobId,
-      stage: "delivery",
-      origin: "conform-bridge",
-      fileKind: "mov",
-      fileRole: "reference_video",
-      fileName: `${safeSequenceName}_REF.mov`,
-      status: referenceVideoPresent ? "planned" : "blocked",
-      note: referenceVideoPresent
-        ? "Reference video can be carried into the delivery package."
-        : "Reference video remains blocked because no intake reference file was found.",
-    },
-    {
-      id: `artifact-${slugify(jobId)}-field-recorder-report`,
-      deliveryPackageId,
-      jobId,
-      stage: "delivery",
-      origin: "conform-bridge",
-      fileKind: "csv",
-      fileRole: "field_recorder_report",
-      fileName: `${safeSequenceName}_FIELD_RECORDER_REPORT.csv`,
-      status: fieldRecorderBlocked ? "blocked" : "planned",
-      note: fieldRecorderBlocked
-        ? "Field recorder report remains blocked until missing rolls and metadata gaps are resolved."
-        : "Field recorder report can be planned from imported production-audio metadata.",
-    },
-  ] satisfies DeliveryArtifact[];
-}
-
 function createMappingProfile(
   jobId: string,
   tracks: Track[],
@@ -1031,10 +909,11 @@ function createConformChangeEvents(jobId: string, edlEvents: ParsedEdlEvent[], f
 function buildAnalysisReport(
   jobId: string,
   translationModelId: string,
+  sequenceName: string,
   sourceBundle: SourceBundle,
   clipEvents: ClipEvent[],
   markers: Marker[],
-  deliveryArtifacts: DeliveryArtifact[],
+  fieldRecorderBlocked: boolean,
   expectedFiles: string[],
   expectedProductionRolls: string[],
 ) {
@@ -1043,8 +922,8 @@ function buildAnalysisReport(
   const missingExpectedFiles = missingAssets.filter((asset) => expectedFiles.some((expectedFile) => expectedFile.toLowerCase() === asset.name.toLowerCase()) && asset.fileRole !== "production_audio");
   const missingProductionRollAssets = missingAssets.filter((asset) => asset.fileRole === "production_audio" || expectedProductionRolls.some((roll) => roll.toLowerCase() === asset.name.toLowerCase()));
   const unresolvedMetadataClips = clipEvents.filter((clipEvent) => !clipEvent.reel || !clipEvent.tape || !clipEvent.scene || !clipEvent.take);
-  const blockedArtifacts = deliveryArtifacts.filter((artifact) => artifact.status === "blocked");
-  const fieldReportArtifact = deliveryArtifacts.find((artifact) => artifact.fileRole === "field_recorder_report");
+  const fieldReportArtifactId = `artifact-${slugify(jobId)}-field-recorder-report`;
+  const fieldReportArtifactName = `${sequenceName.replaceAll(" ", "_")}_FIELD_RECORDER_REPORT.csv`;
 
   missingExpectedFiles.forEach((asset, index) => {
     issues.push({
@@ -1076,8 +955,8 @@ function buildAnalysisReport(
       description: "The importer found a referenced production-audio roll in metadata or manifest expectations, but the file is missing from the turnover folder.",
       sourceLocation: asset.name,
       impact: "Field recorder matching and related delivery artifacts must remain blocked.",
-      targetArtifactId: fieldReportArtifact?.id,
-      targetArtifactName: fieldReportArtifact?.fileName,
+      targetArtifactId: fieldReportArtifactId,
+      targetArtifactName: fieldReportArtifactName,
       recommendedAction: "Supply the missing roll or confirm that the source event should remain offline in the canonical model.",
       requiresDecision: true,
       affectedItems: [asset.name],
@@ -1096,33 +975,33 @@ function buildAnalysisReport(
       description: "The importer hydrated clip events from real metadata files, but some events still have unresolved reel or slate fields.",
       sourceLocation: "metadata CSV",
       impact: "Field recorder candidate confidence drops and manual review remains necessary.",
-      targetArtifactId: fieldReportArtifact?.id,
-      targetArtifactName: fieldReportArtifact?.fileName,
+      targetArtifactId: fieldReportArtifactId,
+      targetArtifactName: fieldReportArtifactName,
       recommendedAction: "Complete the missing reel or slate fields in editorial metadata before relying on automated relink logic.",
       requiresDecision: false,
       affectedItems: unresolvedMetadataClips.map((clipEvent) => clipEvent.clipName),
     });
   }
 
-  blockedArtifacts.forEach((artifact, index) => {
+  if (fieldRecorderBlocked) {
     issues.push({
-      id: `issue-${slugify(jobId)}-blocked-${index + 1}`,
+      id: `issue-${slugify(jobId)}-blocked-1`,
       jobId,
       category: "manual-review",
       severity: "warning",
       scope: "delivery",
       code: "DELIVERY_ARTIFACT_BLOCKED",
-      title: `${artifact.fileName} remains blocked`,
-      description: artifact.note,
+      title: `${fieldReportArtifactName} remains blocked`,
+      description: "Delivery planning must keep the field recorder report blocked until missing rolls or unresolved metadata gaps are cleared.",
       sourceLocation: "delivery planning",
       impact: "The canonical model is usable, but the planned Nuendo package is not fully ready for handoff.",
-      targetArtifactId: artifact.id,
-      targetArtifactName: artifact.fileName,
+      targetArtifactId: fieldReportArtifactId,
+      targetArtifactName: fieldReportArtifactName,
       recommendedAction: "Resolve the upstream intake issue before enabling this delivery artifact.",
       requiresDecision: false,
-      affectedItems: [artifact.fileName],
+      affectedItems: [fieldReportArtifactName],
     });
-  });
+  }
 
   const criticalCount = issues.filter((issue) => issue.severity === "critical").length;
   const warningCount = issues.filter((issue) => issue.severity === "warning").length;
@@ -1143,12 +1022,12 @@ function buildAnalysisReport(
       },
       highRiskCount: criticalCount,
       warningCount,
-      blockedCount: blockedArtifacts.length,
+      blockedCount: fieldRecorderBlocked ? 1 : 0,
       intakeCompletenessSummary: missingAssets.length > 0
         ? `Scanned ${sourceBundle.assets.length} intake assets. ${missingAssets.length} expected asset(s) remain missing.`
         : `Scanned ${sourceBundle.assets.length} intake assets. No expected files are currently missing.`,
-      deliveryReadinessSummary: blockedArtifacts.length > 0
-        ? `${blockedArtifacts.length} delivery artifact(s) remain blocked pending intake cleanup.`
+      deliveryReadinessSummary: fieldRecorderBlocked
+        ? "At least one delivery artifact must remain blocked pending intake cleanup."
         : "Delivery planning is ready from the current intake analysis.",
       summary: {
         totalFindings: issues.length,
@@ -1310,8 +1189,6 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   const markers = createMarkers(fps, timelineId, markerRows);
   const fieldRecorderCandidates = createFieldRecorderCandidates(jobId, clipEvents, assets);
   const fieldRecorderBlocked = fieldRecorderCandidates.some((candidate) => candidate.status !== "linked");
-  const referenceVideoPresent = assets.some((asset) => asset.fileRole === "reference_video" && asset.status === "present");
-  const deliveryArtifacts = createDeliveryArtifacts(jobId, deliveryPackageId, sequenceName, referenceVideoPresent, fieldRecorderBlocked);
 
   const sourceBundle = {
     id: bundleId,
@@ -1338,10 +1215,11 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   const analysis = buildAnalysisReport(
     jobId,
     translationModelId,
+    sequenceName,
     sourceBundle,
     clipEvents,
     markers,
-    deliveryArtifacts,
+    fieldRecorderBlocked,
     manifest?.expectedFiles ?? [],
     manifest?.expectedProductionRolls ?? [],
   );
@@ -1372,19 +1250,6 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     trackIds: tracks.map((track) => track.id),
     markerIds: markers.map((marker) => marker.id),
   } satisfies Timeline;
-
-  const deliveryPackage = {
-    id: deliveryPackageId,
-    jobId,
-    stage: "delivery",
-    destination: "nuendo",
-    outputPresetId: manifest?.outputPresetId ?? manifest?.templateId ?? "tpl-dialogue-premix",
-    name: `${sequenceName}_NUENDO_DELIVERY`,
-    includeReferenceVideo: referenceVideoPresent,
-    includeHandles: true,
-    deliverySummary: analysis.report.deliveryReadinessSummary,
-    artifacts: deliveryArtifacts,
-  } satisfies DeliveryPackage;
 
   const mappingProfile = createMappingProfile(jobId, tracks, clipEvents, fieldRecorderCandidates, timeline);
   const mappingRules = createMappingRules(jobId, tracks, fieldRecorderCandidates);
@@ -1418,7 +1283,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       unresolvedCount: analysis.report.summary.operatorDecisionCount,
       fieldRecorderLinkedCount: fieldRecorderCandidates.filter((candidate) => candidate.status === "linked").length,
     },
-    notes: "Imported from a real local intake fixture folder. Delivery planning remains stub-only and no Nuendo writer is implemented yet.",
+    notes: "Imported from a real local intake fixture folder. Delivery planning is generated later by exporter.ts, and no Nuendo writer is implemented yet.",
   } satisfies TranslationJob;
 
   return {
@@ -1429,7 +1294,6 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     clipEvents,
     markers,
     analysisReport: analysis.report,
-    deliveryPackage,
     mappingProfile,
     mappingRules,
     fieldRecorderCandidates,
@@ -1438,53 +1302,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   };
 }
 
-function createDashboardMetrics(data: ImportedAppData): DashboardMetric[] {
-  const blockedArtifacts = data.exportArtifacts.filter((artifact) => artifact.status === "blocked").length;
-  const highRiskIssues = data.analysisReports.reduce((total, report) => total + report.highRiskCount, 0);
-  const missingInputs = data.sourceAssets.filter((asset) => asset.status === "missing").length;
-
-  return [
-    { label: "Intake packages", value: data.sourceBundles.length.toString().padStart(2, "0"), note: "Real fixture folders scanned from disk through the importer pipeline.", tone: "neutral" },
-    { label: "Canonical timelines", value: data.timelines.length.toString().padStart(2, "0"), note: "Normalized timelines are hydrated only from formats parsed in this phase.", tone: "accent" },
-    { label: "Planned delivery files", value: data.exportArtifacts.length.toString().padStart(2, "0"), note: "Delivery artifacts are planned from imported intake analysis, not mock-only placeholders.", tone: "accent" },
-    { label: "High-risk issues", value: highRiskIssues.toString().padStart(2, "0"), note: missingInputs > 0 ? `${missingInputs} missing intake asset(s) still affect delivery readiness.` : "No missing intake assets are currently flagged.", tone: blockedArtifacts > 0 ? "danger" : "warning" },
-  ];
-}
-
-function createActivityFeed(data: ImportedAppData): ActivityItem[] {
-  return data.jobs.flatMap((job) => {
-    const report = data.analysisReports.find((analysisReport) => analysisReport.jobId === job.id);
-    const deliveryPackage = data.deliveryPackages.find((candidate) => candidate.jobId === job.id);
-    const bundle = data.sourceBundles.find((candidate) => candidate.id === job.sourceBundleId);
-
-    return [
-      {
-        id: `activity-${slugify(job.id)}-scan`,
-        timestamp: "2026-03-08 10:14",
-        title: `${job.jobCode} intake scanned`,
-        detail: `${bundle?.folderPath ?? bundle?.name ?? "fixture folder"} was scanned into the canonical translation model.`,
-      },
-      {
-        id: `activity-${slugify(job.id)}-analysis`,
-        timestamp: "2026-03-08 10:15",
-        title: `${job.jobCode} analysis generated`,
-        detail: report
-          ? `${report.summary.totalFindings} preservation finding(s) were generated from real CSV, manifest, and EDL inputs.`
-          : "Analysis report could not be generated.",
-      },
-      {
-        id: `activity-${slugify(job.id)}-delivery`,
-        timestamp: "2026-03-08 10:16",
-        title: `${job.jobCode} delivery plan refreshed`,
-        detail: deliveryPackage
-          ? `${deliveryPackage.artifacts.filter((artifact) => artifact.status === "blocked").length} delivery artifact(s) remain blocked after intake analysis.`
-          : "Delivery planning remains unavailable.",
-      },
-    ];
-  });
-}
-
-export function importFixtureLibrarySync(rootPath = FIXTURE_ROOT): ImportedAppData {
+export function importFixtureLibrarySync(rootPath = FIXTURE_ROOT): ImportedIntakeData {
   if (!existsSync(rootPath)) {
     return {
       sourceBundles: [],
@@ -1496,15 +1314,11 @@ export function importFixtureLibrarySync(rootPath = FIXTURE_ROOT): ImportedAppDa
       markers: [],
       analysisReports: [],
       preservationIssues: [],
-      deliveryPackages: [],
-      exportArtifacts: [],
       mappingProfiles: [],
       mappingRules: [],
       fieldRecorderCandidates: [],
       conformChangeEvents: [],
       jobs: [],
-      dashboardMetrics: [],
-      activityFeed: [],
       fieldRecorderWatchlist: [],
     };
   }
@@ -1516,7 +1330,7 @@ export function importFixtureLibrarySync(rootPath = FIXTURE_ROOT): ImportedAppDa
 
   const imports = folderEntries.map((folderPath) => importTurnoverFolderSync(folderPath));
 
-  const data: ImportedAppData = {
+  return {
     sourceBundles: imports.map((item) => item.sourceBundle),
     sourceAssets: imports.flatMap((item) => item.sourceBundle.assets),
     translationModels: imports.map((item) => item.translationModel),
@@ -1526,15 +1340,11 @@ export function importFixtureLibrarySync(rootPath = FIXTURE_ROOT): ImportedAppDa
     markers: imports.flatMap((item) => item.markers),
     analysisReports: imports.map((item) => item.analysisReport),
     preservationIssues: imports.flatMap((item) => item.analysisReport.groups.flatMap((group) => group.findings)),
-    deliveryPackages: imports.map((item) => item.deliveryPackage),
-    exportArtifacts: imports.flatMap((item) => item.deliveryPackage.artifacts),
     mappingProfiles: imports.map((item) => item.mappingProfile),
     mappingRules: imports.flatMap((item) => item.mappingRules),
     fieldRecorderCandidates: imports.flatMap((item) => item.fieldRecorderCandidates),
     conformChangeEvents: imports.flatMap((item) => item.conformChangeEvents),
     jobs: imports.map((item) => item.job),
-    dashboardMetrics: [],
-    activityFeed: [],
     fieldRecorderWatchlist: imports.flatMap((item) =>
       item.fieldRecorderCandidates
         .filter((candidate) => candidate.status !== "linked")
@@ -1546,17 +1356,12 @@ export function importFixtureLibrarySync(rootPath = FIXTURE_ROOT): ImportedAppDa
         })),
     ),
   };
-
-  data.dashboardMetrics = createDashboardMetrics(data);
-  data.activityFeed = createActivityFeed(data);
-
-  return data;
 }
 
 export async function importTurnoverFolder(folderPath: string): Promise<IntakeImportResult> {
   return importTurnoverFolderSync(folderPath);
 }
 
-export async function importFixtureLibrary(rootPath = FIXTURE_ROOT): Promise<ImportedAppData> {
+export async function importFixtureLibrary(rootPath = FIXTURE_ROOT): Promise<ImportedIntakeData> {
   return importFixtureLibrarySync(rootPath);
 }

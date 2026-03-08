@@ -96,7 +96,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         </div>
 
         <div className="space-y-5">
-          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo outputs" description="Artifacts are listed as planned delivery outputs only. Intake analysis is real in this phase, but no Nuendo writer exists yet.">
+          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo outputs" description="Artifacts are listed as exporter-generated delivery outputs only. Intake analysis is real in this phase, but no Nuendo writer exists yet.">
             <div className="space-y-3">
               {artifacts.map((artifact) => (
                 <div key={artifact.id} className="rounded-2xl border border-border/80 bg-panel p-4">

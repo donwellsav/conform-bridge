@@ -67,7 +67,7 @@ export default function DashboardPage() {
         </SectionCard>
 
         <div className="space-y-5">
-          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo package" description={outputPreset ? `Preset: ${outputPreset.name}` : "No output preset selected."} aside={<Badge variant="accent">Frontend only</Badge>}>
+          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo package" description={outputPreset ? `Preset: ${outputPreset.name}. Planned by exporter.ts.` : "No output preset selected."} aside={<Badge variant="accent">Frontend only</Badge>}>
             <div className="space-y-3">
               {plannedArtifacts.map((artifact) => (
                 <div key={artifact.id} className="rounded-2xl border border-border/80 bg-panel p-4">
