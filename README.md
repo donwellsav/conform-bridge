@@ -14,14 +14,15 @@ Implemented:
 - Next.js App Router shell with operator-focused routes
 - Typed intake, canonical, and delivery domain model
 - Real intake folder scanning and classification
-- Real parsing for metadata CSV, marker CSV, `manifest.json`, and simple EDL extraction
+- Real parsing for FCPXML/XML, metadata CSV, marker CSV, `manifest.json`, and simple EDL extraction
+- Primary timeline hydration from FCPXML/XML when present, with EDL and metadata fallback
+- Reconciliation issues when metadata CSV or marker CSV disagree with the primary timeline exchange
 - Canonical hydration for bundles, timelines, tracks, clips, markers, and analysis
 - Deterministic delivery planning in `exporter.ts`
 - Fixture-backed tests for importer, exporter, and data flow
 
 Not implemented:
 - Real AAF parsing
-- Real FCPXML/XML timeline parsing
 - Real Nuendo export writing
 - Auth, billing, database, backend, or marketing site
 
@@ -63,19 +64,21 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [AGENTS.md](./AGENTS.md): repo guardrails
 - [TASKLIST.md](./TASKLIST.md): phased work tracking
 - [src/lib/types.ts](./src/lib/types.ts): shared domain types
-- [src/lib/services/importer.ts](./src/lib/services/importer.ts): intake scanning, parsing, hydration, analysis
+- [src/lib/parsers/fcpxml.ts](./src/lib/parsers/fcpxml.ts): FCPXML/XML parser for timeline, track, clip, and marker hydration
+- [src/lib/services/importer.ts](./src/lib/services/importer.ts): intake scanning, source preference, parsing, reconciliation, hydration, analysis
 - [src/lib/services/exporter.ts](./src/lib/services/exporter.ts): delivery planning only
 - [src/lib/data-source.ts](./src/lib/data-source.ts): composes imported fixture data with exporter planning, or falls back to mock data
 
 ## Fixture Intake Folder
 
-The repo includes a real fixture turnover folder:
+The repo includes real fixture turnover folders:
 
-`fixtures/intake/rvr-203-r3`
+- `fixtures/intake/rvr-203-r3`
+- `fixtures/intake/rvr-204-edl-only`
 
-It includes:
+`rvr-203-r3` includes:
 - Resolve AAF
-- Resolve FCPXML
+- Resolve FCPXML as the primary timeline exchange
 - editorial EDL
 - metadata CSV
 - marker CSV
@@ -83,7 +86,14 @@ It includes:
 - reference video placeholder
 - production-audio BWF/WAV placeholders
 
-One production roll is intentionally missing so analysis and delivery blocking can be exercised.
+One production roll is intentionally missing so analysis, reconciliation, and delivery blocking can be exercised.
+
+`rvr-204-edl-only` includes:
+- editorial EDL as the primary fallback timeline source
+- metadata CSV for enrichment
+- `manifest.json`
+- reference video placeholder
+- production-audio BWF placeholder
 
 ## Running Locally
 
@@ -112,8 +122,14 @@ npm run build
 `importer.ts` is responsible for:
 - scanning intake folders
 - classifying inbound files
+- selecting the preferred primary timeline source in this order:
+  - `fcpxml/xml`
+  - `edl`
+  - metadata-only fallback
 - parsing supported intake formats
 - hydrating the canonical model
+- enriching canonical events from metadata, marker CSV, EDL, and manifest data
+- generating reconciliation issues when secondary sources disagree with the primary timeline exchange
 - generating intake analysis and preservation findings
 
 `exporter.ts` is responsible for:
@@ -126,6 +142,7 @@ npm run build
 ## Supported Intake Parsing In This Phase
 
 Parsed:
+- FCPXML / XML timeline structure
 - metadata CSV
 - marker CSV
 - `manifest.json`
@@ -133,9 +150,20 @@ Parsed:
 
 Classified but not deeply parsed:
 - AAF
-- FCPXML / XML
 - BWF / WAV
 - MOV / MP4
+
+Primary source of truth:
+- FCPXML / XML when present
+- EDL when FCPXML / XML is absent
+- metadata-only hydration only when no timeline exchange is available
+
+Reconciliation currently flags:
+- track count mismatch
+- clip timecode mismatch
+- marker count mismatch
+- missing reel / tape / scene / take
+- source files referenced by the timeline exchange but missing from intake
 
 ## SSR / Rendering Rules
 
@@ -147,6 +175,7 @@ Classified but not deeply parsed:
 ## Next Recommended Work
 
 - AAF ingestion for real timeline and event extraction
-- FCPXML/XML structural parsing
+- add an `aaf.ts` parser that extracts composition name, edit rate, start timecode, track order, clip in/out, and source references
+- wire importer preference to `fcpxml/xml -> aaf -> edl -> metadata`
 - richer reconform delta generation
 - real Nuendo writer after exporter planning is stable
