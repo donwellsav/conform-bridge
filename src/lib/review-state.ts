@@ -6,12 +6,14 @@ import {
   setMarkerAction,
 } from "./mapping-workflow";
 import { prepareDeliveryExecutionSync } from "./services/delivery-execution";
+import { createOverlayReviewInfluence, prepareDeliveryStagingSync } from "./services/delivery-staging";
 import { planNuendoDeliverySync } from "./services/exporter";
 import type {
   AnalysisReport,
   ClipEvent,
   ConformChangeEvent,
   DeliveryExecutionPlan,
+  DeliveryStagingBundle,
   FieldRecorderCandidate,
   FieldRecorderReviewDecision,
   MappingProfile,
@@ -82,6 +84,7 @@ export interface ReviewOverlayResult {
   previewReport: AnalysisReport;
   previewPlan: ReturnType<typeof planNuendoDeliverySync>;
   previewExecution: DeliveryExecutionPlan;
+  previewStaging: DeliveryStagingBundle;
   reconformItems: ReconformReviewItem[];
   reviewCounts: {
     mappingOpenCount: number;
@@ -706,6 +709,31 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     deliveryPackage: previewPlan.deliveryPackage,
     exportArtifacts: previewPlan.exportArtifacts,
   });
+  const previewStaging = prepareDeliveryStagingSync({
+    job: previewJob,
+    bundle: context.bundle,
+    deliveryPackage: previewPlan.deliveryPackage,
+    exportArtifacts: previewPlan.exportArtifacts,
+    executionPlan: previewExecution,
+    preservationIssues: previewIssues,
+    sourceSignature: reviewState.sourceSignature,
+    reviewInfluence: createOverlayReviewInfluence({
+      hasSavedState: reviewState.trackOverrides.length > 0
+        || reviewState.metadataOverrides.length > 0
+        || reviewState.markerDecisions.length > 0
+        || reviewState.fieldRecorderDecisions.length > 0
+        || reviewState.validationAcknowledgements.length > 0
+        || reviewState.reconformDecisions.length > 0,
+      operatorEditedCount: reviewState.trackOverrides.length
+        + reviewState.metadataOverrides.length
+        + reviewState.markerDecisions.length
+        + reviewState.fieldRecorderDecisions.length,
+      validationAcknowledgedCount,
+      validationDismissedCount,
+      reconformReviewedCount: reconformAcknowledgedCount + reconformNeedsFollowUpCount,
+      openReviewCount: mappingReviewSummary.total + validationOpenCount + reconformOpenCount,
+    }),
+  });
 
   return {
     reviewState,
@@ -717,6 +745,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewReport,
     previewPlan,
     previewExecution,
+    previewStaging,
     reconformItems,
     reviewCounts: {
       mappingOpenCount: mappingReviewSummary.total,

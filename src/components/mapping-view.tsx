@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { DeliveryExecutionPreview } from "@/components/delivery-execution-preview";
+import { DeliveryStagingPreview } from "@/components/delivery-staging-preview";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -244,6 +245,9 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
         </div>
         <div className="mt-5 border-t border-border/70 pt-5">
           <DeliveryExecutionPreview executionPlan={overlay.previewExecution} />
+        </div>
+        <div className="mt-5 border-t border-border/70 pt-5">
+          <DeliveryStagingPreview stagingBundle={overlay.previewStaging} />
         </div>
       </SectionCard>
 

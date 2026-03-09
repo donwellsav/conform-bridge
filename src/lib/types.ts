@@ -489,6 +489,136 @@ export interface DeliveryExecutionPlan {
   summary: string;
 }
 
+export interface DeliveryStagingReviewInfluence {
+  mode: "imported_base" | "saved_review_overlay";
+  hasSavedState: boolean;
+  operatorEditedCount: number;
+  validationAcknowledgedCount: number;
+  validationDismissedCount: number;
+  reconformReviewedCount: number;
+  openReviewCount: number;
+  note: string;
+}
+
+export interface DeliveryDeferredDescriptor {
+  schemaVersion: 1;
+  artifactId: string;
+  jobId: string;
+  deliveryPackageId: string;
+  fileName: string;
+  fileRole: FileRole;
+  fileKind: FileKind;
+  artifactStatus: DeliveryArtifactStatus;
+  executionStatus: "deferred";
+  nextBoundary: DeferredBinaryArtifactPayload["nextBoundary"];
+  reason: string;
+  sourceDependencies: string[];
+}
+
+export interface StagedGeneratedArtifactFile {
+  kind: "generated_file";
+  relativePath: string;
+  directory: string;
+  fileName: string;
+  artifactId: string;
+  fileRole: FileRole;
+  fileKind: FileKind;
+  artifactStatus: DeliveryArtifactStatus;
+  payloadKind: GeneratedArtifactPayloadKind;
+  mimeType: string;
+  content: string;
+  summary: string;
+}
+
+export interface StagedDeferredArtifactFile {
+  kind: "deferred_descriptor";
+  relativePath: string;
+  directory: string;
+  fileName: string;
+  artifactId: string;
+  fileRole: FileRole;
+  fileKind: FileKind;
+  artifactStatus: DeliveryArtifactStatus;
+  payloadKind: "deferred_descriptor";
+  mimeType: "application/json";
+  content: string;
+  descriptor: DeliveryDeferredDescriptor;
+  summary: string;
+}
+
+export interface DeliveryStagingSummaryJson {
+  schemaVersion: 1;
+  jobId: string;
+  deliveryPackageId: string;
+  rootFolderName: string;
+  sourceSignature: string;
+  generatedCount: number;
+  deferredCount: number;
+  unavailableCount: number;
+  unresolvedBlockerCount: number;
+  generatedFiles: Array<{
+    relativePath: string;
+    artifactId: string;
+    payloadKind: GeneratedArtifactPayloadKind;
+    artifactStatus: DeliveryArtifactStatus;
+    summary: string;
+  }>;
+  deferredFiles: Array<{
+    relativePath: string;
+    artifactId: string;
+    fileRole: FileRole;
+    fileKind: FileKind;
+    artifactStatus: DeliveryArtifactStatus;
+    nextBoundary: DeferredBinaryArtifactPayload["nextBoundary"];
+    summary: string;
+  }>;
+  unavailableArtifacts: Array<{
+    artifactId: string;
+    fileName: string;
+    fileRole: FileRole;
+    fileKind: FileKind;
+    artifactStatus: DeliveryArtifactStatus;
+    reason: string;
+    summary: string;
+  }>;
+  reviewInfluence: DeliveryStagingReviewInfluence;
+}
+
+export interface StagedSummaryFile {
+  kind: "summary_file";
+  relativePath: string;
+  directory: string;
+  fileName: "staging-summary.json";
+  payloadKind: "staging_summary";
+  mimeType: "application/json";
+  content: string;
+  json: DeliveryStagingSummaryJson;
+  summary: string;
+}
+
+export type StagedDeliveryEntry =
+  | StagedGeneratedArtifactFile
+  | StagedDeferredArtifactFile
+  | StagedSummaryFile;
+
+export interface DeliveryStagingBundle {
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  rootFolderName: string;
+  rootRelativePath: string;
+  entries: StagedDeliveryEntry[];
+  unavailableArtifacts: DeliveryStagingSummaryJson["unavailableArtifacts"];
+  generatedCount: number;
+  deferredCount: number;
+  unavailableCount: number;
+  unresolvedBlockerCount: number;
+  sourceSignature: string;
+  reviewInfluence: DeliveryStagingReviewInfluence;
+  summaryPath: string;
+  summary: string;
+}
+
 export interface TranslationJob {
   id: string;
   jobCode: string;
