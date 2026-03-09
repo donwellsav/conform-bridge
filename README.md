@@ -8,6 +8,12 @@ Current workflow model:
 
 This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF container parsing with adapter fallback, and real delivery planning, but it does not write Nuendo files yet.
 
+Current phase:
+- `Phase 2I` completed: richer mapping editors and validation workflow are in place.
+
+Next planned phase:
+- `Phase 2J`: persist operator review state and deepen reconform-ready review tools.
+
 ## Phase History
 
 ### Phase 1
@@ -99,6 +105,17 @@ Implemented:
 - deeper reconciliation for source clip identity and marker/locator coverage mismatches
 - importer and parser coverage for direct parse, fallback diagnostics, locator extraction, and media descriptor extraction
 
+### Phase 2I
+Operator mapping editors and validation workflow.
+
+Implemented:
+- richer track, marker, metadata, and field recorder mapping editors in the Job Detail workflow
+- bulk mapping actions where practical for track, marker, metadata, and field recorder review
+- shared validation rules that merge importer reconciliation issues with delivery-planning blockers
+- dashboard and jobs summaries for unresolved mapping and validation state
+- exporter-driven local delivery preview updates from edited mapping decisions without adding a writer
+- mapping, validation, and imported-fixture integration tests
+
 ## Current Status
 
 Implemented now:
@@ -109,11 +126,14 @@ Implemented now:
 - Canonical hydration for bundles, timelines, tracks, clips, markers, and analysis
 - Primary timeline hydration from FCPXML/XML when present, with AAF enrichment and `aaf -> edl -> metadata` fallback after that
 - Deterministic delivery planning in `exporter.ts`
+- operator mapping editors for track, marker, metadata, and field recorder review
+- shared validation rules that surface unresolved intake, metadata, production-audio, and delivery-blocker conditions
 - Fixture-backed tests for importer, exporter, and data flow
 
 Not implemented:
 - Real Nuendo export writing
 - Full arbitrary-production AAF graph traversal without compatibility fallback
+- Persistent save/load for operator mapping decisions beyond the current in-memory review session
 - Auth, billing, database, backend, or marketing site
 
 ## Stack
@@ -160,7 +180,10 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/lib/adapters/aaf-file.ts](./src/lib/adapters/aaf-file.ts): AAF file boundary that prefers direct parsing and falls back to `.adapter` compatibility payloads
 - [src/lib/services/importer.ts](./src/lib/services/importer.ts): intake scanning, source preference, parsing, reconciliation, hydration, analysis
 - [src/lib/services/exporter.ts](./src/lib/services/exporter.ts): delivery planning only
+- [src/lib/mapping-workflow.ts](./src/lib/mapping-workflow.ts): pure mapping editor state helpers and review counters
+- [src/lib/validation.ts](./src/lib/validation.ts): shared validation-rule generation and analysis report rebuilding
 - [src/lib/data-source.ts](./src/lib/data-source.ts): composes imported fixture data with exporter planning, or falls back to mock data
+- [src/components/mapping-view.tsx](./src/components/mapping-view.tsx): operator-facing mapping editor and delivery preview
 
 ## Fixture Intake Folder
 
@@ -314,24 +337,23 @@ Reconciliation currently flags:
 
 ## Planned Next Phases
 
-### Phase 2I
-Broaden direct AAF parsing toward more arbitrary real-world OLE/AAF layouts.
+### Phase 2J
+Persist operator review state and deepen reconform-ready review tools.
+
+Targets:
+- persist mapping edits and validation acknowledgements without introducing a backend
+- keep exporter planning derived from saved operator decisions
+- deepen reconform change inspection and review workflows
+- tighten validation around resolved vs acknowledged issues
+
+### Phase 2K
+Reduce remaining AAF compatibility fallback dependence.
 
 Targets:
 - broader real-world OLE/AAF graph traversal
 - less dependence on embedded in-repo graph payloads
 - more composition mob, slot, source mob, and locator extraction from non-fixture layouts
-- media descriptor extraction
 - better transition and effect coverage
-- more reliable source clip and reel/tape extraction
-
-### Phase 2J
-Operator tooling on top of the richer canonical model.
-
-Targets:
-- richer mapping editors
-- stronger validation and preservation reporting
-- more useful reconform delta inspection
 
 ### Phase 3
 Delivery execution after planning is stable.
@@ -343,7 +365,7 @@ Targets:
 
 ## Next Recommended Work
 
-- deepen the direct AAF parser from supported in-repo graph fixtures into broader real-world OLE/AAF mob traversal while preserving the current canonical contracts
-- extract composition mobs, mob slots, source clips, media descriptors, and locator/comment data from actual AAF files without requiring sidecar payloads for common cases
-- keep importer precedence at `fcpxml/xml -> aaf -> edl -> metadata`
-- expand validation and mapping tools after the richer AAF path is stable
+- persist operator mapping decisions and validation acknowledgements so the richer mapping editor survives beyond the current in-memory review session
+- keep exporter planning derived from saved mapping state without introducing a backend or file writer yet
+- deepen reconform review once saved mapping state exists
+- continue reducing AAF adapter fallback coverage in parallel, but keep importer precedence at `fcpxml/xml -> aaf -> edl -> metadata`

@@ -7,7 +7,22 @@ import { PreservationReportView } from "@/components/preservation-report";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getBundle, getExportArtifacts, getJob, getMappingProfile, getOutputPreset, getReport, getTimelineForJob, jobs } from "@/lib/data-source";
+import {
+  getBundle,
+  getClipEventsForJob,
+  getExportArtifacts,
+  getFieldRecorderCandidates,
+  getJob,
+  getMappingProfile,
+  getMappingRules,
+  getMarkersForJob,
+  getOutputPreset,
+  getPreservationIssues,
+  getReport,
+  getTimelineForJob,
+  getTranslationModel,
+  jobs,
+} from "@/lib/data-source";
 
 export function generateStaticParams() {
   return jobs.map((job) => ({ jobId: job.id }));
@@ -24,11 +39,17 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
   const bundle = getBundle(job.sourceBundleId);
   const report = getReport(job.analysisReportId);
   const mapping = getMappingProfile(job.id);
+  const mappingRules = getMappingRules(job.id);
   const timeline = getTimelineForJob(job.id);
+  const translationModel = getTranslationModel(job.translationModelId);
   const outputPreset = getOutputPreset(job.outputPresetId ?? job.templateId);
   const artifacts = getExportArtifacts(job.id);
+  const markers = getMarkersForJob(job.id);
+  const clipEvents = getClipEventsForJob(job.id);
+  const fieldRecorderCandidates = getFieldRecorderCandidates(job.id);
+  const preservationIssues = getPreservationIssues(job.id);
 
-  if (!bundle || !report || !mapping || !timeline || !outputPreset) {
+  if (!bundle || !report || !mapping || !timeline || !translationModel || !outputPreset) {
     notFound();
   }
 
@@ -110,7 +131,20 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
               ))}
             </div>
           </SectionCard>
-          <MappingView mapping={mapping} />
+          <MappingView
+            job={job}
+            bundle={bundle}
+            translationModel={translationModel}
+            timeline={timeline}
+            mapping={mapping}
+            mappingRules={mappingRules}
+            markers={markers}
+            clipEvents={clipEvents}
+            fieldRecorderCandidates={fieldRecorderCandidates}
+            report={report}
+            outputPreset={outputPreset}
+            preservationIssues={preservationIssues}
+          />
         </div>
       </div>
     </div>

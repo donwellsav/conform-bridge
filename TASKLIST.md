@@ -17,7 +17,8 @@
 - [x] Add binary/container-aware AAF extraction from real files with a stable external AAF-derived adapter fallback.
 - [x] Add direct in-repo AAF container graph parsing while keeping adapter fallback as a compatibility path.
 - [x] Expand direct AAF container parsing into broader composition mob, slot, source mob, locator, descriptor, and transition traversal while reducing adapter fallback dependence.
+- [x] Add richer mapping editors for tracks, markers, metadata, and field recorder candidates.
+- [x] Add validation rules that inspect real turnover completeness and delivery blockers.
+- [ ] Persist operator mapping edits and validation acknowledgements beyond the current in-memory review session.
 - [ ] Broaden direct AAF parsing beyond current in-repo graph payload coverage toward more arbitrary real-world OLE/AAF layouts.
-- [ ] Add richer mapping editors for tracks, markers, metadata, and field recorder candidates.
-- [ ] Add validation rules that inspect real turnover completeness.
 - [ ] Add save/load behavior beyond in-browser draft state if the product direction requires it.

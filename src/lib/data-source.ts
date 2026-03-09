@@ -1,17 +1,23 @@
 import * as fallback from "./mock-data";
+import { countMappingReviews, getFieldRecorderDecision } from "./mapping-workflow";
 import { planNuendoDeliverySync } from "./services/exporter";
 import { importFixtureLibrarySync, type ImportedIntakeData } from "./services/importer";
+import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
 import type {
   ActivityItem,
   AnalysisReport,
+  ClipEvent,
   DashboardMetric,
   DeliveryArtifact,
   DeliveryPackage,
   FieldRecorderCandidate,
   MappingProfile,
+  MappingRule,
+  Marker,
   SourceBundle,
   Timeline,
   TranslationJob,
+  TranslationModel,
 } from "./types";
 
 interface ImportedAppData extends ImportedIntakeData {
@@ -33,11 +39,13 @@ function createDashboardMetrics(data: ImportedAppData): DashboardMetric[] {
   const blockedArtifacts = data.exportArtifacts.filter((artifact) => artifact.status === "blocked").length;
   const highRiskIssues = data.analysisReports.reduce((total, report) => total + report.highRiskCount, 0);
   const missingInputs = data.sourceAssets.filter((asset) => asset.status === "missing").length;
+  const unresolvedMappings = data.jobs.reduce((total, job) => total + job.mappingSnapshot.unresolvedCount, 0);
 
   return [
     { label: "Intake packages", value: data.sourceBundles.length.toString().padStart(2, "0"), note: "Real fixture folders scanned from disk through the importer pipeline.", tone: "neutral" },
     { label: "Canonical timelines", value: data.timelines.length.toString().padStart(2, "0"), note: "Normalized timelines are hydrated only from formats parsed in this phase.", tone: "accent" },
     { label: "Planned delivery files", value: data.exportArtifacts.length.toString().padStart(2, "0"), note: "Delivery artifacts are planned by exporter.ts from imported intake analysis.", tone: "accent" },
+    { label: "Mapping reviews", value: unresolvedMappings.toString().padStart(2, "0"), note: "Track, metadata, marker, and field recorder mapping decisions still open in the operator workflow.", tone: unresolvedMappings > 0 ? "warning" : "accent" },
     { label: "High-risk issues", value: highRiskIssues.toString().padStart(2, "0"), note: missingInputs > 0 ? `${missingInputs} missing intake asset(s) still affect delivery readiness.` : "No missing intake assets are currently flagged.", tone: blockedArtifacts > 0 ? "danger" : "warning" },
   ];
 }
@@ -60,7 +68,7 @@ function createActivityFeed(data: ImportedAppData): ActivityItem[] {
         timestamp: "2026-03-08 10:15",
         title: `${job.jobCode} analysis generated`,
         detail: report
-          ? `${report.summary.totalFindings} preservation finding(s) were generated from real intake parsing and reconciliation inputs.`
+          ? `${report.summary.totalFindings} preservation finding(s) and ${job.mappingSnapshot.unresolvedCount} mapping review item(s) are currently open.`
           : "Analysis report could not be generated.",
       },
       {
@@ -73,6 +81,18 @@ function createActivityFeed(data: ImportedAppData): ActivityItem[] {
       },
     ];
   });
+}
+
+function getImportedTimelineForModel(data: ImportedIntakeData, translationModel: TranslationModel) {
+  return data.timelines.find((candidate) => candidate.id === translationModel.primaryTimelineId);
+}
+
+function getImportedClipEventsForTimeline(data: ImportedIntakeData, timelineId: string) {
+  return data.clipEvents.filter((candidate) => candidate.timelineId === timelineId);
+}
+
+function getImportedMarkersForTimeline(data: ImportedIntakeData, timelineId: string) {
+  return data.markers.filter((candidate) => candidate.timelineId === timelineId);
 }
 
 function createImportedAppData(): ImportedAppData {
@@ -88,32 +108,129 @@ function createImportedAppData(): ImportedAppData {
     };
   }
 
-  const deliveryPlans = importedIntakeData.jobs.map((job) => {
+  const jobRecords = importedIntakeData.jobs.map((job) => {
     const translationModel = importedIntakeData.translationModels.find((model) => model.id === job.translationModelId);
-    const analysisReport = importedIntakeData.analysisReports.find((report) => report.id === job.analysisReportId);
+    const baseReport = importedIntakeData.analysisReports.find((report) => report.id === job.analysisReportId);
     const mappingProfile = importedIntakeData.mappingProfiles.find((profile) => profile.jobId === job.id);
+    const mappingRuleSet = importedIntakeData.mappingRules.filter((rule) => rule.jobId === job.id);
+    const sourceBundle = importedIntakeData.sourceBundles.find((bundle) => bundle.id === job.sourceBundleId);
     const outputPreset = fallback.outputPresets.find((preset) => preset.id === (job.outputPresetId ?? job.templateId));
+    const fieldRecorderCandidateSet = importedIntakeData.fieldRecorderCandidates.filter((candidate) => candidate.jobId === job.id);
+    const baseIssues = importedIntakeData.preservationIssues.filter((issue) => issue.jobId === job.id);
+    const timeline = translationModel ? getImportedTimelineForModel(importedIntakeData, translationModel) : undefined;
+    const clipEventSet = timeline ? getImportedClipEventsForTimeline(importedIntakeData, timeline.id) : [];
+    const markerSet = timeline ? getImportedMarkersForTimeline(importedIntakeData, timeline.id) : [];
+    const analysisReport = baseReport;
 
-    if (!translationModel || !analysisReport || !mappingProfile || !outputPreset) {
+    if (!translationModel || !analysisReport || !mappingProfile || !outputPreset || !sourceBundle || !timeline) {
       throw new Error(`Imported fixture data is incomplete for delivery planning on ${job.id}.`);
     }
 
-    const preservationIssues = importedIntakeData.preservationIssues.filter((issue) => issue.jobId === job.id);
-
-    return planNuendoDeliverySync(
+    const provisionalPlan = planNuendoDeliverySync(
       job,
       translationModel,
       outputPreset,
       analysisReport,
       mappingProfile,
-      preservationIssues,
+      baseIssues,
     );
+    const provisionalIssues = buildOperatorValidationIssues({
+      job,
+      sourceBundle,
+      clipEvents: clipEventSet,
+      markers: markerSet,
+      exportArtifacts: provisionalPlan.exportArtifacts,
+      fieldRecorderCandidates: fieldRecorderCandidateSet,
+      mappingProfile,
+      mappingRules: mappingRuleSet,
+      existingIssues: baseIssues,
+    });
+    const validatedReport = rebuildAnalysisReport(
+      analysisReport,
+      sourceBundle,
+      clipEventSet,
+      markerSet,
+      provisionalPlan.exportArtifacts,
+      provisionalIssues,
+      mappingProfile,
+      mappingRuleSet,
+      fieldRecorderCandidateSet,
+    );
+    const finalPlan = planNuendoDeliverySync(
+      job,
+      translationModel,
+      outputPreset,
+      validatedReport,
+      mappingProfile,
+      provisionalIssues,
+    );
+    const finalIssues = buildOperatorValidationIssues({
+      job,
+      sourceBundle,
+      clipEvents: clipEventSet,
+      markers: markerSet,
+      exportArtifacts: finalPlan.exportArtifacts,
+      fieldRecorderCandidates: fieldRecorderCandidateSet,
+      mappingProfile,
+      mappingRules: mappingRuleSet,
+      existingIssues: provisionalIssues.filter((issue) => issue.code !== "DELIVERY_ARTIFACT_BLOCKED"),
+    });
+    const finalReport = rebuildAnalysisReport(
+      validatedReport,
+      sourceBundle,
+      clipEventSet,
+      markerSet,
+      finalPlan.exportArtifacts,
+      finalIssues,
+      mappingProfile,
+      mappingRuleSet,
+      fieldRecorderCandidateSet,
+    );
+    const mappingReviews = countMappingReviews(mappingProfile, mappingRuleSet, fieldRecorderCandidateSet);
+    const mappedTrackCount = mappingProfile.trackMappings.filter((track) => track.action !== "ignore").length;
+    const preservedMetadataCount = mappingProfile.metadataMappings.filter((mapping) => mapping.status === "mapped").length;
+    const fieldRecorderLinkedCount = fieldRecorderCandidateSet.filter((candidate) =>
+      getFieldRecorderDecision(mappingProfile, candidate) === "linked",
+    ).length;
+    const jobStatus = finalPlan.exportArtifacts.some((artifact) => artifact.status === "blocked")
+      || finalReport.highRiskCount > 0
+      || mappingReviews.total > 0
+      ? "attention"
+      : "ready";
+    const jobPriority = finalReport.highRiskCount > 0
+      ? "high"
+      : mappingReviews.total > 0 || finalReport.warningCount > 0
+        ? "normal"
+        : "low";
+    const updatedJob: TranslationJob = {
+      ...job,
+      status: jobStatus,
+      priority: jobPriority,
+      analysisReportId: finalReport.id,
+      mappingSnapshot: {
+        mappedTrackCount,
+        preservedMetadataCount,
+        unresolvedCount: mappingReviews.total,
+        fieldRecorderLinkedCount,
+      },
+    };
+
+    return {
+      job: updatedJob,
+      report: finalReport,
+      issues: finalIssues,
+      deliveryPackage: finalPlan.deliveryPackage,
+      exportArtifacts: finalPlan.exportArtifacts,
+    };
   });
 
   const data: ImportedAppData = {
     ...importedIntakeData,
-    deliveryPackages: deliveryPlans.map((plan) => plan.deliveryPackage),
-    exportArtifacts: deliveryPlans.flatMap((plan) => plan.exportArtifacts),
+    analysisReports: jobRecords.map((record) => record.report),
+    preservationIssues: jobRecords.flatMap((record) => record.issues),
+    deliveryPackages: jobRecords.map((record) => record.deliveryPackage),
+    exportArtifacts: jobRecords.flatMap((record) => record.exportArtifacts),
+    jobs: jobRecords.map((record) => record.job),
     dashboardMetrics: [],
     activityFeed: [],
   };
@@ -204,6 +321,14 @@ export function getTimelineForJob(jobId: string): Timeline | undefined {
   return getTimeline(translationModel.primaryTimelineId);
 }
 
+export function getTranslationModel(translationModelId?: string): TranslationModel | undefined {
+  if (!translationModelId) {
+    return undefined;
+  }
+
+  return translationModelMap.get(translationModelId);
+}
+
 export function getJob(jobId: string): TranslationJob | undefined {
   return jobMap.get(jobId);
 }
@@ -214,6 +339,10 @@ export function getReport(reportId: string): AnalysisReport | undefined {
 
 export function getMappingProfile(jobId: string): MappingProfile | undefined {
   return mappingMap.get(jobId);
+}
+
+export function getMappingRules(jobId: string): MappingRule[] {
+  return mappingRules.filter((rule) => rule.jobId === jobId);
 }
 
 export function getDeliveryPackage(deliveryPackageId?: string): DeliveryPackage | undefined {
@@ -238,4 +367,18 @@ export function getAnalysisReportForJob(jobId: string): AnalysisReport | undefin
 
 export function getFieldRecorderCandidates(jobId: string): FieldRecorderCandidate[] {
   return fieldRecorderCandidates.filter((candidate) => candidate.jobId === jobId);
+}
+
+export function getMarkersForJob(jobId: string): Marker[] {
+  const timeline = getTimelineForJob(jobId);
+  return timeline ? markers.filter((marker) => marker.timelineId === timeline.id) : [];
+}
+
+export function getClipEventsForJob(jobId: string): ClipEvent[] {
+  const timeline = getTimelineForJob(jobId);
+  return timeline ? clipEvents.filter((clipEvent) => clipEvent.timelineId === timeline.id) : [];
+}
+
+export function getPreservationIssues(jobId: string) {
+  return preservationIssues.filter((issue) => issue.jobId === jobId);
 }

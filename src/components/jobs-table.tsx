@@ -56,11 +56,11 @@ export function JobsTable({ jobs }: { jobs: TranslationJob[] }) {
                 </TableCell>
                 <TableCell>
                   <p>{template?.name ?? "No template"}</p>
-                  <p className="text-xs text-muted">{job.mappingSnapshot.mappedTrackCount} track mappings</p>
+                  <p className="text-xs text-muted">{job.mappingSnapshot.mappedTrackCount} active track mappings / {job.mappingSnapshot.fieldRecorderLinkedCount} field recorder linked</p>
                 </TableCell>
                 <TableCell>
                   <p>{report?.summary.totalFindings ?? 0} findings</p>
-                  <p className="text-xs text-muted">{report?.highRiskCount ?? 0} high risk / {report?.blockedCount ?? 0} blocked</p>
+                  <p className="text-xs text-muted">{job.mappingSnapshot.unresolvedCount} mapping review / {report?.blockedCount ?? 0} blocked / {report?.highRiskCount ?? 0} high risk</p>
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted">{job.updatedOn}</TableCell>
                 <TableCell className="text-right">

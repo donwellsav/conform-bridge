@@ -95,7 +95,13 @@ export function planNuendoDeliverySync(
   const deliveryPackageId = job.deliveryPackageId || `delivery-${slugify(job.id)}`;
   const sequenceLabel = toSequenceLabel(job, translationModel);
   const markerAvailable = analysisReport.totals.markerCount > 0;
-  const metadataAvailable = mappingProfile.metadataMappings.length > 0 || analysisReport.totals.clipCount > 0;
+  const activeTrackCount = mappingProfile.trackMappings.filter((mapping) => mapping.action !== "ignore").length;
+  const metadataAvailable = mappingProfile.metadataMappings.length > 0
+    ? mappingProfile.metadataMappings.some((mapping) =>
+      mapping.status !== "dropped"
+      && mapping.targetValue.trim().length > 0,
+    )
+    : analysisReport.totals.clipCount > 0;
   const unresolvedFieldRecorder = mappingProfile.fieldRecorderOverrides.some((override) => override.status === "unresolved")
     || hasIssueCode(preservationIssues, "MISSING_PRODUCTION_ROLL")
     || hasIssueCode(preservationIssues, "UNRESOLVED_METADATA");
@@ -111,10 +117,10 @@ export function planNuendoDeliverySync(
       "aaf",
       "timeline_exchange",
       `${sequenceLabel}_NUENDO_READY.aaf`,
-      analysisReport.totals.clipCount > 0 && analysisReport.totals.trackCount > 0 ? "planned" : "placeholder",
-      analysisReport.totals.clipCount > 0 && analysisReport.totals.trackCount > 0
-        ? "Exporter-generated Nuendo-ready AAF plan from the canonical translation model. No writer is implemented yet."
-        : "Exporter keeps the AAF artifact as a placeholder until canonical clip and track data exist.",
+      analysisReport.totals.clipCount > 0 && activeTrackCount > 0 ? "planned" : "placeholder",
+      analysisReport.totals.clipCount > 0 && activeTrackCount > 0
+        ? "Exporter-generated Nuendo-ready AAF plan from the canonical translation model and current track mapping decisions. No writer is implemented yet."
+        : "Exporter keeps the AAF artifact as a placeholder until canonical clip data exists and at least one track remains mapped for delivery.",
     ),
     createArtifact(
       job.id,

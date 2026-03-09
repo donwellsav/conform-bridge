@@ -32,7 +32,7 @@ export default function DashboardPage() {
         }
       />
 
-      <section className="grid gap-4 xl:grid-cols-4">
+      <section className="grid gap-4 xl:grid-cols-5">
         {dashboardMetrics.map((metric) => (
           <div key={metric.label} className="rounded-2xl border border-border/80 bg-panel p-4 shadow-[var(--shadow)]">
             <div className="flex items-center justify-between gap-3">
