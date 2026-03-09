@@ -106,7 +106,25 @@ The following roles may appear as intake or delivery artifacts depending on the 
 - Delivery readiness summary
 - Planned delivery artifact states
 
-## Current Constraint
-Intake packages are real local fixture folders scanned from disk, and the importer now performs real parsing for manifest JSON, metadata CSV, marker CSV, simple EDL, FCPXML/XML, and richer AAF-derived fixtures.
+## Current Parser Coverage
+The current repo scans real local fixture folders and parses these intake formats:
+- `fcpxml/xml`
+- `aaf`
+- `edl`
+- `metadata csv`
+- `marker csv`
+- `manifest.json`
+
+Timeline precedence is:
+1. `fcpxml/xml`
+2. `aaf`
+3. `edl`
+4. metadata-only fallback
+
+## Known Limitations
+- Delivery packages are still planning-only.
+- No Nuendo write path exists yet.
+- Persistence for operator review decisions is not implemented beyond the current in-memory review session.
+- Some AAF layouts still require compatibility fallback payloads.
 
 Delivery packages remain planning-only. No Nuendo write path, fake backend processing, or file write-back behavior should be implied by the current repo.

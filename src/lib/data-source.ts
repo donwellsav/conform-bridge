@@ -43,7 +43,7 @@ function createDashboardMetrics(data: ImportedAppData): DashboardMetric[] {
 
   return [
     { label: "Intake packages", value: data.sourceBundles.length.toString().padStart(2, "0"), note: "Real fixture folders scanned from disk through the importer pipeline.", tone: "neutral" },
-    { label: "Canonical timelines", value: data.timelines.length.toString().padStart(2, "0"), note: "Normalized timelines are hydrated only from formats parsed in this phase.", tone: "accent" },
+    { label: "Canonical timelines", value: data.timelines.length.toString().padStart(2, "0"), note: "Normalized timelines are hydrated only from formats parsed by the current importer implementation.", tone: "accent" },
     { label: "Planned delivery files", value: data.exportArtifacts.length.toString().padStart(2, "0"), note: "Delivery artifacts are planned by exporter.ts from imported intake analysis.", tone: "accent" },
     { label: "Mapping reviews", value: unresolvedMappings.toString().padStart(2, "0"), note: "Track, metadata, marker, and field recorder mapping decisions still open in the operator workflow.", tone: unresolvedMappings > 0 ? "warning" : "accent" },
     { label: "High-risk issues", value: highRiskIssues.toString().padStart(2, "0"), note: missingInputs > 0 ? `${missingInputs} missing intake asset(s) still affect delivery readiness.` : "No missing intake assets are currently flagged.", tone: blockedArtifacts > 0 ? "danger" : "warning" },

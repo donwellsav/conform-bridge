@@ -1,5 +1,10 @@
 # Tasklist
 
+## Current Roadmap Position
+- Current phase: `Phase 2I` complete.
+- Next phase: `Phase 2J` persist operator review state and deepen reconform-ready review tools.
+- Following phase: `Phase 2K` continue reducing AAF compatibility fallback dependence.
+
 ## Phase 1 Scaffold
 - [x] Write product, schema, bundle, agent, and task specs.
 - [x] Scaffold Next.js App Router with TypeScript, Tailwind CSS, and shadcn/ui-style primitives.
@@ -21,4 +26,4 @@
 - [x] Add validation rules that inspect real turnover completeness and delivery blockers.
 - [ ] Persist operator mapping edits and validation acknowledgements beyond the current in-memory review session.
 - [ ] Broaden direct AAF parsing beyond current in-repo graph payload coverage toward more arbitrary real-world OLE/AAF layouts.
-- [ ] Add save/load behavior beyond in-browser draft state if the product direction requires it.
+- [ ] Deepen reconform-ready review once saved mapping state exists.

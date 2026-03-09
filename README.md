@@ -130,11 +130,13 @@ Implemented now:
 - shared validation rules that surface unresolved intake, metadata, production-audio, and delivery-blocker conditions
 - Fixture-backed tests for importer, exporter, and data flow
 
-Not implemented:
-- Real Nuendo export writing
-- Full arbitrary-production AAF graph traversal without compatibility fallback
-- Persistent save/load for operator mapping decisions beyond the current in-memory review session
-- Auth, billing, database, backend, or marketing site
+## Known Limitations
+
+- No Nuendo writer exists yet.
+- Operator review state is still in-memory only and is not persisted beyond the current session.
+- Full arbitrary-production AAF graph traversal without compatibility fallback is not complete yet.
+- BWF/WAV and MOV/MP4 assets are classified but not deeply parsed.
+- Auth, billing, database, backend, and marketing site remain out of scope.
 
 ## Stack
 
@@ -291,7 +293,7 @@ npm run build
 
 `exporter.ts` does not write files yet.
 
-## Supported Intake Parsing In This Phase
+## Current Parser Coverage
 
 Parsed:
 - FCPXML / XML timeline structure
@@ -327,6 +329,15 @@ Reconciliation currently flags:
 - AAF-referenced media missing from intake
 - missing reel / tape / scene / take
 - source files referenced by the timeline exchange but missing from intake
+
+## Operator Review Workflow
+
+Current operator tooling includes:
+- track mapping review
+- marker review and suppression
+- metadata mapping review
+- field recorder candidate review and overrides
+- validation summaries rebuilt from current mapping and delivery-planning state
 
 ## SSR / Rendering Rules
 

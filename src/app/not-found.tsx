@@ -10,16 +10,16 @@ export default function NotFound() {
       <PageHeader
         eyebrow="Not found"
         title="The requested turnover does not exist"
-        description="The route is present, but the requested mock job ID is not part of the current fixture set."
+        description="The route is present, but the requested job ID is not part of the current imported-or-fallback fixture set."
         actions={
           <Button asChild>
             <Link href="/jobs">Return to jobs</Link>
           </Button>
         }
       />
-      <SectionCard eyebrow="Mock data" title="Fixture boundary" description="Dynamic job detail pages are generated from the fixed mock registry only.">
+      <SectionCard eyebrow="Fixture data" title="Fixture boundary" description="Dynamic job detail pages are generated from the current imported fixture library or deterministic fallback registry.">
         <div className="rounded-2xl border border-border/70 bg-panel p-4 text-sm leading-6 text-muted">
-          Add or change job fixtures in the shared mock data registry before expecting additional routes to resolve.
+          Add or change fixture jobs in the imported fixture library or the fallback registry before expecting additional routes to resolve.
         </div>
       </SectionCard>
     </div>

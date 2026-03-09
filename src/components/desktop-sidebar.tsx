@@ -32,8 +32,8 @@ export function DesktopSidebar() {
     <aside className="hidden w-[296px] shrink-0 rounded-[30px] border border-border/80 bg-[#0c1117]/95 p-5 shadow-[var(--shadow)] lg:flex lg:flex-col">
       <div className="border-b border-border/80 pb-5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">Operator shell</p>
-        <h2 className="mt-2 text-xl font-semibold tracking-[0.02em] text-foreground">Dark desktop-first scaffold</h2>
-        <p className="mt-2 text-sm leading-6 text-muted">Realistic turnover fixtures, explicit intake and delivery boundaries, and no fake backend behavior.</p>
+        <h2 className="mt-2 text-xl font-semibold tracking-[0.02em] text-foreground">Dark desktop-first operator console</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">Real intake fixtures, explicit intake and delivery boundaries, and no fake backend behavior.</p>
       </div>
 
       <nav className="mt-5 flex-1 space-y-2">
@@ -70,8 +70,8 @@ export function DesktopSidebar() {
           <Badge variant="accent">Frontend only</Badge>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4 text-sm leading-6 text-muted">
-          <p className="font-semibold text-foreground">No parser. No writer. No backend.</p>
-          <p className="mt-2">The scaffold models intake packages, a canonical translation layer, and Nuendo delivery planning strictly from fixed mock data.</p>
+          <p className="font-semibold text-foreground">Real intake parsing. Planned delivery only. No backend.</p>
+          <p className="mt-2">The app imports fixture turnovers into a canonical translation model and plans delivery outputs, with deterministic mock fallback only when fixtures are unavailable.</p>
         </div>
       </div>
     </aside>

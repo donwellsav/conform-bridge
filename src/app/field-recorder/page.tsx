@@ -35,7 +35,7 @@ export default function FieldRecorderPage() {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <SectionCard eyebrow="Policy" title="Current default policy" description="Dialogue premix template acts as the reference field recorder configuration for the current scaffold.">
+        <SectionCard eyebrow="Policy" title="Current default policy" description="Dialogue premix acts as the current reference field recorder policy for imported intake review.">
           <div className="space-y-3 text-sm leading-6 text-muted">
             <div className="rounded-2xl border border-border/70 bg-panel p-4">Match keys run in fixed order: {activeTemplate.fieldRecorderPolicy.matchKeys.join(" -> ")}.</div>
             <div className="rounded-2xl border border-border/70 bg-panel p-4">Channel assignment is {activeTemplate.fieldRecorderPolicy.channelAssignment.replaceAll("_", " ")} to make mono editorial lanes explicit in Nuendo.</div>
@@ -43,7 +43,7 @@ export default function FieldRecorderPage() {
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow="Watchlist" title="Current relink issues" description="Production audio presence and metadata gaps are surfaced here before any deep BWF content parsing exists.">
+        <SectionCard eyebrow="Watchlist" title="Current relink issues" description="Production audio presence and metadata gaps are surfaced here before any deep BWF header parsing exists.">
           <div className="space-y-3">
             {fieldRecorderWatchlist.map((item) => (
               <div key={item.id} className="rounded-2xl border border-border/70 bg-panel p-4">

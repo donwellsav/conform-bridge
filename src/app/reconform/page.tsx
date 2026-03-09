@@ -58,7 +58,7 @@ export default function ReconformPage() {
           </div>
         </SectionCard>
 
-        <SectionCard eyebrow="Template support" title="Revision policy" description="The reconform template is modeled even before any real compare engine exists.">
+        <SectionCard eyebrow="Template support" title="Revision policy" description="The reconform template is available now, even though persistent reconform-ready review tooling is still the next roadmap step.">
           <div className="space-y-3 text-sm leading-6 text-muted">
             <div className="rounded-2xl border border-border/70 bg-panel p-4">Template: <span className="font-semibold text-foreground">{reconformTemplate.name}</span></div>
             <div className="rounded-2xl border border-border/70 bg-panel p-4">Track grouping: {reconformTemplate.trackPolicy.trackGrouping.replaceAll("_", " ")}</div>

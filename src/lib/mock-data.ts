@@ -560,7 +560,7 @@ const preservationGroups: AnalysisGroup[] = [
         scope: "markers" as const,
         code: "MARKER_NOTES_PRESERVED",
         title: "Resolve marker notes remain available for delivery planning",
-        description: "Marker names, notes, and timing survive normalization cleanly in the current scaffold.",
+        description: "Marker names, notes, and timing survive normalization cleanly in the current mock fallback model.",
         sourceLocation: "Resolve marker export / RVR_203_AUDIO_PULL.edl",
         impact: "Spotting notes can be listed in planned marker EDL and CSV outputs without additional UI work.",
         targetArtifactId: "artifact-rvr-marker-csv",

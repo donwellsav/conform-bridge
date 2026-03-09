@@ -904,7 +904,7 @@ function createConformChangeEvents(jobId: string, edlEvents: ParsedEdlEvent[], f
     newTimecode: event.recordIn,
     oldFrame: timecodeToFrames(event.recordIn, fps),
     newFrame: timecodeToFrames(event.recordIn, fps),
-    note: "Simple EDL extraction is available, but reconform deltas remain placeholder-only in Phase 2A.",
+    note: "Simple EDL extraction is available, but reconform deltas still remain review-only until dedicated reconform tooling is expanded.",
   }));
 }
 

@@ -1,7 +1,7 @@
 # Conform Bridge
 
 ## Summary
-Conform Bridge is a desktop-first internal operator application for Resolve to Nuendo translation workflows. The current repo state is intake-analysis-first: the operator shell is stable, intake parsing is partially real, delivery planning is real, and Nuendo file writing is still intentionally out of scope.
+Conform Bridge is a desktop-first internal operator application for Resolve to Nuendo translation workflows. The current repo state is beyond scaffold-only: the operator shell is stable, intake parsing is real for the supported fixture formats, delivery planning is real, and Nuendo file writing is still intentionally out of scope.
 
 ## Product Goal
 Give post-production operators a clear review surface for three explicit workflow layers:
@@ -24,9 +24,10 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - `DeliveryPackage` is output planning only.
 - Direction must be modeled explicitly with stage and origin metadata.
 - File format alone must not imply whether an asset is inbound or outbound.
-- FCPXML/XML is the preferred primary timeline source when present.
+- FCPXML/XML is the preferred primary timeline source when present, followed by AAF, EDL, and metadata-only fallback.
 - AAF is a structured intake source with direct in-repo container parsing: real `.aaf` files can now hydrate the canonical model directly or enrich and reconcile against FCPXML/XML, while adapter fallback remains available for compatibility.
 - CSV, manifest, marker CSV, and simple EDL parsing remain active enrichment and fallback inputs.
+- Operator-facing mapping editors and validation rules sit on top of the imported canonical model without changing the intake -> canonical -> delivery split.
 
 ## Current Non-Goals
 - No real Nuendo export writing.
@@ -56,7 +57,9 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Structured intake parsing for manifest JSON, metadata CSV, marker CSV, simple EDL, FCPXML/XML, and direct in-repo AAF container parsing with adapter fallback compatibility.
 - Canonical analysis and reconciliation output through `src/lib/services/importer.ts`.
 - Delivery artifact planning through `src/lib/services/exporter.ts`.
-- Strong operator-facing placeholder routes with imported-data fallback to mock data when no fixture library exists.
+- Operator mapping editors for track, marker, metadata, and field recorder review.
+- Validation rules that merge intake completeness, reconciliation, and delivery-blocker findings into `PreservationIssue` records.
+- Imported-data-first routes with deterministic mock fallback only when no fixture library exists.
 
 ## Current AAF State
 - Real `.aaf` files are detected through a binary/container-aware adapter boundary.
@@ -64,6 +67,24 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Stable AAF-derived adapter payloads remain available as a compatibility fallback when direct extraction does not cover a file.
 - Legacy text-dump AAF fixtures remain supported as a fallback path for narrow tests and fixture maintenance.
 - Nuendo project writing still does not exist.
+
+## Current Status
+- `Phase 2I` is complete.
+- Intake, canonical, and delivery layers are explicit in docs, types, routes, and tests.
+- Operator-facing mapping and validation review is available on the Job Detail route.
+- Delivery planning remains planning-only and does not write files.
+
+## Known Limitations
+- No Nuendo writer exists yet.
+- Operator review state is still in-memory only and is not persisted beyond the current session.
+- Some AAF layouts still require compatibility fallback payloads.
+- BWF/WAV and MOV/MP4 assets are classified, but not deeply parsed.
+
+## Next Recommended Work
+- `Phase 2J`: persist operator mapping decisions and validation acknowledgements without introducing a backend.
+- Keep exporter planning derived from saved operator decisions.
+- Deepen reconform-ready review after mapping persistence is stable.
+- Continue reducing AAF compatibility fallback dependence in parallel.
 
 ## Rendering Rules
 - Initial render must be deterministic and SSR-safe.
@@ -73,7 +94,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Use client components only where interaction is required.
 
 ## Acceptance For This Task
-- Repo scaffolds cleanly and builds.
-- All requested routes exist and keep the current operator shell intact.
-- Intake, canonical, and delivery layers are explicit in docs, types, and mock data.
+- Repo builds cleanly and the current operator shell remains intact.
+- Intake, canonical, and delivery layers are explicit in docs, types, and data composition.
 - Real intake fixtures and parsers feed the canonical model without pretending that Nuendo export writing already exists.
+- Mapping editors and validation rules accurately describe the current implementation state.

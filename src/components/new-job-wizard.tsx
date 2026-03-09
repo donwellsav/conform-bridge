@@ -126,7 +126,7 @@ export function NewJobWizard({
         ) : null}
 
         {draft.stepIndex === 2 ? (
-          <SectionCard eyebrow="Mapping strategy" title="Preview deterministic mapping defaults" description="This phase does not write files, but it does surface fixed mapping assumptions.">
+          <SectionCard eyebrow="Mapping strategy" title="Preview deterministic mapping defaults" description="The wizard previews current mapping defaults without implying that delivery writing already exists.">
             <div className="grid gap-3 lg:grid-cols-3">
               <div className="rounded-2xl border border-border/70 bg-panel p-4">
                 <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Track grouping</p>

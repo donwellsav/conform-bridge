@@ -147,6 +147,25 @@ Canonical analysis summary for operator review.
 - `deliveryReadinessSummary`
 - `groups`
 
+### MappingProfile
+Operator-editable review state layered on top of the canonical model.
+- `id`
+- `jobId`
+- `trackMappings`
+- `metadataMappings`
+- `timecodePolicy`
+- `fieldRecorderOverrides`
+
+### FieldRecorderCandidate
+Potential production-audio relink target derived from canonical clip metadata and intake coverage.
+- `id`
+- `jobId`
+- `clipEventId`
+- `matchKeys`
+- `status`
+- `candidateAssetName`
+- `note`
+
 ### MappingRule
 Operator-visible mapping decision in the canonical layer.
 - `id`
@@ -249,12 +268,15 @@ Operator-facing record that ties the three layers together.
 - One `SourceBundle` contains many `IntakeAsset` records.
 - One `TranslationModel` contains one or more `NormalizedTimeline` records.
 - One `NormalizedTimeline` contains many `NormalizedTrack`, `ClipEvent`, and `Marker` records.
+- One `TranslationJob` contains one `MappingProfile` and may contain many `MappingRule` and `FieldRecorderCandidate` records.
 - One `AnalysisReport` contains many `PreservationIssue` records grouped for operator review.
 - One `DeliveryPackage` contains many `DeliveryArtifact` records.
-- One `TranslationJob` may contain many `MappingRule`, `FieldRecorderCandidate`, and `ConformChangeEvent` records.
+- One `TranslationJob` may contain many `ConformChangeEvent` records.
 
-## Phase 1 Rules
+## Current Repo Rules
 - IDs are fixed string literals.
 - Dates are fixed strings.
-- Counts are precomputed in mock data.
-- Types must support UI inspection without any real parser or writer implementation.
+- The repo prefers real fixture imports and falls back to deterministic mock data only when the fixture library is absent.
+- Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
+- Operator mapping editors work against `MappingProfile` and `MappingRule` state, but persistence beyond the current in-memory review session is not implemented yet.
+- Types must support real intake analysis, canonical review, delivery planning, and validation without implying that a Nuendo writer already exists.

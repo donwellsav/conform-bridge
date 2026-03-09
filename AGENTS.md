@@ -16,18 +16,24 @@ This repository is a frontend-only internal operator application for Resolve to 
 - Dark, serious post-production desktop aesthetic.
 - Dense but readable information layout.
 - Favor panels, inspectors, queues, and tables over oversized marketing cards.
-- Use route content that reads like a real operator tool with realistic mock turnover data.
+- Use route content that reads like a real operator tool with realistic imported turnover data, while keeping deterministic mock fallback copy accurate.
 
-## Scope Rules For Phase 1
-- No real Resolve parser.
+## Current Repo State
+- Real intake parsing exists for `fcpxml/xml`, `aaf`, `edl`, metadata CSV, marker CSV, and `manifest.json`.
+- Importer precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
+- Operator-facing mapping editors and validation workflow exist.
+- Delivery planning exists in `exporter.ts`.
+- Persistence beyond the current in-memory review session is not implemented yet.
+
+## Ongoing Scope Rules
 - No real Nuendo export writer.
 - No auth, billing, database, or marketing pages.
 - No AI chat UI.
 
 ## Mock Data Rules
-- Mock bundles must reflect real Resolve/Nuendo workflows.
+- Mock bundles must reflect real Resolve/Nuendo workflows and remain compatible with the current intake -> canonical -> delivery contract.
 - Use fixed IDs, fixed date strings, and fixed counts.
-- Bundle assets should include realistic turnover materials such as AAF, marker exports, metadata CSVs, manifest, readme, reference video, and field recorder report placeholders.
+- Treat imported fixture data as primary when available; use mock data only as deterministic fallback when the fixture library is absent.
 
 ## Route Contract
 The scaffold must include:
@@ -41,3 +47,4 @@ The scaffold must include:
 
 ## Review Standard
 Reject work that hides hydration problems with client-only wrappers, uses browser APIs on first render, or introduces backend-looking abstractions for features that do not exist yet.
+Reject wording that implies the repo is still scaffold-only or mock-only when describing the current implementation state.
