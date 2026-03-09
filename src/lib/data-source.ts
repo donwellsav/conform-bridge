@@ -60,7 +60,7 @@ function createActivityFeed(data: ImportedAppData): ActivityItem[] {
         timestamp: "2026-03-08 10:15",
         title: `${job.jobCode} analysis generated`,
         detail: report
-          ? `${report.summary.totalFindings} preservation finding(s) were generated from real CSV, manifest, and EDL inputs.`
+          ? `${report.summary.totalFindings} preservation finding(s) were generated from real intake parsing and reconciliation inputs.`
           : "Analysis report could not be generated.",
       },
       {

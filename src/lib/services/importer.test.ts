@@ -7,6 +7,8 @@ import * as importerModule from "./importer";
 
 const fcpxmlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-203-r3");
 const edlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-204-edl-only");
+const aafOnlyFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only");
+const aafVsFcpxmlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-206-aaf-vs-fcpxml");
 const manifestPath = resolve(fcpxmlFixtureRoot, "editorial", "manifest.json");
 const metadataPath = resolve(fcpxmlFixtureRoot, "editorial", "RVR_203_METADATA.csv");
 const importer = ("default" in importerModule ? importerModule.default : importerModule) as typeof importerModule;
@@ -99,4 +101,45 @@ test("importTurnoverFolderSync falls back to EDL before metadata-only hydration"
   assert.ok(!issueCodes.includes("TRACK_COUNT_MISMATCH"));
   assert.ok(!issueCodes.includes("CLIP_TIMECODE_MISMATCH"));
   assert.ok(!issueCodes.includes("MARKER_COUNT_MISMATCH"));
+});
+
+test("importTurnoverFolderSync uses AAF as the primary timeline source when FCPXML is absent", () => {
+  const result = importer.importTurnoverFolderSync(aafOnlyFixtureRoot);
+
+  assert.equal(result.timeline.name, "RVR_205_R1_AAF_PRIMARY");
+  assert.equal(result.timeline.trackIds.length, 2);
+  assert.equal(result.clipEvents.length, 2);
+  assert.equal(result.markers.length, 1);
+  assert.equal(result.analysisReport.blockedCount, 0);
+
+  const firstClip = result.clipEvents.find((clipEvent) => clipEvent.clipName === "BOOM_070A_01_A");
+  const issueCodes = result.analysisReport.groups.flatMap((group) => group.findings.map((finding) => finding.code));
+
+  assert.equal(firstClip?.hasFadeIn, true);
+  assert.equal(firstClip?.hasIXml, true);
+  assert.equal(firstClip?.isOffline, false);
+  assert.ok(!issueCodes.includes("AAF_TRACK_COUNT_MISMATCH"));
+  assert.ok(!issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
+});
+
+test("importTurnoverFolderSync keeps FCPXML primary, enriches from AAF, and records AAF reconciliation issues", () => {
+  const result = importer.importTurnoverFolderSync(aafVsFcpxmlFixtureRoot);
+
+  assert.equal(result.timeline.name, "RVR_206_R2_FCPXML_PRIMARY");
+  assert.equal(result.timeline.trackIds.length, 2);
+  assert.equal(result.clipEvents.length, 2);
+  assert.equal(result.markers.length, 1);
+
+  const firstClip = result.clipEvents.find((clipEvent) => clipEvent.clipName === "BOOM_080A_01_A");
+  const issueCodes = result.analysisReport.groups.flatMap((group) => group.findings.map((finding) => finding.code));
+
+  assert.equal(firstClip?.tape, "R080A");
+  assert.equal(firstClip?.hasFadeIn, true);
+  assert.ok(issueCodes.includes("AAF_TRACK_COUNT_MISMATCH"));
+  assert.ok(issueCodes.includes("AAF_CLIP_COUNT_MISMATCH"));
+  assert.ok(issueCodes.includes("AAF_CLIP_TIMING_MISMATCH"));
+  assert.ok(issueCodes.includes("AAF_SOURCE_FILE_MISMATCH"));
+  assert.ok(issueCodes.includes("AAF_REEL_TAPE_MISMATCH"));
+  assert.ok(issueCodes.includes("AAF_MARKER_COVERAGE_MISMATCH"));
+  assert.ok(issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
 });

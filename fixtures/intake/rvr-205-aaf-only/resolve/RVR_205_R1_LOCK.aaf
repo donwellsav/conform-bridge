@@ -1,0 +1,76 @@
+# AAF text-dump fixture for Conform Bridge intake parsing.
+[Composition]
+Name: RVR_205_R1_AAF_PRIMARY
+EditRate: 24000/1001
+SampleRate: 48000
+StartTimecode: 01:00:00:00
+DurationTimecode: 00:08:10:00
+DropFrame: false
+
+[Track]
+Index: 1
+Name: DX BOOM A
+Role: dx
+ChannelCount: 1
+ChannelLayout: mono
+
+[Track]
+Index: 2
+Name: DX BOOM B
+Role: dx
+ChannelCount: 1
+ChannelLayout: mono
+
+[Clip]
+TrackIndex: 1
+TrackName: DX BOOM A
+Role: dx
+Name: BOOM_070A_01_A
+SourceFileName: ROLL_070A_01.BWF
+MobName: ROLL_070A_01
+Reel: 070A
+Tape: R070A
+Scene: 12C
+Take: 3
+RecordIn: 01:00:12:00
+RecordOut: 01:00:16:12
+SourceIn: 09:10:00:00
+SourceOut: 09:10:04:12
+ChannelCount: 8
+ChannelLayout: poly_8
+IsPolyWav: true
+HasBwf: true
+HasIXml: true
+FadeIn: true
+FadeOut: false
+Offline: false
+
+[Clip]
+TrackIndex: 2
+TrackName: DX BOOM B
+Role: dx
+Name: BOOM_070A_02_B
+SourceFileName: ROLL_070A_02.BWF
+MobName: ROLL_070A_02
+Reel: 070A
+Tape: R070A
+Scene: 12C
+Take: 4
+RecordIn: 01:00:20:00
+RecordOut: 01:00:24:00
+SourceIn: 09:10:08:00
+SourceOut: 09:10:12:00
+ChannelCount: 8
+ChannelLayout: poly_8
+IsPolyWav: true
+HasBwf: true
+HasIXml: true
+FadeIn: false
+FadeOut: true
+Offline: false
+
+[Marker]
+Timecode: 01:00:22:00
+Name: AAF-only marker
+Color: yellow
+Note: Parsed from the AAF text dump fixture.

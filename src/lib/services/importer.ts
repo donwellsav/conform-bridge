@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, relative, resolve } from "node:path";
 
+import { parseAafText } from "../parsers/aaf";
 import { parseFcpxmlText } from "../parsers/fcpxml";
 import type {
   AnalysisGroup,
@@ -740,7 +741,7 @@ function createFallbackClipsFromEdl(
       clipName: event.clipName ?? `EDL Event ${event.eventNumber}`,
       sourceFileName: sourceAsset?.name ?? "unknown",
       eventDescription: "Hydrated from simple EDL event parsing because structured metadata was unavailable.",
-      clipNotes: "AAF details are not parsed in Phase 2A.",
+      clipNotes: "Structured AAF and FCPXML ingestion were unavailable for this event, so the importer fell back to EDL timing only.",
       recordIn: event.recordIn,
       recordOut: event.recordOut,
       sourceIn: event.sourceIn,
@@ -1122,7 +1123,7 @@ function hydrateFromMetadataRows(
   };
 }
 
-type PrimaryTimelineSource = "fcpxml" | "xml" | "edl" | "metadata";
+type PrimaryTimelineSource = "fcpxml" | "xml" | "aaf" | "edl" | "metadata";
 
 interface PrimaryHydrationResult {
   primarySource: PrimaryTimelineSource;
@@ -1136,6 +1137,13 @@ function findMetadataRowForClip(rows: ParsedMetadataRow[], clipEvent: ClipEvent)
   return rows.find((row) => row.clipName === clipEvent.clipName)
     ?? rows.find((row) => row.sourceFileName === clipEvent.sourceFileName && row.recordIn === clipEvent.recordIn)
     ?? rows.find((row) => row.sourceFileName === clipEvent.sourceFileName);
+}
+
+function findClipEventMatch(candidates: ClipEvent[], clipEvent: Pick<ClipEvent, "clipName" | "sourceFileName" | "recordIn">) {
+  return candidates.find((candidate) => candidate.clipName === clipEvent.clipName && candidate.recordIn === clipEvent.recordIn)
+    ?? candidates.find((candidate) => candidate.sourceFileName === clipEvent.sourceFileName && candidate.recordIn === clipEvent.recordIn)
+    ?? candidates.find((candidate) => candidate.clipName === clipEvent.clipName)
+    ?? candidates.find((candidate) => candidate.sourceFileName === clipEvent.sourceFileName);
 }
 
 function enrichTracksFromMetadata(tracks: Track[], rows: ParsedMetadataRow[]) {
@@ -1152,6 +1160,22 @@ function enrichTracksFromMetadata(tracks: Track[], rows: ParsedMetadataRow[]) {
       name: referenceRow.trackName ?? track.name,
       role: referenceRow.role ?? track.role,
       channelLayout: referenceRow.channelLayout ?? track.channelLayout,
+    } satisfies Track;
+  });
+}
+
+function enrichTracksFromAaf(tracks: Track[], aafTracks: Track[]) {
+  return tracks.map((track) => {
+    const aafTrack = aafTracks.find((candidate) => candidate.index === track.index || candidate.name === track.name);
+    if (!aafTrack) {
+      return track;
+    }
+
+    return {
+      ...track,
+      name: /^Track\s+\d+$/i.test(track.name) ? aafTrack.name : track.name,
+      role: track.role === "guide" ? aafTrack.role : track.role,
+      channelLayout: track.channelLayout === "mono" && aafTrack.channelLayout !== "mono" ? aafTrack.channelLayout : track.channelLayout,
     } satisfies Track;
   });
 }
@@ -1189,15 +1213,59 @@ function enrichClipEventsFromMetadata(
       clipNotes: row.clipNotes ? [clipEvent.clipNotes, row.clipNotes].filter(Boolean).join(" ").trim() : clipEvent.clipNotes,
       channelCount: row.channelCount ?? clipEvent.channelCount,
       channelLayout: row.channelLayout ?? clipEvent.channelLayout,
-      isPolyWav: row.isPolyWav ?? clipEvent.isPolyWav,
-      hasBwf: row.hasBwf ?? clipEvent.hasBwf,
-      hasIXml: row.hasIXml ?? clipEvent.hasIXml,
-      isOffline: row.isOffline ?? (sourceAsset ? sourceAsset.status === "missing" : clipEvent.isOffline),
-      isNested: row.isNested ?? clipEvent.isNested,
-      isFlattened: row.isFlattened ?? clipEvent.isFlattened,
-      hasSpeedEffect: row.hasSpeedEffect ?? clipEvent.hasSpeedEffect,
-      hasFadeIn: row.hasFadeIn ?? clipEvent.hasFadeIn,
-      hasFadeOut: row.hasFadeOut ?? clipEvent.hasFadeOut,
+      isPolyWav: clipEvent.isPolyWav || (row.isPolyWav ?? false),
+      hasBwf: clipEvent.hasBwf || (row.hasBwf ?? false),
+      hasIXml: clipEvent.hasIXml || (row.hasIXml ?? false),
+      isOffline: clipEvent.isOffline || (row.isOffline ?? (sourceAsset ? sourceAsset.status === "missing" : false)),
+      isNested: clipEvent.isNested || (row.isNested ?? false),
+      isFlattened: clipEvent.isFlattened && (row.isFlattened ?? true),
+      hasSpeedEffect: clipEvent.hasSpeedEffect || (row.hasSpeedEffect ?? false),
+      hasFadeIn: clipEvent.hasFadeIn || (row.hasFadeIn ?? false),
+      hasFadeOut: clipEvent.hasFadeOut || (row.hasFadeOut ?? false),
+    } satisfies ClipEvent;
+  });
+}
+
+function enrichClipEventsFromAaf(
+  bundleId: string,
+  clipEvents: ClipEvent[],
+  aafClipEvents: ClipEvent[],
+  assets: IntakeAsset[],
+) {
+  return clipEvents.map((clipEvent, index) => {
+    const aafClipEvent = findClipEventMatch(aafClipEvents, clipEvent);
+    if (!aafClipEvent) {
+      return clipEvent;
+    }
+
+    const sourceAsset = findAssetByName(assets, aafClipEvent.sourceFileName ?? clipEvent.sourceFileName);
+    return {
+      ...clipEvent,
+      sourceAssetId: sourceAsset?.id ?? clipEvent.sourceAssetId ?? `asset-${slugify(bundleId)}-aaf-enriched-${index + 1}`,
+      sourceFileName: clipEvent.sourceFileName !== "unknown" ? clipEvent.sourceFileName : aafClipEvent.sourceFileName,
+      reel: clipEvent.reel ?? aafClipEvent.reel,
+      tape: clipEvent.tape ?? aafClipEvent.tape,
+      scene: clipEvent.scene ?? aafClipEvent.scene,
+      take: clipEvent.take ?? aafClipEvent.take,
+      eventDescription: clipEvent.eventDescription === "Imported from metadata CSV."
+        ? aafClipEvent.eventDescription
+        : clipEvent.eventDescription,
+      clipNotes: [clipEvent.clipNotes, aafClipEvent.clipNotes].filter(Boolean).join(" ").trim(),
+      sourceIn: clipEvent.sourceIn !== UNKNOWN_TIMECODE ? clipEvent.sourceIn : aafClipEvent.sourceIn,
+      sourceOut: clipEvent.sourceOut !== UNKNOWN_TIMECODE ? clipEvent.sourceOut : aafClipEvent.sourceOut,
+      sourceInFrames: clipEvent.sourceInFrames >= 0 ? clipEvent.sourceInFrames : aafClipEvent.sourceInFrames,
+      sourceOutFrames: clipEvent.sourceOutFrames >= 0 ? clipEvent.sourceOutFrames : aafClipEvent.sourceOutFrames,
+      channelCount: clipEvent.channelCount > 1 ? clipEvent.channelCount : aafClipEvent.channelCount,
+      channelLayout: clipEvent.channelLayout !== "mono" ? clipEvent.channelLayout : aafClipEvent.channelLayout,
+      isPolyWav: clipEvent.isPolyWav || aafClipEvent.isPolyWav,
+      hasBwf: clipEvent.hasBwf || aafClipEvent.hasBwf,
+      hasIXml: clipEvent.hasIXml || aafClipEvent.hasIXml,
+      isOffline: clipEvent.isOffline || aafClipEvent.isOffline || sourceAsset?.status === "missing",
+      isNested: clipEvent.isNested || aafClipEvent.isNested,
+      isFlattened: clipEvent.isFlattened && aafClipEvent.isFlattened,
+      hasSpeedEffect: clipEvent.hasSpeedEffect || aafClipEvent.hasSpeedEffect,
+      hasFadeIn: clipEvent.hasFadeIn || aafClipEvent.hasFadeIn,
+      hasFadeOut: clipEvent.hasFadeOut || aafClipEvent.hasFadeOut,
     } satisfies ClipEvent;
   });
 }
@@ -1227,6 +1295,18 @@ function mergeMarkersWithRows(
   });
 }
 
+function describeStructuredSource(primarySource: PrimaryTimelineSource) {
+  switch (primarySource) {
+    case "fcpxml":
+    case "xml":
+      return "FCPXML/XML";
+    case "aaf":
+      return "AAF";
+    default:
+      return "structured intake source";
+  }
+}
+
 function createReconciliationIssues(
   jobId: string,
   primarySource: PrimaryTimelineSource,
@@ -1237,11 +1317,12 @@ function createReconciliationIssues(
   markerRows: ParsedMarkerRow[],
   assets: IntakeAsset[],
 ) {
-  if (primarySource !== "fcpxml" && primarySource !== "xml") {
+  if (primarySource !== "fcpxml" && primarySource !== "xml" && primarySource !== "aaf") {
     return [] as PreservationIssue[];
   }
 
   const issues: PreservationIssue[] = [];
+  const primarySourceLabel = describeStructuredSource(primarySource);
   const metadataTrackCount = new Set(
     metadataRows
       .map((row) => row.trackIndex)
@@ -1256,11 +1337,11 @@ function createReconciliationIssues(
       severity: "warning",
       scope: "tracks",
       code: "TRACK_COUNT_MISMATCH",
-      title: "Metadata CSV track count does not match the timeline exchange",
-      description: "The imported FCPXML/XML track layout does not match the track count described by the metadata CSV.",
-      sourceLocation: "timeline exchange vs metadata CSV",
+      title: `Metadata CSV track count does not match the ${primarySourceLabel}`,
+      description: `The imported ${primarySourceLabel} track layout does not match the track count described by the metadata CSV.`,
+      sourceLocation: `${primarySourceLabel} vs metadata CSV`,
       impact: "Track naming or routing assumptions may need manual review before delivery sign-off.",
-      recommendedAction: "Use the timeline exchange as the primary source and review any metadata-only tracks manually.",
+      recommendedAction: `Use the ${primarySourceLabel} as the primary source and review any metadata-only tracks manually.`,
       requiresDecision: false,
       affectedItems: [`timeline tracks=${tracks.length}`, `metadata tracks=${metadataTrackCount}`],
     });
@@ -1289,11 +1370,11 @@ function createReconciliationIssues(
       severity: "warning",
       scope: "clips",
       code: "CLIP_TIMECODE_MISMATCH",
-      title: "Metadata CSV timecodes do not match the timeline exchange",
-      description: "One or more metadata rows disagree with the imported FCPXML/XML clip timing, so the timeline exchange remains primary.",
-      sourceLocation: "timeline exchange vs metadata CSV",
-      impact: "Clip placement is preserved from the timeline exchange, but operators should review the mismatched rows.",
-      recommendedAction: "Validate the editorial CSV against the Resolve timeline export before turnover sign-off.",
+      title: `Metadata CSV timecodes do not match the ${primarySourceLabel}`,
+      description: `One or more metadata rows disagree with the imported ${primarySourceLabel} clip timing, so the structured source remains primary.`,
+      sourceLocation: `${primarySourceLabel} vs metadata CSV`,
+      impact: `Clip placement is preserved from the ${primarySourceLabel}, but operators should review the mismatched rows.`,
+      recommendedAction: "Validate the editorial CSV against the preferred timeline source before turnover sign-off.",
       requiresDecision: false,
       affectedItems: clipMismatches,
     });
@@ -1307,9 +1388,9 @@ function createReconciliationIssues(
       severity: "warning",
       scope: "markers",
       code: "MARKER_COUNT_MISMATCH",
-      title: "Marker CSV count does not match the timeline exchange",
-      description: "The imported FCPXML/XML marker set disagrees with the marker CSV, so marker CSV data is used only for enrichment.",
-      sourceLocation: "timeline exchange vs marker CSV",
+      title: `Marker CSV count does not match the ${primarySourceLabel}`,
+      description: `The imported ${primarySourceLabel} marker set disagrees with the marker CSV, so marker CSV data is used only for enrichment.`,
+      sourceLocation: `${primarySourceLabel} vs marker CSV`,
       impact: "Marker exports may require operator review before delivery.",
       recommendedAction: "Review marker coverage and decide which editorial source should be corrected upstream.",
       requiresDecision: false,
@@ -1338,13 +1419,202 @@ function createReconciliationIssues(
       severity: "critical",
       scope: "intake",
       code: "SOURCE_FILE_MISSING_FROM_INTAKE",
-      title: "Timeline exchange references source files that are missing from intake",
-      description: "The imported FCPXML/XML clip list references source media that is not present in the intake bundle.",
-      sourceLocation: "timeline exchange clip list",
+      title: `${primarySourceLabel} references source files that are missing from intake`,
+      description: `The imported ${primarySourceLabel} clip list references source media that is not present in the intake bundle.`,
+      sourceLocation: `${primarySourceLabel} clip list`,
       impact: "Some canonical events remain offline even though the timeline exchange parsed successfully.",
       recommendedAction: "Supply the missing files or confirm that those events should remain offline.",
       requiresDecision: true,
       affectedItems: missingSourceFiles,
+    });
+  }
+
+  return issues;
+}
+
+function createAafReconciliationIssues(
+  jobId: string,
+  primarySource: PrimaryTimelineSource,
+  tracks: Track[],
+  clipEvents: ClipEvent[],
+  markers: Marker[],
+  aafTimeline: { tracks: Track[]; clipEvents: ClipEvent[]; markers: Marker[] } | null,
+  assets: IntakeAsset[],
+) {
+  if (!aafTimeline || primarySource === "aaf") {
+    return [] as PreservationIssue[];
+  }
+
+  const issues: PreservationIssue[] = [];
+
+  if (aafTimeline.tracks.length !== tracks.length) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-aaf-track-count`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "tracks",
+      code: "AAF_TRACK_COUNT_MISMATCH",
+      title: "AAF track count does not match the primary timeline source",
+      description: "Structured AAF parsing found a different track count than the FCPXML/XML primary source.",
+      sourceLocation: "AAF vs FCPXML/XML",
+      impact: "Track routing may need manual confirmation before delivery sign-off.",
+      recommendedAction: "Keep FCPXML/XML as primary and review the AAF track layout manually.",
+      requiresDecision: false,
+      affectedItems: [`primary tracks=${tracks.length}`, `aaf tracks=${aafTimeline.tracks.length}`],
+    });
+  }
+
+  if (aafTimeline.clipEvents.length !== clipEvents.length) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-aaf-clip-count`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "clips",
+      code: "AAF_CLIP_COUNT_MISMATCH",
+      title: "AAF clip count does not match the primary timeline source",
+      description: "Structured AAF parsing found a different clip count than the FCPXML/XML primary source.",
+      sourceLocation: "AAF vs FCPXML/XML",
+      impact: "Canonical event coverage may require operator review.",
+      recommendedAction: "Review the AAF event list against the FCPXML/XML timeline before turnover sign-off.",
+      requiresDecision: false,
+      affectedItems: [`primary clips=${clipEvents.length}`, `aaf clips=${aafTimeline.clipEvents.length}`],
+    });
+  }
+
+  const timingMismatches: string[] = [];
+  const sourceFileMismatches: string[] = [];
+  const reelTapeMismatches: string[] = [];
+
+  clipEvents.forEach((clipEvent) => {
+    const aafClipEvent = findClipEventMatch(aafTimeline.clipEvents, clipEvent);
+    if (!aafClipEvent) {
+      return;
+    }
+
+    if (aafClipEvent.recordIn !== clipEvent.recordIn || aafClipEvent.recordOut !== clipEvent.recordOut) {
+      timingMismatches.push(`${clipEvent.clipName}: primary ${clipEvent.recordIn}-${clipEvent.recordOut} vs aaf ${aafClipEvent.recordIn}-${aafClipEvent.recordOut}`);
+    }
+
+    if (
+      clipEvent.sourceFileName !== "unknown"
+      && aafClipEvent.sourceFileName !== "unknown"
+      && clipEvent.sourceFileName !== aafClipEvent.sourceFileName
+    ) {
+      sourceFileMismatches.push(`${clipEvent.clipName}: primary ${clipEvent.sourceFileName} vs aaf ${aafClipEvent.sourceFileName}`);
+    }
+
+    if (
+      (clipEvent.reel && aafClipEvent.reel && clipEvent.reel !== aafClipEvent.reel)
+      || (clipEvent.tape && aafClipEvent.tape && clipEvent.tape !== aafClipEvent.tape)
+    ) {
+      reelTapeMismatches.push(
+        `${clipEvent.clipName}: primary ${clipEvent.reel ?? "<missing>"}/${clipEvent.tape ?? "<missing>"} vs aaf ${aafClipEvent.reel ?? "<missing>"}/${aafClipEvent.tape ?? "<missing>"}`,
+      );
+    }
+  });
+
+  if (timingMismatches.length > 0) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-aaf-timing`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "clips",
+      code: "AAF_CLIP_TIMING_MISMATCH",
+      title: "AAF clip timing does not match the primary timeline source",
+      description: "AAF event timing disagrees with the FCPXML/XML primary clip placement, so AAF is being used only for enrichment.",
+      sourceLocation: "AAF vs FCPXML/XML",
+      impact: "Canonical timing remains stable, but the AAF needs manual review.",
+      recommendedAction: "Review the mismatched clips against the Resolve export that should remain authoritative.",
+      requiresDecision: false,
+      affectedItems: timingMismatches,
+    });
+  }
+
+  if (sourceFileMismatches.length > 0) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-aaf-source-files`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "clips",
+      code: "AAF_SOURCE_FILE_MISMATCH",
+      title: "AAF source file names do not match the primary timeline source",
+      description: "AAF clip references point to different source file names than the FCPXML/XML primary source.",
+      sourceLocation: "AAF vs FCPXML/XML",
+      impact: "Media relink assumptions may not be stable until the disagreement is resolved.",
+      recommendedAction: "Confirm which turnover source carries the authoritative source file names.",
+      requiresDecision: false,
+      affectedItems: sourceFileMismatches,
+    });
+  }
+
+  if (reelTapeMismatches.length > 0) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-aaf-reel-tape`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "metadata",
+      code: "AAF_REEL_TAPE_MISMATCH",
+      title: "AAF reel or tape metadata does not match the primary timeline source",
+      description: "AAF clip metadata disagrees with the FCPXML/XML primary source for reel or tape identity.",
+      sourceLocation: "AAF vs FCPXML/XML",
+      impact: "Field recorder confidence may drop until the mismatch is resolved.",
+      recommendedAction: "Review reel and tape metadata upstream before relying on automated relink decisions.",
+      requiresDecision: false,
+      affectedItems: reelTapeMismatches,
+    });
+  }
+
+  if (aafTimeline.markers.length !== markers.length) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-aaf-markers`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "markers",
+      code: "AAF_MARKER_COVERAGE_MISMATCH",
+      title: "AAF marker coverage does not match the primary timeline source",
+      description: "AAF marker parsing found a different marker count than the primary timeline source.",
+      sourceLocation: "AAF vs FCPXML/XML",
+      impact: "Marker exports may need manual review before delivery.",
+      recommendedAction: "Keep the FCPXML/XML marker set primary and review extra or missing AAF markers manually.",
+      requiresDecision: false,
+      affectedItems: [`primary markers=${markers.length}`, `aaf markers=${aafTimeline.markers.length}`],
+    });
+  }
+
+  const missingAafMedia = [...new Set(
+    aafTimeline.clipEvents
+      .filter((clipEvent) => {
+        if (clipEvent.sourceFileName === "unknown") {
+          return false;
+        }
+
+        const asset = findAssetByName(assets, clipEvent.sourceFileName);
+        return !asset || asset.status === "missing";
+      })
+      .map((clipEvent) => clipEvent.sourceFileName),
+  )];
+
+  if (missingAafMedia.length > 0) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-aaf-media`,
+      jobId,
+      category: "manual-review",
+      severity: "critical",
+      scope: "intake",
+      code: "AAF_EXPECTED_MEDIA_MISSING",
+      title: "AAF references media that is missing from intake",
+      description: "Structured AAF parsing found source file references that are not present in the intake bundle.",
+      sourceLocation: "AAF clip list",
+      impact: "AAF metadata can enrich the canonical model, but some AAF-referenced media remains offline.",
+      recommendedAction: "Supply the missing media or confirm that the AAF references are stale.",
+      requiresDecision: true,
+      affectedItems: missingAafMedia,
     });
   }
 
@@ -1409,6 +1679,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   const markerAsset = scannedAssets.find((asset) => asset.fileRole === "marker_export" && asset.fileKind === "csv");
   const edlAsset = scannedAssets.find((asset) => asset.fileKind === "edl");
   const fcpxmlAsset = scannedAssets.find((asset) => asset.fileKind === "fcpxml") ?? scannedAssets.find((asset) => asset.fileKind === "xml");
+  const aafAsset = scannedAssets.find((asset) => asset.fileKind === "aaf");
   const metadataRows = metadataAssets.flatMap((asset) => parseMetadataCsvText(readFileSync(join(folderPath, asset.relativePath ?? asset.name), "utf8")));
   const parsedEdl = edlAsset ? parseSimpleEdlText(readFileSync(join(folderPath, edlAsset.relativePath ?? edlAsset.name), "utf8")) : { events: [], markers: [] };
   const markerRows = markerAsset
@@ -1459,15 +1730,38 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
         },
       )
     : null;
+  const parsedAaf = aafAsset
+    ? parseAafText(
+        readFileSync(join(folderPath, aafAsset.relativePath ?? aafAsset.name), "utf8"),
+        {
+          bundleId,
+          translationModelId,
+          timelineId,
+          assets,
+          fallbackName: sequenceName,
+          fallbackFps: fps,
+          fallbackSampleRate: sampleRate,
+          fallbackStartTimecode: startTimecode,
+          fallbackDropFrame: manifest?.dropFrame ?? false,
+        },
+      )
+    : null;
   const metadataHydration = metadataRows.length > 0 ? hydrateFromMetadataRows(bundleId, timelineId, fps, metadataRows, assets) : null;
   const edlHydration = parsedEdl.events.length > 0 ? createFallbackClipsFromEdl(bundleId, timelineId, fps, parsedEdl.events, assets) : null;
 
   let primaryHydration: PrimaryHydrationResult;
 
   if (parsedTimelineExchange) {
-    const enrichedTracks = enrichTracksFromMetadata(parsedTimelineExchange.tracks, metadataRows);
-    const enrichedClipEvents = enrichClipEventsFromMetadata(bundleId, parsedTimelineExchange.clipEvents, metadataRows, assets);
-    const mergedMarkers = mergeMarkersWithRows(parsedTimelineExchange.markers, markerRows, parsedTimelineExchange.timeline.fps, timelineId);
+    const aafEnrichedTracks = parsedAaf ? enrichTracksFromAaf(parsedTimelineExchange.tracks, parsedAaf.tracks) : parsedTimelineExchange.tracks;
+    const aafEnrichedClipEvents = parsedAaf
+      ? enrichClipEventsFromAaf(bundleId, parsedTimelineExchange.clipEvents, parsedAaf.clipEvents, assets)
+      : parsedTimelineExchange.clipEvents;
+    const structuredMarkers = parsedTimelineExchange.markers.length === 0 && parsedAaf && parsedAaf.markers.length > 0
+      ? parsedAaf.markers
+      : parsedTimelineExchange.markers;
+    const enrichedTracks = enrichTracksFromMetadata(aafEnrichedTracks, metadataRows);
+    const enrichedClipEvents = enrichClipEventsFromMetadata(bundleId, aafEnrichedClipEvents, metadataRows, assets);
+    const mergedMarkers = mergeMarkersWithRows(structuredMarkers, markerRows, parsedTimelineExchange.timeline.fps, timelineId);
 
     primaryHydration = {
       primarySource: parsedTimelineExchange.source,
@@ -1480,6 +1774,30 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
         parsedTimelineExchange.timeline.dropFrame,
         parsedTimelineExchange.timeline.startTimecode,
         parsedTimelineExchange.timeline.durationTimecode,
+        enrichedTracks,
+        enrichedClipEvents,
+        mergedMarkers,
+      ),
+      tracks: enrichedTracks,
+      clipEvents: enrichedClipEvents,
+      markers: mergedMarkers,
+    };
+  } else if (parsedAaf) {
+    const enrichedTracks = enrichTracksFromMetadata(parsedAaf.tracks, metadataRows);
+    const enrichedClipEvents = enrichClipEventsFromMetadata(bundleId, parsedAaf.clipEvents, metadataRows, assets);
+    const mergedMarkers = mergeMarkersWithRows(parsedAaf.markers, markerRows, parsedAaf.timeline.fps, timelineId);
+
+    primaryHydration = {
+      primarySource: "aaf",
+      timeline: buildTimelineFromCanonical(
+        translationModelId,
+        timelineId,
+        parsedAaf.timeline.name,
+        parsedAaf.timeline.fps,
+        parsedAaf.timeline.sampleRate,
+        parsedAaf.timeline.dropFrame,
+        parsedAaf.timeline.startTimecode,
+        parsedAaf.timeline.durationTimecode,
         enrichedTracks,
         enrichedClipEvents,
         mergedMarkers,
@@ -1561,6 +1879,21 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     markerRows,
     assets,
   );
+  const aafReconciliationIssues = createAafReconciliationIssues(
+    jobId,
+    primaryHydration.primarySource,
+    primaryHydration.tracks,
+    primaryHydration.clipEvents,
+    primaryHydration.markers,
+    parsedAaf
+      ? {
+          tracks: parsedAaf.tracks,
+          clipEvents: parsedAaf.clipEvents,
+          markers: parsedAaf.markers,
+        }
+      : null,
+    assets,
+  );
   const tracks = primaryHydration.tracks;
   const clipEvents = primaryHydration.clipEvents;
   const timeline = primaryHydration.timeline;
@@ -1600,7 +1933,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     fieldRecorderBlocked,
     manifest?.expectedFiles ?? [],
     manifest?.expectedProductionRolls ?? [],
-    reconciliationIssues,
+    [...reconciliationIssues, ...aafReconciliationIssues],
   );
 
   const translationModel = {
@@ -1647,7 +1980,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       unresolvedCount: analysis.report.summary.operatorDecisionCount,
       fieldRecorderLinkedCount: fieldRecorderCandidates.filter((candidate) => candidate.status === "linked").length,
     },
-    notes: "Imported from a real local intake fixture folder. Delivery planning is generated later by exporter.ts, and no Nuendo writer is implemented yet.",
+    notes: "Imported from a real local intake fixture folder. Structured FCPXML/XML and AAF ingestion hydrate the canonical model before delivery planning is generated by exporter.ts. No Nuendo writer is implemented yet.",
   } satisfies TranslationJob;
 
   return {

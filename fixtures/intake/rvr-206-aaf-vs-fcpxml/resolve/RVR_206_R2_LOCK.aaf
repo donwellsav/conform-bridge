@@ -1,0 +1,113 @@
+# AAF text-dump fixture for Conform Bridge intake parsing.
+[Composition]
+Name: RVR_206_R2_AAF_SECONDARY
+EditRate: 24000/1001
+SampleRate: 48000
+StartTimecode: 01:00:00:00
+DurationTimecode: 00:06:40:00
+DropFrame: false
+
+[Track]
+Index: 1
+Name: DX BOOM A
+Role: dx
+ChannelCount: 1
+ChannelLayout: mono
+
+[Track]
+Index: 2
+Name: DX LAV A
+Role: dx
+ChannelCount: 1
+ChannelLayout: mono
+
+[Track]
+Index: 3
+Name: DX ISO C
+Role: dx
+ChannelCount: 1
+ChannelLayout: mono
+
+[Clip]
+TrackIndex: 1
+TrackName: DX BOOM A
+Role: dx
+Name: BOOM_080A_01_A
+SourceFileName: ROLL_080A_01_ALT.BWF
+MobName: ROLL_080A_01_ALT
+Reel: 080A
+Tape: R080A
+Scene: 31B
+Take: 1
+RecordIn: 01:00:10:04
+RecordOut: 01:00:15:04
+SourceIn: 08:06:26:20
+SourceOut: 08:06:31:20
+ChannelCount: 8
+ChannelLayout: poly_8
+IsPolyWav: true
+HasBwf: true
+HasIXml: true
+FadeIn: true
+FadeOut: false
+Offline: false
+
+[Clip]
+TrackIndex: 2
+TrackName: DX LAV A
+Role: dx
+Name: LAV_080A_02_B
+SourceFileName: ROLL_080B_02.BWF
+MobName: ROLL_080B_02
+Reel: 080B
+Tape: R080B
+Scene: 31B
+Take: 2
+RecordIn: 01:00:30:00
+RecordOut: 01:00:34:00
+SourceIn: 08:06:46:16
+SourceOut: 08:06:50:16
+ChannelCount: 8
+ChannelLayout: poly_8
+IsPolyWav: true
+HasBwf: true
+HasIXml: true
+FadeIn: false
+FadeOut: true
+Offline: true
+
+[Clip]
+TrackIndex: 3
+TrackName: DX ISO C
+Role: dx
+Name: ISO_080C_03_C
+SourceFileName: ROLL_080C_03.BWF
+MobName: ROLL_080C_03
+Reel: 080C
+Tape: R080C
+Scene: 31B
+Take: 3
+RecordIn: 01:00:42:00
+RecordOut: 01:00:46:00
+SourceIn: 08:06:58:16
+SourceOut: 08:07:02:16
+ChannelCount: 8
+ChannelLayout: poly_8
+IsPolyWav: true
+HasBwf: true
+HasIXml: true
+FadeIn: false
+FadeOut: false
+Offline: true
+
+[Marker]
+Timecode: 01:00:40:00
+Name: Phone ring alt
+Color: yellow
+Note: AAF marker aligned with the primary timeline.
+
+[Marker]
+Timecode: 01:00:44:00
+Name: Missing lav coverage
+Color: red
+Note: Extra AAF-only marker to force reconciliation review.

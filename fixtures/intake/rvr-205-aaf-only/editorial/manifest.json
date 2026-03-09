@@ -1,0 +1,24 @@
+{
+  "bundleName": "RVR_205_R1_TURNOVER",
+  "jobCode": "RVR205R1",
+  "title": "River Run Episode 205 Revision 1",
+  "sequenceName": "RVR_205_R1",
+  "pictureLock": true,
+  "fps": "23.976",
+  "startTimecode": "01:00:00:00",
+  "durationTimecode": "00:08:10:00",
+  "sampleRate": 48000,
+  "handlesFrames": 12,
+  "dropFrame": false,
+  "templateId": "tpl-dialogue-premix",
+  "outputPresetId": "tpl-dialogue-premix",
+  "expectedFiles": [
+    "RVR_205_R1_LOCK.aaf",
+    "RVR_205_METADATA.csv",
+    "RVR_205_REF.mov"
+  ],
+  "expectedProductionRolls": [
+    "ROLL_070A_01.BWF",
+    "ROLL_070A_02.BWF"
+  ]
+}

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fcpxml version="1.10">
+  <resources>
+    <format id="fmt-rvr-206" frameDuration="1001/24000s" audioRate="48k" />
+    <asset id="asset-roll-80a-1" name="ROLL_080A_01.BWF" audioChannels="8" />
+    <asset id="asset-roll-80a-2" name="ROLL_080A_02.BWF" audioChannels="8" />
+  </resources>
+  <library>
+    <event name="RVR_206_R2">
+      <project name="RVR_206_R2_FCPXML_PRIMARY">
+        <sequence format="fmt-rvr-206" tcStart="86400/24s" duration="9600/24s">
+          <spine>
+            <asset-clip
+              name="BOOM_080A_01_A"
+              ref="asset-roll-80a-1"
+              lane="1"
+              role="dialogue"
+              trackName="DX BOOM A"
+              offset="240/24s"
+              start="701920/24s"
+              duration="120/24s"
+              reel="080A"
+              scene="31B"
+              take="1"
+            />
+            <asset-clip
+              name="LAV_080A_02_B"
+              ref="asset-roll-80a-2"
+              lane="2"
+              role="dialogue"
+              trackName="DX LAV A"
+              offset="720/24s"
+              start="702400/24s"
+              duration="96/24s"
+              reel="080A"
+              tape="R080A"
+              scene="31B"
+              take="2"
+            />
+            <marker start="960/24s" value="Phone ring alt" note="FCPXML primary marker" color="yellow" />
+          </spine>
+        </sequence>
+      </project>
+    </event>
+  </library>
+</fcpxml>

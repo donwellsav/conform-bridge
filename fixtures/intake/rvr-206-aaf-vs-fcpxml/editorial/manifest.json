@@ -1,0 +1,26 @@
+{
+  "bundleName": "RVR_206_R2_TURNOVER",
+  "jobCode": "RVR206R2",
+  "title": "River Run Episode 206 Revision 2",
+  "sequenceName": "RVR_206_R2",
+  "pictureLock": true,
+  "fps": "23.976",
+  "startTimecode": "01:00:00:00",
+  "durationTimecode": "00:06:40:00",
+  "sampleRate": 48000,
+  "handlesFrames": 12,
+  "dropFrame": false,
+  "templateId": "tpl-dialogue-premix",
+  "outputPresetId": "tpl-dialogue-premix",
+  "expectedFiles": [
+    "RVR_206_R2_LOCK.aaf",
+    "RVR_206_R2_LOCK.fcpxml",
+    "RVR_206_METADATA.csv",
+    "RVR_206_MARKERS.csv",
+    "RVR_206_REF.mov"
+  ],
+  "expectedProductionRolls": [
+    "ROLL_080A_01.BWF",
+    "ROLL_080A_02.BWF"
+  ]
+}

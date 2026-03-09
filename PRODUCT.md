@@ -1,7 +1,7 @@
 # Conform Bridge
 
 ## Summary
-Conform Bridge is a desktop-first internal operator application for Resolve to Nuendo translation workflows. Phase 1 remains scaffold-only: stable routes, typed domain models, realistic mock data, and an operator-facing shell with no real parser, writer, backend, or external service dependency.
+Conform Bridge is a desktop-first internal operator application for Resolve to Nuendo translation workflows. The current repo state is intake-analysis-first: the operator shell is stable, intake parsing is partially real, delivery planning is real, and Nuendo file writing is still intentionally out of scope.
 
 ## Product Goal
 Give post-production operators a clear review surface for three explicit workflow layers:
@@ -24,9 +24,11 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - `DeliveryPackage` is output planning only.
 - Direction must be modeled explicitly with stage and origin metadata.
 - File format alone must not imply whether an asset is inbound or outbound.
+- FCPXML/XML is the preferred primary timeline source when present.
+- AAF is the next structured intake source: it can now hydrate the canonical model directly or enrich and reconcile against FCPXML/XML.
+- CSV, manifest, marker CSV, and simple EDL parsing remain active enrichment and fallback inputs.
 
-## Non-Goals For Phase 1
-- No real AAF, XML, FCPXML, EDL, CSV, or manifest parsing.
+## Current Non-Goals
 - No real Nuendo export writing.
 - No auth, billing, database, or marketing site.
 - No background jobs, queues, or fake API layer.
@@ -46,14 +48,15 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - ReConform
 - Settings
 
-## Phase 1 Deliverables
+## Current Deliverables
 - Root spec files that define the layered workflow contract.
-- Next.js App Router scaffold with TypeScript, Tailwind, and shadcn/ui-style reusable primitives.
+- Next.js App Router shell with TypeScript, Tailwind, and shadcn/ui-style reusable primitives.
 - Shared `src/lib/types.ts` domain model with intake, canonical, and delivery entities.
-- Shared `src/lib/mock-data.ts` with one strong Resolve to Nuendo demo project.
-- App shell with sidebar and top bar.
-- Strong placeholder layouts for all required routes.
-- Importer and exporter service boundaries as stubs only.
+- Real intake fixture scanning from `fixtures/intake/*`.
+- Structured intake parsing for manifest JSON, metadata CSV, marker CSV, simple EDL, FCPXML/XML, and text-dump AAF fixtures.
+- Canonical analysis and reconciliation output through `src/lib/services/importer.ts`.
+- Delivery artifact planning through `src/lib/services/exporter.ts`.
+- Strong operator-facing placeholder routes with imported-data fallback to mock data when no fixture library exists.
 
 ## Rendering Rules
 - Initial render must be deterministic and SSR-safe.
@@ -66,4 +69,4 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Repo scaffolds cleanly and builds.
 - All requested routes exist and keep the current operator shell intact.
 - Intake, canonical, and delivery layers are explicit in docs, types, and mock data.
-- Mock packages reflect real Resolve and Nuendo turnover contents without pretending parsing or export writing already exists.
+- Real intake fixtures and parsers feed the canonical model without pretending that Nuendo export writing already exists.
