@@ -34,6 +34,7 @@ import {
   type ReviewJobContext,
 } from "@/lib/review-state";
 import type { FieldRecorderOverrideStatus, MappingAction, MetadataStatus, PreservationIssue } from "@/lib/types";
+import { useHydrated } from "@/lib/use-hydrated";
 
 function overrideVariant(status: FieldRecorderOverrideStatus) {
   switch (status) {
@@ -128,11 +129,7 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
     readStoredReviewStateStore,
     createEmptyReviewStateStore,
   );
-  const hydrated = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
-  );
+  const hydrated = useHydrated();
 
   const sourceSignature = createReviewStateSourceSignature(context.job, context.bundle, context.timeline);
   const defaultState = createEmptyReviewState(context.job.id, sourceSignature);

@@ -5,6 +5,9 @@ export const SETTINGS_STORAGE_KEY = "conform-bridge/settings/v1";
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
+let cachedSettingsRawValue: string | null | undefined;
+let cachedSettingsDefaults: AppSettings | undefined;
+let cachedSettingsSnapshot: AppSettings | undefined;
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -55,13 +58,31 @@ export function readStoredSettings(defaults: AppSettings): AppSettings {
 
   const rawValue = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
 
+  if (
+    cachedSettingsSnapshot
+    && cachedSettingsRawValue === rawValue
+    && cachedSettingsDefaults === defaults
+  ) {
+    return cachedSettingsSnapshot;
+  }
+
   if (!rawValue) {
+    cachedSettingsRawValue = null;
+    cachedSettingsDefaults = defaults;
+    cachedSettingsSnapshot = defaults;
     return defaults;
   }
 
   try {
-    return mergeStoredSettings(defaults, JSON.parse(rawValue));
+    const nextSettings = mergeStoredSettings(defaults, JSON.parse(rawValue));
+    cachedSettingsRawValue = rawValue;
+    cachedSettingsDefaults = defaults;
+    cachedSettingsSnapshot = nextSettings;
+    return nextSettings;
   } catch {
+    cachedSettingsRawValue = rawValue;
+    cachedSettingsDefaults = defaults;
+    cachedSettingsSnapshot = defaults;
     return defaults;
   }
 }
@@ -80,11 +101,18 @@ export function writeStoredSettings(settings: AppSettings) {
   }
 
   if (!settings.localPersistenceEnabled) {
+    cachedSettingsRawValue = null;
+    cachedSettingsDefaults = settings;
+    cachedSettingsSnapshot = settings;
     window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
     emit();
     return;
   }
 
-  window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  const serializedSettings = JSON.stringify(settings);
+  cachedSettingsRawValue = serializedSettings;
+  cachedSettingsDefaults = settings;
+  cachedSettingsSnapshot = settings;
+  window.localStorage.setItem(SETTINGS_STORAGE_KEY, serializedSettings);
   emit();
 }

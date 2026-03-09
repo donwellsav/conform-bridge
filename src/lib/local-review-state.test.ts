@@ -100,6 +100,34 @@ test("review-state storage writes, reads, and clears persisted deltas", () => {
   });
 });
 
+test("review-state storage returns a stable snapshot when storage is unchanged", () => {
+  const defaultState = createEmptyReviewState("job-test", "sig-test");
+  const serializedStore = JSON.stringify({
+    version: 1,
+    states: {
+      [defaultState.key]: {
+        version: 1,
+        key: defaultState.key,
+        jobId: defaultState.jobId,
+        sourceSignature: defaultState.sourceSignature,
+        trackOverrides: [{ mappingId: "tm-1", action: "ignore" }],
+        metadataOverrides: [],
+        markerDecisions: [],
+        fieldRecorderDecisions: [],
+        validationAcknowledgements: [],
+        reconformDecisions: [],
+      },
+    },
+  });
+
+  withMockWindow({ [REVIEW_STATE_STORAGE_KEY]: serializedStore }, () => {
+    const firstStore = readStoredReviewStateStore();
+    const secondStore = readStoredReviewStateStore();
+
+    assert.equal(firstStore, secondStore);
+  });
+});
+
 test("review-state storage can support SSR-safe initial render through useSyncExternalStore", () => {
   const defaultState = createEmptyReviewState("job-test", "sig-test");
 

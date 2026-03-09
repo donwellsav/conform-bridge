@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { AppSettings, TranslationTemplate } from "@/lib/domain";
 import { hasStoredSettings, readStoredSettings, subscribeToSettings, writeStoredSettings } from "@/lib/local-settings";
+import { useHydrated } from "@/lib/use-hydrated";
 
 export function SettingsPanel({ defaults, templates }: { defaults: AppSettings; templates: TranslationTemplate[] }) {
   const settings = useSyncExternalStore(
@@ -15,11 +16,7 @@ export function SettingsPanel({ defaults, templates }: { defaults: AppSettings; 
     () => readStoredSettings(defaults),
     () => defaults,
   );
-  const hydrated = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
-  );
+  const hydrated = useHydrated();
   const stored = useSyncExternalStore(
     subscribeToSettings,
     hasStoredSettings,

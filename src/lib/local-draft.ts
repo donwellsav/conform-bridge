@@ -9,6 +9,9 @@ export const DRAFT_STORAGE_KEY = "conform-bridge/new-job-draft/v1";
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
+let cachedDraftRawValue: string | null | undefined;
+let cachedDraftDefaults: NewJobDraft | undefined;
+let cachedDraftSnapshot: NewJobDraft | undefined;
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -48,13 +51,31 @@ export function readStoredDraft(defaults: NewJobDraft): NewJobDraft {
 
   const rawValue = window.localStorage.getItem(DRAFT_STORAGE_KEY);
 
+  if (
+    cachedDraftSnapshot
+    && cachedDraftRawValue === rawValue
+    && cachedDraftDefaults === defaults
+  ) {
+    return cachedDraftSnapshot;
+  }
+
   if (!rawValue) {
+    cachedDraftRawValue = null;
+    cachedDraftDefaults = defaults;
+    cachedDraftSnapshot = defaults;
     return defaults;
   }
 
   try {
-    return mergeDraft(defaults, JSON.parse(rawValue));
+    const nextDraft = mergeDraft(defaults, JSON.parse(rawValue));
+    cachedDraftRawValue = rawValue;
+    cachedDraftDefaults = defaults;
+    cachedDraftSnapshot = nextDraft;
+    return nextDraft;
   } catch {
+    cachedDraftRawValue = rawValue;
+    cachedDraftDefaults = defaults;
+    cachedDraftSnapshot = defaults;
     return defaults;
   }
 }
@@ -64,6 +85,10 @@ export function writeStoredDraft(draft: NewJobDraft) {
     return;
   }
 
-  window.localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  const serializedDraft = JSON.stringify(draft);
+  cachedDraftRawValue = serializedDraft;
+  cachedDraftDefaults = draft;
+  cachedDraftSnapshot = draft;
+  window.localStorage.setItem(DRAFT_STORAGE_KEY, serializedDraft);
   emit();
 }

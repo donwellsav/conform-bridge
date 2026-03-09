@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { SourceBundle, TranslationTemplate } from "@/lib/domain";
 import type { NewJobDraft } from "@/lib/local-draft";
 import { readStoredDraft, subscribeToDraft, writeStoredDraft } from "@/lib/local-draft";
+import { useHydrated } from "@/lib/use-hydrated";
 
 const steps = ["Intake", "Template", "Mapping", "Validation"] as const;
 
@@ -31,11 +32,7 @@ export function NewJobWizard({
     () => readStoredDraft(draftDefaults),
     () => draftDefaults,
   );
-  const hydrated = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false,
-  );
+  const hydrated = useHydrated();
 
   const selectedBundle = bundles.find((bundle) => bundle.id === draft.selectedBundleId) ?? bundles[0];
   const selectedTemplate = templates.find((template) => template.id === draft.selectedTemplateId) ?? templates[0];

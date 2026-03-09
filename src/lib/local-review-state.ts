@@ -21,6 +21,12 @@ export interface ReviewStateStore {
 }
 
 const listeners = new Set<Listener>();
+const EMPTY_REVIEW_STATE_STORE: ReviewStateStore = {
+  version: REVIEW_STATE_VERSION,
+  states: {},
+};
+let cachedStoreRawValue: string | null | undefined;
+let cachedStoreSnapshot = EMPTY_REVIEW_STATE_STORE;
 
 function emit() {
   listeners.forEach((listener) => listener());
@@ -297,18 +303,28 @@ export function subscribeToReviewStates(listener: Listener) {
 
 export function readStoredReviewStateStore(): ReviewStateStore {
   if (typeof window === "undefined") {
-    return createEmptyReviewStateStore();
+    return EMPTY_REVIEW_STATE_STORE;
   }
 
   const rawValue = window.localStorage.getItem(REVIEW_STATE_STORAGE_KEY);
+  if (rawValue === cachedStoreRawValue) {
+    return cachedStoreSnapshot;
+  }
+
   if (!rawValue) {
-    return createEmptyReviewStateStore();
+    cachedStoreRawValue = null;
+    cachedStoreSnapshot = EMPTY_REVIEW_STATE_STORE;
+    return cachedStoreSnapshot;
   }
 
   try {
-    return normalizeReviewStateStore(JSON.parse(rawValue));
+    cachedStoreRawValue = rawValue;
+    cachedStoreSnapshot = normalizeReviewStateStore(JSON.parse(rawValue));
+    return cachedStoreSnapshot;
   } catch {
-    return createEmptyReviewStateStore();
+    cachedStoreRawValue = rawValue;
+    cachedStoreSnapshot = EMPTY_REVIEW_STATE_STORE;
+    return cachedStoreSnapshot;
   }
 }
 
@@ -341,7 +357,10 @@ export function writeStoredReviewState(reviewState: ReviewState) {
     },
   };
 
-  window.localStorage.setItem(REVIEW_STATE_STORAGE_KEY, JSON.stringify(nextStore));
+  const serializedStore = JSON.stringify(nextStore);
+  cachedStoreRawValue = serializedStore;
+  cachedStoreSnapshot = nextStore;
+  window.localStorage.setItem(REVIEW_STATE_STORAGE_KEY, serializedStore);
   emit();
 }
 
@@ -359,9 +378,14 @@ export function clearStoredReviewState(reviewStateKey: ReviewStateKey) {
   } satisfies ReviewStateStore;
 
   if (Object.keys(nextStore.states).length === 0) {
+    cachedStoreRawValue = null;
+    cachedStoreSnapshot = EMPTY_REVIEW_STATE_STORE;
     window.localStorage.removeItem(REVIEW_STATE_STORAGE_KEY);
   } else {
-    window.localStorage.setItem(REVIEW_STATE_STORAGE_KEY, JSON.stringify(nextStore));
+    const serializedStore = JSON.stringify(nextStore);
+    cachedStoreRawValue = serializedStore;
+    cachedStoreSnapshot = nextStore;
+    window.localStorage.setItem(REVIEW_STATE_STORAGE_KEY, serializedStore);
   }
 
   emit();
@@ -382,7 +406,10 @@ export function importStoredReviewStatesJson(rawValue: string) {
       return false;
     }
 
-    window.localStorage.setItem(REVIEW_STATE_STORAGE_KEY, JSON.stringify(store));
+    const serializedStore = JSON.stringify(store);
+    cachedStoreRawValue = serializedStore;
+    cachedStoreSnapshot = store;
+    window.localStorage.setItem(REVIEW_STATE_STORAGE_KEY, serializedStore);
     emit();
     return true;
   } catch {
