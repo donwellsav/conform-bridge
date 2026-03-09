@@ -25,7 +25,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Direction must be modeled explicitly with stage and origin metadata.
 - File format alone must not imply whether an asset is inbound or outbound.
 - FCPXML/XML is the preferred primary timeline source when present.
-- AAF is the next structured intake source: it can now hydrate the canonical model directly or enrich and reconcile against FCPXML/XML.
+- AAF is a structured intake source with a binary/container-aware extraction boundary: real `.aaf` files can now hydrate the canonical model directly or enrich and reconcile against FCPXML/XML.
 - CSV, manifest, marker CSV, and simple EDL parsing remain active enrichment and fallback inputs.
 
 ## Current Non-Goals
@@ -53,10 +53,16 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Next.js App Router shell with TypeScript, Tailwind, and shadcn/ui-style reusable primitives.
 - Shared `src/lib/types.ts` domain model with intake, canonical, and delivery entities.
 - Real intake fixture scanning from `fixtures/intake/*`.
-- Structured intake parsing for manifest JSON, metadata CSV, marker CSV, simple EDL, FCPXML/XML, and text-dump AAF fixtures.
+- Structured intake parsing for manifest JSON, metadata CSV, marker CSV, simple EDL, FCPXML/XML, and binary/container-aware AAF extraction with a stable adapter fallback.
 - Canonical analysis and reconciliation output through `src/lib/services/importer.ts`.
 - Delivery artifact planning through `src/lib/services/exporter.ts`.
 - Strong operator-facing placeholder routes with imported-data fallback to mock data when no fixture library exists.
+
+## Current AAF State
+- Real `.aaf` files are detected through a binary/container-aware adapter boundary.
+- Stable AAF-derived adapter payloads are normalized into the existing canonical parser contract.
+- Legacy text-dump AAF fixtures remain supported as a fallback path for narrow tests and fixture maintenance.
+- Nuendo project writing still does not exist.
 
 ## Rendering Rules
 - Initial render must be deterministic and SSR-safe.

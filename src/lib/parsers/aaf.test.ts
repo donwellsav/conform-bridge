@@ -6,8 +6,8 @@ import test from "node:test";
 import { parseAafText } from "./aaf";
 import type { IntakeAsset } from "../types";
 
-const aafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only", "resolve", "RVR_205_R1_LOCK.aaf");
-const missingMediaAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-207-aaf-missing-media", "resolve", "RVR_207_R1_LOCK.aaf");
+const aafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only", "resolve", "RVR_205_R1_LOCK.aaf.adapter");
+const missingMediaAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-207-aaf-missing-media", "resolve", "RVR_207_R1_LOCK.aaf.adapter");
 
 const assets: IntakeAsset[] = [
   {
@@ -48,7 +48,7 @@ const assets: IntakeAsset[] = [
   },
 ];
 
-test("parseAafText hydrates timeline, tracks, clips, and markers from the AAF text dump", () => {
+test("parseAafText hydrates timeline, tracks, clips, and markers from the normalized AAF adapter payload", () => {
   const parsed = parseAafText(readFileSync(aafFixturePath, "utf8"), {
     bundleId: "bundle-rvr-205-aaf-only",
     translationModelId: "model-rvr-205-aaf-only",

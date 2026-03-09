@@ -6,7 +6,7 @@ Current workflow model:
 
 `Resolve/editorial intake -> canonical normalized translation model -> planned Nuendo delivery package`
 
-This repo is frontend-first. It includes real intake analysis and real delivery planning boundaries, but it does not write Nuendo files yet.
+This repo is frontend-first. It includes real intake analysis, binary/container-aware AAF extraction through an adapter boundary, and real delivery planning, but it does not write Nuendo files yet.
 
 ## Phase History
 
@@ -71,13 +71,23 @@ Implemented:
 - stronger speed and fade extraction when inferable from AAF-derived inputs
 - additional missing-media fixture coverage and integration tests
 
+### Phase 2F
+Binary/container-aware AAF extraction.
+
+Implemented:
+- a real `.aaf` file adapter boundary that detects OLE/container-style AAF files
+- stable `.aaf.adapter` payload support that normalizes extracted AAF data into the existing parser contract
+- importer integration that uses real `.aaf` files as structured intake sources without changing the canonical or delivery contracts
+- fixture coverage for binary/container-aware `aaf-only`, `fcpxml + aaf`, and `aaf-with-missing-media` intake paths
+- adapter-level tests alongside parser, importer, exporter, and integration tests
+
 ## Current Status
 
 Implemented now:
 - Next.js App Router shell with operator-focused routes
 - typed intake, canonical, and delivery domain model
 - real intake folder scanning and classification
-- real parsing for FCPXML/XML, richer AAF-derived fixtures, metadata CSV, marker CSV, `manifest.json`, and simple EDL extraction
+- real parsing for FCPXML/XML, binary/container-aware AAF extraction with stable adapter fallback, metadata CSV, marker CSV, `manifest.json`, and simple EDL extraction
 - Canonical hydration for bundles, timelines, tracks, clips, markers, and analysis
 - Primary timeline hydration from FCPXML/XML when present, with AAF enrichment and `aaf -> edl -> metadata` fallback after that
 - Deterministic delivery planning in `exporter.ts`
@@ -85,7 +95,7 @@ Implemented now:
 
 Not implemented:
 - Real Nuendo export writing
-- Deep binary AAF container parsing
+- Direct in-repo AAF graph traversal without the adapter-assist path
 - Auth, billing, database, backend, or marketing site
 
 ## Stack
@@ -128,6 +138,7 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/lib/types.ts](./src/lib/types.ts): shared domain types
 - [src/lib/parsers/fcpxml.ts](./src/lib/parsers/fcpxml.ts): FCPXML/XML parser for timeline, track, clip, and marker hydration
 - [src/lib/parsers/aaf.ts](./src/lib/parsers/aaf.ts): richer AAF-derived parser for canonical hydration and reconciliation
+- [src/lib/adapters/aaf-file.ts](./src/lib/adapters/aaf-file.ts): binary/container-aware AAF adapter boundary for real `.aaf` files
 - [src/lib/services/importer.ts](./src/lib/services/importer.ts): intake scanning, source preference, parsing, reconciliation, hydration, analysis
 - [src/lib/services/exporter.ts](./src/lib/services/exporter.ts): delivery planning only
 - [src/lib/data-source.ts](./src/lib/data-source.ts): composes imported fixture data with exporter planning, or falls back to mock data
@@ -162,7 +173,7 @@ One production roll is intentionally missing so analysis, reconciliation, and de
 - production-audio BWF placeholder
 
 `rvr-205-aaf-only` includes:
-- richer AAF-derived data as the primary structured timeline source
+- a binary/container-aware `.aaf` file plus normalized adapter payload as the primary structured timeline source
 - metadata CSV for enrichment
 - `manifest.json`
 - reference video placeholder
@@ -170,7 +181,7 @@ One production roll is intentionally missing so analysis, reconciliation, and de
 
 `rvr-206-aaf-vs-fcpxml` includes:
 - FCPXML as the primary structured timeline source
-- richer AAF-derived data as the secondary structured source for enrichment and reconciliation
+- a binary/container-aware `.aaf` file plus normalized adapter payload as the secondary structured source for enrichment and reconciliation
 - metadata CSV
 - marker CSV
 - `manifest.json`
@@ -178,8 +189,8 @@ One production roll is intentionally missing so analysis, reconciliation, and de
 - production-audio BWF placeholders
 
 `rvr-207-aaf-missing-media` includes:
-- richer AAF-derived data as the primary structured timeline source
-- explicit missing-media references inside the AAF-derived fixture
+- a binary/container-aware `.aaf` file plus normalized adapter payload as the primary structured timeline source
+- explicit missing-media references inside the AAF-derived payload
 - metadata CSV
 - `manifest.json`
 - reference video placeholder
@@ -234,7 +245,7 @@ npm run build
 
 Parsed:
 - FCPXML / XML timeline structure
-- richer AAF-derived fixture structures
+- binary/container-aware AAF extraction normalized through stable adapter payloads
 - metadata CSV
 - marker CSV
 - `manifest.json`
@@ -273,17 +284,17 @@ Reconciliation currently flags:
 
 ## Planned Next Phases
 
-### Phase 2F
-Deepen AAF ingestion beyond the current AAF-derived fixture layer.
+### Phase 2G
+Reduce adapter dependence for common real-world AAFs.
 
 Targets:
-- binary/container-aware AAF extraction from real files
-- composition mob, slot, and source mob traversal
+- direct in-repo AAF container graph traversal
+- composition mob, slot, and source mob extraction
 - media descriptor extraction
 - better locator and marker coverage
 - more reliable source clip and reel/tape extraction
 
-### Phase 2G
+### Phase 2H
 Operator tooling on top of the richer canonical model.
 
 Targets:
@@ -301,7 +312,7 @@ Targets:
 
 ## Next Recommended Work
 
-- deepen `aaf.ts` into a real binary/container-aware adapter while preserving the current canonical contracts
-- extract composition mobs, mob slots, source clips, media descriptors, and locator/comment data from actual AAF files
+- deepen the AAF path from adapter-assisted extraction into direct in-repo container graph parsing while preserving the current canonical contracts
+- extract composition mobs, mob slots, source clips, media descriptors, and locator/comment data from actual AAF files without requiring sidecar payloads for common cases
 - keep importer precedence at `fcpxml/xml -> aaf -> edl -> metadata`
 - expand validation and mapping tools after the richer AAF path is stable

@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, relative, resolve } from "node:path";
 
-import { parseAafText } from "../parsers/aaf";
+import { extractAafFromFileSync } from "../adapters/aaf-file";
 import { parseFcpxmlText } from "../parsers/fcpxml";
 import type {
   AnalysisGroup,
@@ -1733,8 +1733,8 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       )
     : null;
   const parsedAaf = aafAsset
-    ? parseAafText(
-        readFileSync(join(folderPath, aafAsset.relativePath ?? aafAsset.name), "utf8"),
+    ? extractAafFromFileSync(
+        join(folderPath, aafAsset.relativePath ?? aafAsset.name),
         {
           bundleId,
           translationModelId,
@@ -1746,7 +1746,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
           fallbackStartTimecode: startTimecode,
           fallbackDropFrame: manifest?.dropFrame ?? false,
         },
-      )
+      ).parsed
     : null;
   const metadataHydration = metadataRows.length > 0 ? hydrateFromMetadataRows(bundleId, timelineId, fps, metadataRows, assets) : null;
   const edlHydration = parsedEdl.events.length > 0 ? createFallbackClipsFromEdl(bundleId, timelineId, fps, parsedEdl.events, assets) : null;
