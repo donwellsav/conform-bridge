@@ -52,6 +52,7 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.equal(editedOverlay.previewStaging.reviewInfluence.mode, "saved_review_overlay");
   assert.equal(editedOverlay.previewHandoff.summaryJson.readinessStatus, "blocked");
   assert.ok(editedOverlay.previewHandoff.deferredWriterInput.artifacts.every((artifact) => artifact.readinessStatus === "blocked"));
+  assert.equal(editedOverlay.previewExternalPackage.status, "blocked");
   assert.match(
     editedOverlay.previewExecution.preparedArtifacts.find((artifact) => artifact.payloadKind === "metadata_csv" && artifact.executionStatus === "generated")?.content ?? "",
     /DX REVIEW A/,

@@ -6,6 +6,7 @@ import {
   setMarkerAction,
 } from "./mapping-workflow";
 import { prepareDeliveryExecutionSync } from "./services/delivery-execution";
+import { prepareExternalExecutionPackageSync } from "./services/external-execution-package";
 import { prepareDeliveryHandoffSync } from "./services/delivery-handoff";
 import { createOverlayReviewInfluence, prepareDeliveryStagingSync } from "./services/delivery-staging";
 import { planNuendoDeliverySync } from "./services/exporter";
@@ -14,6 +15,7 @@ import type {
   ClipEvent,
   ConformChangeEvent,
   DeliveryExecutionPlan,
+  ExternalExecutionPackage,
   DeliveryHandoffBundle,
   DeliveryStagingBundle,
   FieldRecorderCandidate,
@@ -88,6 +90,7 @@ export interface ReviewOverlayResult {
   previewExecution: DeliveryExecutionPlan;
   previewStaging: DeliveryStagingBundle;
   previewHandoff: DeliveryHandoffBundle;
+  previewExternalPackage: ExternalExecutionPackage;
   reconformItems: ReconformReviewItem[];
   reviewCounts: {
     mappingOpenCount: number;
@@ -780,6 +783,14 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     sourceSignature: reviewState.sourceSignature,
     reviewSignature: createReviewStateSignature(reviewState),
   });
+  const previewExternalPackage = prepareExternalExecutionPackageSync({
+    job: previewJob,
+    bundle: context.bundle,
+    deliveryPackage: previewPlan.deliveryPackage,
+    executionPlan: previewExecution,
+    stagingBundle: previewStaging,
+    handoffBundle: previewHandoff,
+  });
 
   return {
     reviewState,
@@ -793,6 +804,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewExecution,
     previewStaging,
     previewHandoff,
+    previewExternalPackage,
     reconformItems,
     reviewCounts: {
       mappingOpenCount: mappingReviewSummary.total,

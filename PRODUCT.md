@@ -32,6 +32,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Delivery execution prep is a separate boundary after planning. It may generate safe JSON, text, and CSV payloads, but it must not write native Nuendo session/project files in this phase.
 - Delivery staging is a separate boundary after execution prep. It may materialize generated payloads into a deterministic staged bundle layout and deferred descriptor records, but it must not write native Nuendo session/project files in this phase.
 - Delivery handoff is a separate boundary after staging. It may formalize stable writer-input contracts, readiness states, and dependency graphs for deferred artifacts, but it must not write native Nuendo session/project files in this phase.
+- External execution packaging is a separate boundary after handoff. It may bundle staged outputs, handoff contracts, checksums, and package metadata for external execution, but it must not write native Nuendo session/project files in this phase.
 
 ## Current Non-Goals
 - No real Nuendo export writing.
@@ -64,6 +65,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Delivery execution prep through `src/lib/services/delivery-execution.ts` for artifacts that can already be generated safely.
 - Delivery staging through `src/lib/services/delivery-staging.ts` for deterministic staged bundle layout and deferred descriptor materialization.
 - Delivery handoff through `src/lib/services/delivery-handoff.ts` for deterministic deferred-writer contracts and handoff manifests.
+- External execution packaging through `src/lib/services/external-execution-package.ts` for deterministic package export, indexing, and checksum generation on top of staged and handoff outputs.
 - Operator mapping editors for track, marker, metadata, and field recorder review.
 - Validation rules that merge intake completeness, reconciliation, and delivery-blocker findings into `PreservationIssue` records.
 - Browser-local persistence for operator review deltas, validation acknowledgements, and reconform review decisions.
@@ -82,7 +84,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - AAF and reference video outputs remain deferred binary artifacts, not generated files.
 
 ## Current Status
-- `Phase 3C` is complete.
+- `Phase 3D` is complete.
 - Intake, canonical, and delivery layers are explicit in docs, types, routes, and tests.
 - Operator-facing mapping and validation review is available on the Job Detail route.
 - Operator review progress now persists locally in the browser as deltas over imported data.
@@ -90,6 +92,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Delivery execution prep now generates deterministic manifest, README, marker CSV, marker EDL, metadata CSV, and field recorder report payloads from planned artifacts.
 - Delivery staging now materializes those generated payloads into a deterministic staged bundle structure with deferred JSON descriptors for writer-only binary artifacts.
 - Delivery handoff now formalizes deferred-writer inputs, delivery/review signatures, dependency graphs, and readiness status for deferred binary artifacts.
+- External execution packaging now bundles staged outputs plus handoff contracts into a deterministic export package with checksums, package manifests, generated-artifact indexes, and package-level readiness status.
 - Direct AAF parsing now covers the current embedded-graph and broader decoded-OLE fixture layouts first, while `.adapter` fallback remains a narrower compatibility path.
 
 ## Known Limitations
@@ -99,9 +102,10 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - BWF/WAV and MOV/MP4 assets are classified, but not deeply parsed.
 - Binary delivery artifacts still stop at deferred staged descriptors in this phase.
 - Native Nuendo writer execution remains out of scope even though deferred writer inputs are now formalized.
+- Native Nuendo writer execution remains out of scope even though external execution packages are now formalized.
 
 ## Next Recommended Work
-- `Phase 3D`: package staged output plus handoff contracts for external execution and formalize writer adapter interfaces.
+- `Phase 3E`: formalize writer adapter interfaces that consume packaged external execution output and deferred writer inputs.
 - Continue broadening direct AAF coverage only where new production samples still require compatibility fallback.
 - Keep exporter planning and any future writer boundary strictly separate.
 

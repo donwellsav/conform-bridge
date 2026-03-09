@@ -62,6 +62,11 @@ export type WriterDependencyStatus = "present" | "missing" | "blocked" | "option
 export type WriterReadinessStatus = "ready-for-writer" | "blocked" | "partial" | "deferred-with-known-gaps";
 export type DeferredWriterArtifactKind = "nuendo_ready_aaf" | "reference_video_handoff" | "native_nuendo_session" | "unknown_deferred_artifact";
 export type WriterCapability = "aaf_delivery_writer" | "reference_video_handoff" | "native_nuendo_session_writer" | "unsupported_writer_capability";
+export type ExternalExecutionPackageVersion = 1;
+export type ExternalExecutionStatus = "ready" | "partial" | "blocked";
+export type ExternalExecutionEntryLayer = "staged" | "handoff" | "package";
+export type ExternalExecutionClassification = "generated" | "deferred-contract" | "package-metadata";
+export type ExternalExecutionChecksumAlgorithm = "fnv1a-32";
 
 export interface SourceSnapshot {
   sequenceName: string;
@@ -725,6 +730,159 @@ export interface DeliveryHandoffBundle {
   deferredWriterInput: DeferredWriterInput;
   manifest: DeliveryHandoffManifest;
   summaryJson: DeliveryHandoffSummary;
+  summary: string;
+}
+
+export interface ExternalExecutionChecksum {
+  relativePath: string;
+  algorithm: ExternalExecutionChecksumAlgorithm;
+  value: string;
+  byteSize: number;
+}
+
+export interface ExternalExecutionDeferredInput {
+  artifactId: string;
+  artifactKind: DeferredWriterArtifactKind;
+  relativePath: string;
+  plannedOutputPath: string;
+  readinessStatus: WriterReadinessStatus;
+  requiredWriterCapability: WriterCapability;
+  blockers: string[];
+  dependencyIds: string[];
+  payload: Record<string, unknown>;
+}
+
+export interface ExternalExecutionManifest {
+  schemaVersion: ExternalExecutionPackageVersion;
+  jobId: string;
+  deliveryPackageId: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  packageStatus: ExternalExecutionStatus;
+  stagedRoot: string;
+  handoffRoot: string;
+  packageRoot: string;
+  generatedEntryCount: number;
+  deferredContractCount: number;
+  packageMetadataCount: number;
+  reasons: string[];
+  note: string;
+}
+
+export interface ExternalExecutionIndexEntry {
+  relativePath: string;
+  fileName: string;
+  layer: ExternalExecutionEntryLayer;
+  classification: ExternalExecutionClassification;
+  mimeType: string;
+  payloadKind: string;
+  artifactId?: string;
+  artifactStatus?: DeliveryArtifactStatus;
+  writerReadinessStatus?: WriterReadinessStatus;
+  byteSize: number;
+  checksum: string;
+  summary: string;
+}
+
+export interface ExternalExecutionIndex {
+  schemaVersion: ExternalExecutionPackageVersion;
+  jobId: string;
+  deliveryPackageId: string;
+  entries: ExternalExecutionIndexEntry[];
+}
+
+export interface ExternalExecutionGeneratedArtifactIndex {
+  schemaVersion: ExternalExecutionPackageVersion;
+  jobId: string;
+  deliveryPackageId: string;
+  artifacts: Array<{
+    artifactId: string;
+    relativePath: string;
+    fileRole: FileRole;
+    fileKind: FileKind;
+    artifactStatus: DeliveryArtifactStatus;
+    payloadKind: GeneratedArtifactPayloadKind;
+    byteSize: number;
+    checksum: string;
+    summary: string;
+  }>;
+}
+
+export interface ExternalExecutionSummary {
+  schemaVersion: ExternalExecutionPackageVersion;
+  jobId: string;
+  deliveryPackageId: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  packageStatus: ExternalExecutionStatus;
+  stagedEntryCount: number;
+  handoffEntryCount: number;
+  packageEntryCount: number;
+  generatedEntryCount: number;
+  deferredContractCount: number;
+  blockedDeferredCount: number;
+  totalEntryCount: number;
+  note: string;
+  reasons: string[];
+}
+
+export interface ExternalExecutionChecksums {
+  schemaVersion: ExternalExecutionPackageVersion;
+  jobId: string;
+  deliveryPackageId: string;
+  algorithm: ExternalExecutionChecksumAlgorithm;
+  entries: ExternalExecutionChecksum[];
+}
+
+export interface ExternalExecutionDeferredInputsDocument {
+  schemaVersion: ExternalExecutionPackageVersion;
+  jobId: string;
+  deliveryPackageId: string;
+  deliveryPackageSignature: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  inputs: ExternalExecutionDeferredInput[];
+}
+
+export interface ExternalExecutionEntry {
+  kind: "external_execution_entry";
+  relativePath: string;
+  fileName: string;
+  layer: ExternalExecutionEntryLayer;
+  classification: ExternalExecutionClassification;
+  mimeType: string;
+  payloadKind: string;
+  content: string;
+  byteSize: number;
+  checksum: ExternalExecutionChecksum;
+  summary: string;
+  artifactId?: string;
+  artifactStatus?: DeliveryArtifactStatus;
+  fileRole?: FileRole;
+  fileKind?: FileKind;
+  writerReadinessStatus?: WriterReadinessStatus;
+}
+
+export interface ExternalExecutionPackage {
+  id: string;
+  version: ExternalExecutionPackageVersion;
+  jobId: string;
+  deliveryPackageId: string;
+  rootFolderName: string;
+  rootRelativePath: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  status: ExternalExecutionStatus;
+  entries: ExternalExecutionEntry[];
+  manifestJson: ExternalExecutionManifest;
+  indexJson: ExternalExecutionIndex;
+  summaryJson: ExternalExecutionSummary;
+  checksumsJson: ExternalExecutionChecksums;
+  deferredInputsJson: ExternalExecutionDeferredInputsDocument;
+  generatedArtifactIndexJson: ExternalExecutionGeneratedArtifactIndex;
   summary: string;
 }
 

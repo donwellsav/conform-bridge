@@ -6,13 +6,13 @@ Current workflow model:
 
 `Resolve/editorial intake -> canonical normalized translation model -> planned Nuendo delivery package`
 
-This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, real delivery planning, delivery execution prep for safe text/JSON/CSV artifacts, staged delivery bundle materialization for those safe artifacts, and hardened deferred-writer handoff contracts for binary outputs, but it does not write Nuendo files yet.
+This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, real delivery planning, delivery execution prep for safe text/JSON/CSV artifacts, staged delivery bundle materialization for those safe artifacts, hardened deferred-writer handoff contracts for binary outputs, and deterministic external execution package export on top of staged and handoff outputs, but it does not write Nuendo files yet.
 
 Current phase:
-- `Phase 3C` completed: deferred writer inputs and delivery handoff contracts are now formalized while binary/session writing stays deferred.
+- `Phase 3D` completed: staged output plus deferred-writer handoff contracts are now packaged for external execution while binary/session writing stays deferred.
 
 Next planned phase:
-- `Phase 3D`: package staged output plus handoff contracts for external writer execution without implementing native Nuendo writing yet.
+- `Phase 3E`: formalize writer adapter interfaces that consume the external execution package without implementing native Nuendo writing yet.
 
 ## Phase History
 
@@ -173,6 +173,18 @@ Implemented:
 - job-detail and saved-review preview visibility for deferred writer contracts, readiness, blockers, and handoff summary
 - regression coverage for deterministic handoff serialization, dependency resolution, blocked-state generation, and staged-output consistency
 
+### Phase 3D
+External execution package export on top of staged output and handoff contracts.
+
+Implemented:
+- a new external execution package boundary after staging and handoff
+- deterministic package layout that mirrors staged outputs under `staged/`, keeps handoff files under `handoff/`, and adds export metadata under `package/`
+- deterministic package manifests, package index, package summary, generated-artifact index, deferred-writer input export, and checksums
+- package readiness evaluation with `ready`, `partial`, and `blocked` states
+- package previews in job detail and saved-review overlay flows
+- Node-only package write helper for deterministic disk materialization without implementing any Nuendo writer
+- regression coverage for package manifests, checksums, readiness, saved-review influence, and disk output consistency
+
 ## Current Status
 
 Implemented now:
@@ -187,6 +199,7 @@ Implemented now:
 - Deterministic delivery execution prep for safe JSON, text, and CSV artifacts in `delivery-execution.ts`
 - Deterministic staged delivery bundle materialization in `delivery-staging.ts`
 - Deterministic deferred-writer input and handoff contract generation in `delivery-handoff.ts`
+- Deterministic external execution packaging in `external-execution-package.ts`
 - operator mapping editors for track, marker, metadata, and field recorder review
 - shared validation rules that surface unresolved intake, metadata, production-audio, and delivery-blocker conditions
 - browser-local persisted review deltas for mappings, validation acknowledgements, and reconform review decisions
@@ -257,6 +270,8 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/lib/services/delivery-staging.ts](./src/lib/services/delivery-staging.ts): deterministic staged delivery bundle materialization for generated payloads plus deferred binary descriptors
 - [src/lib/services/delivery-staging-write.ts](./src/lib/services/delivery-staging-write.ts): Node-only helper that writes staged bundle entries to disk for execution tests and later handoff work
 - [src/lib/services/delivery-handoff.ts](./src/lib/services/delivery-handoff.ts): deterministic deferred-writer input contracts, handoff manifests, and readiness summaries for deferred artifacts
+- [src/lib/services/external-execution-package.ts](./src/lib/services/external-execution-package.ts): deterministic external execution package export that bundles staged output, handoff contracts, package manifests, indexes, and checksums
+- [src/lib/services/external-execution-package-write.ts](./src/lib/services/external-execution-package-write.ts): Node-only helper that writes the external execution package to disk without attempting native Nuendo writing
 - [src/lib/mapping-workflow.ts](./src/lib/mapping-workflow.ts): pure mapping editor state helpers and review counters
 - [src/lib/review-state.ts](./src/lib/review-state.ts): pure review overlay, delta application, and review-summary helpers
 - [src/lib/local-review-state.ts](./src/lib/local-review-state.ts): SSR-safe browser-local persisted review-state store with versioning
@@ -266,6 +281,7 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/components/delivery-execution-preview.tsx](./src/components/delivery-execution-preview.tsx): generated-vs-deferred execution-prep artifact preview
 - [src/components/delivery-staging-preview.tsx](./src/components/delivery-staging-preview.tsx): staged bundle tree, content preview, and deferred record preview
 - [src/components/delivery-handoff-preview.tsx](./src/components/delivery-handoff-preview.tsx): deferred writer-input readiness, dependency, and handoff JSON preview
+- [src/components/external-execution-package-preview.tsx](./src/components/external-execution-package-preview.tsx): external package status, checksums, package metadata, and packaged staged/handoff file preview
 - [src/components/reconform-review.tsx](./src/components/reconform-review.tsx): saved reconform review workflow with notes and filters
 
 ## Fixture Intake Folder
@@ -460,6 +476,16 @@ Handoff now:
 - `handoff/delivery-handoff-summary.json`
 - deterministic source signature, review signature, delivery package signature, dependency graph, and writer-readiness state for each deferred artifact
 
+External package export now:
+- `package/external-execution-manifest.json`
+- `package/external-execution-index.json`
+- `package/external-execution-summary.json`
+- `package/generated-artifact-index.json`
+- `package/deferred-writer-inputs.json`
+- `package/checksums.json`
+- mirrored staged outputs under `staged/`
+- preserved handoff outputs under `handoff/`
+
 Deferred:
 - Nuendo-ready AAF
 - reference video handoff
@@ -486,18 +512,18 @@ Current operator tooling includes:
 
 ## Planned Next Phases
 
-### Phase 3D
-Delivery handoff export and writer-adapter prep.
+### Phase 3E
+Writer-adapter prep on top of packaged external execution output.
 
 Targets:
-- package staged output plus handoff contracts for external execution
-- formalize writer adapter interfaces that consume `DeferredWriterInput`
+- formalize writer adapter interfaces that consume the external execution package and deferred writer inputs
+- keep package export, handoff, staging, execution prep, and planning as separate layers
 - keep native Nuendo session writing deferred until the writer boundary is stable
 
 ## Next Recommended Work
 
-- package staged output plus handoff contracts into a clean export/handoff bundle for external writer runners
-- formalize writer adapter interfaces that consume the current deferred writer-input contracts
+- formalize writer adapter interfaces that consume the current external execution package and deferred writer-input contracts
+- add stable writer-runner request/response contracts without letting writer concerns leak back into planning or staging
 - keep AAF, reference video, and any future Nuendo session output behind a separate writer boundary
 - continue reducing AAF compatibility fallback only when new real containers require it
 - keep planning, execution prep, and future writing as three separate layers

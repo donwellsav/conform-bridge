@@ -308,6 +308,110 @@ Aggregate readiness summary for the current handoff state.
 - `unresolvedBlockers`
 - `note`
 
+## Layer 5: External Execution Package
+
+### ExternalExecutionPackage
+Deterministic export bundle that packages staged outputs plus handoff contracts for downstream execution.
+- `id`
+- `version`
+- `jobId`
+- `deliveryPackageId`
+- `rootFolderName`
+- `rootRelativePath`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `status`
+- `entries`
+- `manifestJson`
+- `indexJson`
+- `summaryJson`
+- `checksumsJson`
+- `deferredInputsJson`
+- `generatedArtifactIndexJson`
+- `summary`
+
+### ExternalExecutionEntry
+One packaged file entry inside the external execution bundle.
+- `relativePath`
+- `fileName`
+- `layer`
+- `classification`
+- `mimeType`
+- `payloadKind`
+- `content`
+- `byteSize`
+- `checksum`
+- `summary`
+- `artifactId`
+- `artifactStatus`
+- `fileRole`
+- `fileKind`
+- `writerReadinessStatus`
+
+### ExternalExecutionManifest
+Package-level manifest linking staged outputs, handoff files, and package readiness.
+- `schemaVersion`
+- `jobId`
+- `deliveryPackageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `packageStatus`
+- `stagedRoot`
+- `handoffRoot`
+- `packageRoot`
+- `generatedEntryCount`
+- `deferredContractCount`
+- `packageMetadataCount`
+- `reasons`
+- `note`
+
+### ExternalExecutionIndex
+Deterministic index of every packaged staged, handoff, and package metadata file.
+- `schemaVersion`
+- `jobId`
+- `deliveryPackageId`
+- `entries`
+
+### ExternalExecutionChecksum
+Deterministic checksum record for one packaged file.
+- `relativePath`
+- `algorithm`
+- `value`
+- `byteSize`
+
+### ExternalExecutionDeferredInput
+Export-friendly contract record for one deferred writer artifact inside the external package.
+- `artifactId`
+- `artifactKind`
+- `relativePath`
+- `plannedOutputPath`
+- `readinessStatus`
+- `requiredWriterCapability`
+- `blockers`
+- `dependencyIds`
+- `payload`
+
+### ExternalExecutionSummary
+Package-level readiness summary for downstream external execution.
+- `schemaVersion`
+- `jobId`
+- `deliveryPackageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `packageStatus`
+- `stagedEntryCount`
+- `handoffEntryCount`
+- `packageEntryCount`
+- `generatedEntryCount`
+- `deferredContractCount`
+- `blockedDeferredCount`
+- `totalEntryCount`
+- `note`
+- `reasons`
+
 ## Orchestration Entity
 
 ### TranslationJob
@@ -345,6 +449,7 @@ Operator-facing record that ties the three layers together.
 - One `DeliveryPackage` contains many `DeliveryArtifact` records.
 - One `DeliveryPackage` may produce one `DeliveryExecutionPlan`, one `DeliveryStagingBundle`, and one `DeliveryHandoffManifest` in downstream non-writer layers.
 - One `DeliveryHandoffManifest` references one `DeferredWriterInput` document containing many `DeferredWriterArtifact` contracts.
+- One `DeliveryHandoffManifest` may be packaged into one `ExternalExecutionPackage` together with staged outputs and package metadata.
 - One `TranslationJob` may contain many `ConformChangeEvent` records.
 
 ## Current Repo Rules
@@ -353,4 +458,4 @@ Operator-facing record that ties the three layers together.
 - The repo prefers real fixture imports and falls back to deterministic mock data only when the fixture library is absent.
 - Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
 - Operator mapping editors persist browser-local review deltas keyed by job plus source signature.
-- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, and deferred writer contracts without implying that a Nuendo writer already exists.
+- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, and external execution packaging without implying that a Nuendo writer already exists.

@@ -73,8 +73,9 @@ The delivery side now has three explicit downstream layers after canonical norma
 - Delivery planning in `exporter.ts`
 - Delivery execution prep in `delivery-execution.ts`
 - Delivery staging and handoff contract generation in `delivery-staging.ts` and `delivery-handoff.ts`
+- External execution packaging in `external-execution-package.ts`
 
-These layers must stay separate. Planning does not generate files, execution prep only generates safe serializable payloads, staging only materializes staged bundle outputs, and handoff only formalizes deferred-writer contracts.
+These layers must stay separate. Planning does not generate files, execution prep only generates safe serializable payloads, staging only materializes staged bundle outputs, handoff only formalizes deferred-writer contracts, and external package export only bundles staged output plus handoff metadata for downstream execution.
 
 ## Shared File Kinds
 The following file kinds may appear on either side of the workflow depending on `stage` and `origin`:
@@ -116,6 +117,7 @@ The following roles may appear as intake or delivery artifacts depending on the 
 - Generated execution-prep payload state
 - Staged bundle paths and deferred descriptor records
 - Deferred writer-input readiness, dependencies, and blockers
+- External package status, checksums, generated-artifact indexes, and packaged entry paths
 
 ## Current Parser Coverage
 The current repo scans real local fixture folders and parses these intake formats:
@@ -138,5 +140,6 @@ Timeline precedence is:
 - Some AAF layouts still require compatibility fallback payloads.
 - Generated text/JSON/CSV artifacts can be staged and written through the staging helper, but binary writer artifacts remain deferred.
 - Deferred-writer contracts are formalized, but no writer executes them yet.
+- External execution packages can now be written to disk for downstream runners, but native Nuendo writing still does not exist.
 
 No Nuendo write path, fake backend processing, or binary file write-back behavior should be implied by the current repo.
