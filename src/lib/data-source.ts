@@ -9,6 +9,7 @@ import { planNuendoDeliverySync } from "./services/exporter";
 import { importFixtureLibrarySync, type ImportedIntakeData } from "./services/importer";
 import { prepareWriterAdapterBundleSync } from "./services/writer-adapters";
 import { prepareWriterRunBundleSync } from "./services/writer-runner";
+import { prepareWriterRunTransportBundleSync } from "./services/writer-run-transport";
 import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
 import type {
   ActivityItem,
@@ -34,6 +35,7 @@ import type {
   TranslationModel,
   WriterAdapterBundle,
   WriterRunBundle,
+  WriterRunTransportBundle,
 } from "./types";
 
 interface ImportedAppData extends ImportedIntakeData {
@@ -45,6 +47,7 @@ interface ImportedAppData extends ImportedIntakeData {
   externalExecutionPackages: ExternalExecutionPackage[];
   writerAdapterBundles: WriterAdapterBundle[];
   writerRunBundles: WriterRunBundle[];
+  writerRunTransportBundles: WriterRunTransportBundle[];
   dashboardMetrics: DashboardMetric[];
   activityFeed: ActivityItem[];
 }
@@ -131,6 +134,7 @@ function createImportedAppData(): ImportedAppData {
       externalExecutionPackages: [],
       writerAdapterBundles: [],
       writerRunBundles: [],
+      writerRunTransportBundles: [],
       dashboardMetrics: [],
       activityFeed: [],
     };
@@ -291,6 +295,12 @@ function createImportedAppData(): ImportedAppData {
     });
     const writerAdapterBundle = prepareWriterAdapterBundleSync(externalExecutionPackage);
     const writerRunBundle = prepareWriterRunBundleSync(externalExecutionPackage, writerAdapterBundle);
+    const writerRunTransportBundle = prepareWriterRunTransportBundleSync(
+      externalExecutionPackage,
+      handoffBundle,
+      writerAdapterBundle,
+      writerRunBundle,
+    );
 
     return {
       job: updatedJob,
@@ -304,6 +314,7 @@ function createImportedAppData(): ImportedAppData {
       externalExecutionPackage,
       writerAdapterBundle,
       writerRunBundle,
+      writerRunTransportBundle,
     };
   });
 
@@ -319,6 +330,7 @@ function createImportedAppData(): ImportedAppData {
     externalExecutionPackages: jobRecords.map((record) => record.externalExecutionPackage),
     writerAdapterBundles: jobRecords.map((record) => record.writerAdapterBundle),
     writerRunBundles: jobRecords.map((record) => record.writerRunBundle),
+    writerRunTransportBundles: jobRecords.map((record) => record.writerRunTransportBundle),
     jobs: jobRecords.map((record) => record.job),
     dashboardMetrics: [],
     activityFeed: [],
@@ -354,6 +366,7 @@ export const deliveryHandoffBundles = hasImportedBundles ? importedData.delivery
 export const externalExecutionPackages = hasImportedBundles ? importedData.externalExecutionPackages : [];
 export const writerAdapterBundles = hasImportedBundles ? importedData.writerAdapterBundles : [];
 export const writerRunBundles = hasImportedBundles ? importedData.writerRunBundles : [];
+export const writerRunTransportBundles = hasImportedBundles ? importedData.writerRunTransportBundles : [];
 export const mappingProfiles = hasImportedBundles ? importedData.mappingProfiles : fallback.mappingProfiles;
 export const mappingRules = hasImportedBundles ? importedData.mappingRules : fallback.mappingRules;
 export const fieldRecorderCandidates = hasImportedBundles ? importedData.fieldRecorderCandidates : fallback.fieldRecorderCandidates;
@@ -376,6 +389,7 @@ const deliveryHandoffBundleMap = new Map(deliveryHandoffBundles.map((bundle) => 
 const externalExecutionPackageMap = new Map(externalExecutionPackages.map((bundle) => [bundle.jobId, bundle]));
 const writerAdapterBundleMap = new Map(writerAdapterBundles.map((bundle) => [bundle.jobId, bundle]));
 const writerRunBundleMap = new Map(writerRunBundles.map((bundle) => [bundle.jobId, bundle]));
+const writerRunTransportBundleMap = new Map(writerRunTransportBundles.map((bundle) => [bundle.jobId, bundle]));
 const jobMap = new Map(jobs.map((job) => [job.id, job]));
 const translationModelMap = new Map(translationModels.map((model) => [model.id, model]));
 
@@ -483,6 +497,10 @@ export function getWriterAdapterBundle(jobId: string): WriterAdapterBundle | und
 
 export function getWriterRunBundle(jobId: string): WriterRunBundle | undefined {
   return writerRunBundleMap.get(jobId);
+}
+
+export function getWriterRunTransportBundle(jobId: string): WriterRunTransportBundle | undefined {
+  return writerRunTransportBundleMap.get(jobId);
 }
 
 export function getAnalysisReportForJob(jobId: string): AnalysisReport | undefined {

@@ -17,6 +17,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   const externalExecutionPackage = dataSource.getExternalExecutionPackage(job.id);
   const writerAdapterBundle = dataSource.getWriterAdapterBundle(job.id);
   const writerRunBundle = dataSource.getWriterRunBundle(job.id);
+  const writerRunTransportBundle = dataSource.getWriterRunTransportBundle(job.id);
+  const readyTransportBundle = dataSource.getWriterRunTransportBundle("job-rvr-205-aaf-only");
   const handoffBundle = dataSource.getDeliveryHandoffBundle(job.id);
   const stagingBundle = dataSource.getDeliveryStagingBundle(job.id);
   const exportArtifacts = dataSource.getExportArtifacts(job.id);
@@ -28,6 +30,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(externalExecutionPackage);
   assert.ok(writerAdapterBundle);
   assert.ok(writerRunBundle);
+  assert.ok(writerRunTransportBundle);
+  assert.ok(readyTransportBundle);
   assert.ok(handoffBundle);
   assert.ok(stagingBundle);
   assert.equal(exportArtifacts.length, 8);
@@ -43,6 +47,9 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(writerRunBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-requests.json")));
   assert.ok(writerRunBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-receipts.json")));
   assert.ok(writerRunBundle?.receipt.summary.simulatedCount >= 0);
+  assert.ok(writerRunTransportBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-transport-envelopes.json")));
+  assert.ok(writerRunTransportBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-audit-log.json")));
+  assert.equal(readyTransportBundle?.status, "receipt-recorded");
   assert.equal(externalExecutionPackage?.status === "ready" || externalExecutionPackage?.status === "partial" || externalExecutionPackage?.status === "blocked", true);
   assert.ok(handoffBundle?.deferredWriterInput.artifacts.length);
   assert.ok(exportArtifacts.some((artifact) => artifact.status === "blocked"));

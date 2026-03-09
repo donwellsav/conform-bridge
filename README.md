@@ -6,13 +6,13 @@ Current workflow model:
 
 `Resolve/editorial intake -> canonical normalized translation model -> planned Nuendo delivery package`
 
-This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, real delivery planning, delivery execution prep for safe text/JSON/CSV artifacts, staged delivery bundle materialization for those safe artifacts, hardened deferred-writer handoff contracts for binary outputs, deterministic external execution package export on top of staged and handoff outputs, formal writer-adapter interfaces with dry-run validation on top of those packaged contracts, and deterministic writer-runner requests, responses, and receipts on top of adapter dry runs, but it does not write Nuendo files yet.
+This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, real delivery planning, delivery execution prep for safe text/JSON/CSV artifacts, staged delivery bundle materialization for those safe artifacts, hardened deferred-writer handoff contracts for binary outputs, deterministic external execution package export on top of staged and handoff outputs, formal writer-adapter interfaces with dry-run validation on top of those packaged contracts, deterministic writer-runner requests, responses, and receipts on top of adapter dry runs, and a deterministic external transport/audit layer on top of runner output, but it does not write Nuendo files yet.
 
 Current phase:
-- `Phase 3F` completed: writer-runner contracts now consume packaged external execution output plus adapter dry runs, generate deterministic runnable-vs-blocked requests, and emit normalized no-op responses and receipts while native writer execution still stays deferred.
+- `Phase 3G` completed: external transport and execution audit now consume writer-runner output, generate deterministic transport envelopes, dispatch records, audit logs, and history, and prove the post-runner contract without native writer execution.
 
 Next planned phase:
-- `Phase 3G`: formalize external runner transport and execution audit flow on top of writer-runner requests and receipts, still without implementing native Nuendo/session writing yet.
+- `Phase 3H`: formalize real external transport adapters and receipt-ingestion flow on top of transport/audit contracts, still without implementing native Nuendo/session writing yet.
 
 ## Phase History
 
@@ -209,6 +209,18 @@ Implemented:
 - job-detail and saved-review preview visibility for runnable vs blocked artifacts, runner matches, and receipt output
 - regression coverage for request generation, blocked classification, unsupported cases, receipt generation, and saved-review influence
 
+### Phase 3G
+External runner transport and execution audit flow on top of writer-runner contracts.
+
+Implemented:
+- a new transport/audit boundary after writer-runner requests, responses, and receipts
+- deterministic transport envelopes, dispatch records, audit events, and history derived only from packaged execution output plus runner contracts
+- `handoff/writer-run-transport-envelopes.json`, `writer-run-dispatch-records.json`, `writer-run-audit-log.json`, and `writer-run-history.json`
+- a reference no-op transport path that dispatches deterministically, acknowledges runnable requests, preserves correlation ids, and records audit history without writing native binaries
+- retry, cancellation, timeout, expiry, and superseded-signature contract support for transport/audit state without adding a real queue
+- job-detail and saved-review preview visibility for dispatchable vs blocked artifacts, transport status, correlation ids, and audit history
+- regression coverage for deterministic transport ids, blocked classification, no-op acknowledgements, timeout/cancel state, and superseded-signature behavior
+
 ## Current Status
 
 Implemented now:
@@ -226,6 +238,7 @@ Implemented now:
 - Deterministic external execution packaging in `external-execution-package.ts`
 - Deterministic writer-adapter input normalization, capability matching, and dry-run validation in `writer-adapters.ts`
 - Deterministic writer-runner input normalization, runnable request generation, no-op response generation, and receipt generation in `writer-runner.ts`
+- Deterministic writer-run transport envelopes, dispatch records, audit logs, and history in `writer-run-transport.ts`
 - operator mapping editors for track, marker, metadata, and field recorder review
 - shared validation rules that surface unresolved intake, metadata, production-audio, and delivery-blocker conditions
 - browser-local persisted review deltas for mappings, validation acknowledgements, and reconform review decisions
@@ -236,6 +249,7 @@ Implemented now:
 - deferred writer-input and handoff previews for imported and saved-review states
 - writer-adapter previews for packaged deferred contracts, dry-run readiness, and unsupported reasons
 - writer-runner previews for runnable requests, no-op responses, blocked artifacts, and execution receipts
+- writer-run transport previews for dispatchable requests, transport envelopes, correlation ids, and audit history
 - measurably reduced adapter dependence in the current fixture library: direct parsing now covers `rvr-205`, `rvr-206`, `rvr-207`, and `rvr-208`, while `rvr-209` remains the explicit compatibility-fallback case
 
 ## Known Limitations
@@ -249,6 +263,7 @@ Implemented now:
 - Deferred writer inputs are formalized, but no writer executes them yet.
 - Writer adapters validate packaged deferred contracts, but only the reference no-op adapter is implemented; future AAF/reference-video adapters remain placeholders.
 - Writer runners normalize runnable requests and emit no-op receipts, but only the reference no-op runner is implemented; no real native writer execution exists yet.
+- Writer-run transport packages runner output for external dispatch and records audit history, but only the reference no-op transport path exists; no real external transport/execution adapter exists yet.
 - BWF/WAV and MOV/MP4 assets are classified but not deeply parsed.
 - Auth, billing, database, backend, and marketing site remain out of scope.
 
@@ -306,6 +321,8 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/lib/services/writer-adapter-registry.ts](./src/lib/services/writer-adapter-registry.ts): default writer-adapter registry with reference/no-op validation and future writer placeholders
 - [src/lib/services/writer-runner.ts](./src/lib/services/writer-runner.ts): normalized writer-runner input contracts plus deterministic request, response, and receipt generation after adapter dry runs
 - [src/lib/services/writer-runner-registry.ts](./src/lib/services/writer-runner-registry.ts): default writer-runner registry with the reference no-op runner
+- [src/lib/services/writer-run-audit.ts](./src/lib/services/writer-run-audit.ts): deterministic audit/status helpers for transport history, retry state, cancellation state, and correlation tokens
+- [src/lib/services/writer-run-transport.ts](./src/lib/services/writer-run-transport.ts): deterministic post-runner transport envelopes, dispatch records, audit logs, and history generation
 - [src/lib/mapping-workflow.ts](./src/lib/mapping-workflow.ts): pure mapping editor state helpers and review counters
 - [src/lib/review-state.ts](./src/lib/review-state.ts): pure review overlay, delta application, and review-summary helpers
 - [src/lib/local-review-state.ts](./src/lib/local-review-state.ts): SSR-safe browser-local persisted review-state store with versioning
@@ -318,6 +335,7 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/components/external-execution-package-preview.tsx](./src/components/external-execution-package-preview.tsx): external package status, checksums, package metadata, and packaged staged/handoff file preview
 - [src/components/writer-adapter-preview.tsx](./src/components/writer-adapter-preview.tsx): writer-adapter matches, dry-run readiness, unsupported reasons, and placeholder adapter visibility
 - [src/components/writer-runner-preview.tsx](./src/components/writer-runner-preview.tsx): writer-runner readiness, runnable request, no-op response, blocked artifact, and receipt preview
+- [src/components/writer-run-transport-preview.tsx](./src/components/writer-run-transport-preview.tsx): transport status, dispatchable-vs-blocked requests, correlation ids, retry/cancel state, and audit/history preview
 - [src/components/reconform-review.tsx](./src/components/reconform-review.tsx): saved reconform review workflow with notes and filters
 
 ## Fixture Intake Folder
@@ -461,7 +479,13 @@ npm run build
 - producing deterministic no-op responses and execution receipts through the reference runner without writing any binary output
 - keeping runner concerns separate from adapter dry runs, handoff contracts, staging, and package export
 
-Neither `exporter.ts`, `delivery-execution.ts`, `delivery-staging.ts`, `delivery-handoff.ts`, `external-execution-package.ts`, `writer-adapters.ts`, nor `writer-runner.ts` writes native Nuendo files yet.
+`writer-run-transport.ts` is responsible for:
+- normalizing stable external transport envelopes from packaged output plus writer-runner requests, responses, and receipts
+- generating deterministic dispatch records, audit events, history, retry state, cancellation state, and correlation ids
+- proving the post-runner contract through a reference no-op transport path without adding a real queue or native writer execution
+- keeping transport and audit concerns separate from runner receipts, adapter dry runs, handoff contracts, staging, and package export
+
+Neither `exporter.ts`, `delivery-execution.ts`, `delivery-staging.ts`, `delivery-handoff.ts`, `external-execution-package.ts`, `writer-adapters.ts`, `writer-runner.ts`, nor `writer-run-transport.ts` writes native Nuendo files yet.
 
 ## Current Parser Coverage
 
@@ -546,6 +570,14 @@ Writer runners now:
 - a `reference-noop-writer-runner` that consumes runnable deferred artifacts after adapter dry runs and emits deterministic simulated receipts without writing native binaries
 - runnable, blocked, partial, and unsupported runner-state visibility in job detail and saved-review overlay flows
 
+Writer-run transport now:
+- `handoff/writer-run-transport-envelopes.json`
+- `handoff/writer-run-dispatch-records.json`
+- `handoff/writer-run-audit-log.json`
+- `handoff/writer-run-history.json`
+- a `reference-noop-transport` path that deterministically dispatches runnable requests, records acknowledgements, preserves correlation ids, and captures audit history without writing native binaries
+- retry, cancellation, timeout, expiry, and superseded-signature contract state for transport/audit review
+
 Deferred:
 - Nuendo-ready AAF
 - reference video handoff
@@ -572,18 +604,18 @@ Current operator tooling includes:
 
 ## Planned Next Phases
 
-### Phase 3G
-External runner transport and execution audit flow on top of writer-runner contracts.
+### Phase 3H
+External transport adapters and receipt-ingestion flow on top of transport/audit contracts.
 
 Targets:
-- define how external runner processes consume writer-run requests and return normalized receipt/history updates without reading arbitrary app state
-- keep package export, handoff, staging, execution prep, adapter dry runs, writer-runner contracts, and any future writer execution as separate layers
-- keep native Nuendo session writing deferred until the runner transport and audit boundary is stable
+- define how real external transport adapters consume transport envelopes and return normalized acknowledgement, receipt, and history updates without reading arbitrary app state
+- keep package export, handoff, staging, execution prep, adapter dry runs, writer-runner contracts, transport/audit contracts, and any future writer execution as separate layers
+- keep native Nuendo session writing deferred until external transport and receipt ingestion are stable
 
 ## Next Recommended Work
 
-- formalize external runner transport and audit contracts that consume the current writer-run requests, responses, and receipts
-- add deterministic runner history and receipt update handling without letting writer concerns leak back into planning, staging, or package export
+- formalize real external transport adapter inputs and normalized receipt-ingestion updates on top of the current transport/audit contracts
+- add deterministic audit-history update handling without letting transport concerns leak back into planning, staging, or package export
 - keep AAF, reference video, and any future Nuendo session output behind a separate writer boundary
 - continue reducing AAF compatibility fallback only when new real containers require it
-- keep planning, execution prep, staging, handoff, packaging, adapter dry runs, writer-runner contracts, and future writing as separate layers
+- keep planning, execution prep, staging, handoff, packaging, adapter dry runs, writer-runner contracts, transport/audit contracts, and future writing as separate layers

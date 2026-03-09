@@ -1,8 +1,8 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 3F` complete.
-- Next phase: `Phase 3G` external runner transport and execution audit flow on top of writer-runner requests, responses, and receipts.
+- Current phase: `Phase 3G` complete.
+- Next phase: `Phase 3H` real external transport adapters and receipt-ingestion flow on top of transport/audit contracts.
 - Ongoing compatibility work: keep shrinking remaining AAF fallback cases when new production samples justify it.
 
 ## Phase 1 Scaffold
@@ -40,5 +40,6 @@
 - [x] Package staged output plus handoff contracts for external execution without implementing native Nuendo/session writing.
 - [x] Formalize writer adapter interfaces that consume the current external execution package and deferred writer-input contracts.
 - [x] Define writer-runner request/response and receipt contracts on top of writer-adapter dry runs.
-- [ ] Formalize external runner transport and execution audit flow on top of writer-runner contracts.
+- [x] Formalize external runner transport and execution audit flow on top of writer-runner contracts.
+- [ ] Formalize real external transport adapters and receipt-ingestion flow on top of transport/audit contracts.
 - [ ] Implement real Nuendo/session writing only after staged delivery execution is proven stable.

@@ -76,8 +76,9 @@ The delivery side now has six explicit downstream layers after canonical normali
 - External execution packaging in `external-execution-package.ts`
 - Writer-adapter validation and dry-run matching in `writer-adapters.ts`
 - Writer-runner request, response, and receipt generation in `writer-runner.ts`
+- Writer-run transport and audit generation in `writer-run-transport.ts`
 
-These layers must stay separate. Planning does not generate files, execution prep only generates safe serializable payloads, staging only materializes staged bundle outputs, handoff only formalizes deferred-writer contracts, external package export only bundles staged output plus handoff metadata for downstream execution, writer adapters only validate packaged deferred contracts plus dry-run capability matches, and writer runners only generate runnable contracts plus deterministic no-op receipts.
+These layers must stay separate. Planning does not generate files, execution prep only generates safe serializable payloads, staging only materializes staged bundle outputs, handoff only formalizes deferred-writer contracts, external package export only bundles staged output plus handoff metadata for downstream execution, writer adapters only validate packaged deferred contracts plus dry-run capability matches, writer runners only generate runnable contracts plus deterministic no-op receipts, and writer-run transport only packages post-runner output into external dispatch/audit contracts.
 
 ## Shared File Kinds
 The following file kinds may appear on either side of the workflow depending on `stage` and `origin`:
@@ -122,6 +123,7 @@ The following roles may appear as intake or delivery artifacts depending on the 
 - External package status, checksums, generated-artifact indexes, and packaged entry paths
 - Writer-adapter matches, dry-run readiness, and unsupported reasons for deferred artifacts
 - Writer-runner requests, responses, receipts, and runnable-versus-blocked deferred artifact state
+- Writer-run transport envelopes, dispatch records, correlation ids, retry/cancel state, and audit history
 
 ## Current Parser Coverage
 The current repo scans real local fixture folders and parses these intake formats:
@@ -147,5 +149,6 @@ Timeline precedence is:
 - External execution packages can now be written to disk for downstream runners, but native Nuendo writing still does not exist.
 - Writer adapters currently validate and dry-run packaged deferred contracts, but only the reference no-op adapter is implemented; future AAF/reference-video adapters remain placeholders.
 - Writer runners currently emit deterministic no-op requests, responses, and receipts, but only the reference no-op runner is implemented; no native writer execution exists yet.
+- Writer-run transport currently emits deterministic no-op dispatch envelopes, acknowledgements, and audit history, but only the reference transport path is implemented; no real external execution transport exists yet.
 
 No Nuendo write path, fake backend processing, or binary file write-back behavior should be implied by the current repo.

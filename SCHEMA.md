@@ -614,6 +614,165 @@ Aggregate runner view for one packaged delivery handoff.
 - `readiness`
 - `summary`
 
+## Layer 8: Writer Run Transport And Audit Contracts
+
+### WriterRunTransportEnvelope
+Deterministic external transport envelope derived from one writer-run artifact request plus package and signature context.
+- `version`
+- `id`
+- `transportId`
+- `correlationId`
+- `jobId`
+- `deliveryPackageId`
+- `externalExecutionPackageId`
+- `handoffBundleId`
+- `writerRunBundleId`
+- `requestId`
+- `requestArtifactId`
+- `responseId`
+- `receiptId`
+- `artifactId`
+- `fileName`
+- `artifactKind`
+- `requiredCapability`
+- `packageStatus`
+- `requestReadiness`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `adapterId`
+- `runnerId`
+- `plannedOutputPath`
+- `relativePath`
+- `envelopeStatus`
+- `dispatchable`
+- `dispatchReason`
+- `dependencyIds`
+- `blockedReasons`
+- `retryState`
+- `cancellationState`
+- `payload`
+
+### WriterRunDispatchRecord
+Deterministic dispatch or blocked-state record for one transport envelope.
+- `id`
+- `transportId`
+- `correlationId`
+- `requestId`
+- `requestArtifactId`
+- `responseId`
+- `receiptId`
+- `artifactId`
+- `fileName`
+- `adapterId`
+- `runnerId`
+- `status`
+- `transportSequence`
+- `requestReadiness`
+- `responseStatus`
+- `note`
+- `failure`
+
+### WriterRunTransportResponse
+Aggregate acknowledgement or blocked-state response for the current transport batch.
+- `version`
+- `id`
+- `transportId`
+- `packageId`
+- `requestId`
+- `runnerResponseId`
+- `runnerReceiptId`
+- `jobId`
+- `deliveryPackageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `status`
+- `dispatchedCount`
+- `acknowledgedCount`
+- `blockedCount`
+- `failedCount`
+- `cancelledCount`
+- `note`
+
+### WriterRunAuditRecord
+Ordered audit event log for the transport lifecycle.
+- `id`
+- `transportId`
+- `packageId`
+- `requestId`
+- `runnerResponseId`
+- `runnerReceiptId`
+- `jobId`
+- `deliveryPackageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `events`
+- `summary`
+
+### WriterRunAttemptHistory
+Per-artifact lifecycle summary across envelope, dispatch, audit, and receipt state.
+- `artifactId`
+- `fileName`
+- `correlationId`
+- `transportId`
+- `adapterId`
+- `runnerId`
+- `requestReadiness`
+- `responseStatus`
+- `dispatchable`
+- `currentStatus`
+- `statusTrail`
+- `retryState`
+- `cancellationState`
+- `failure`
+- `note`
+
+### WriterRunTransportReceipt
+Aggregate history summary for the current transport bundle.
+- `version`
+- `id`
+- `transportId`
+- `packageId`
+- `requestId`
+- `runnerResponseId`
+- `runnerReceiptId`
+- `jobId`
+- `deliveryPackageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `status`
+- `dispatchableCount`
+- `dispatchedCount`
+- `acknowledgedCount`
+- `blockedCount`
+- `failedCount`
+- `cancelledCount`
+- `receiptRecordedCount`
+- `note`
+
+### WriterRunTransportBundle
+Aggregate transport and audit view for one packaged delivery handoff.
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `rootRelativePath`
+- `transportId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `envelopes`
+- `dispatchRecords`
+- `transportResponse`
+- `transportReceipt`
+- `auditRecord`
+- `history`
+- `entries`
+- `status`
+- `summary`
+
 ## Orchestration Entity
 
 ### TranslationJob
@@ -655,6 +814,7 @@ Operator-facing record that ties the three layers together.
 - One `ExternalExecutionPackage` may produce one `WriterAdapterInput` document and one `WriterAdapterBundle` for adapter matching and dry-run validation.
 - One `WriterAdapterBundle` contains many `WriterAdapterDryRunResult` records and many `WriterAdapterArtifactMatch` records.
 - One `WriterAdapterBundle` may produce one `WriterRunnerInput`, one `WriterRunRequest`, one `WriterRunResponse`, and one `WriterRunReceipt` in the downstream runner layer.
+- One `WriterRunBundle` may produce many `WriterRunTransportEnvelope` records, many `WriterRunDispatchRecord` records, one `WriterRunTransportResponse`, one `WriterRunAuditRecord`, many `WriterRunAttemptHistory` records, and one `WriterRunTransportReceipt` in the downstream transport/audit layer.
 - One `TranslationJob` may contain many `ConformChangeEvent` records.
 
 ## Current Repo Rules
@@ -663,4 +823,4 @@ Operator-facing record that ties the three layers together.
 - The repo prefers real fixture imports and falls back to deterministic mock data only when the fixture library is absent.
 - Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
 - Operator mapping editors persist browser-local review deltas keyed by job plus source signature.
-- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, external execution packaging, writer-adapter dry runs, and writer-runner requests/responses/receipts without implying that a Nuendo writer already exists.
+- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, external execution packaging, writer-adapter dry runs, writer-runner requests/responses/receipts, and writer-run transport/audit contracts without implying that a Nuendo writer already exists.
