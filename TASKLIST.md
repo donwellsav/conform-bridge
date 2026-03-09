@@ -4,8 +4,8 @@
 
 - Current phase: `Phase 3J` complete
 - Next phase: `Phase 3K`
-- Current real transport path: `filesystem-transport-adapter`
-- Current persistence model: browser-local review-state deltas
+- Current real transport path: `filesystem-transport-adapter` only
+- Current persistence model: browser-local review-state deltas only
 - Ongoing parser focus: reduce remaining AAF compatibility fallback only when
   real samples justify broader direct coverage
 

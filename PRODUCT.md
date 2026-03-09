@@ -31,7 +31,7 @@ explicit workflow layers:
 
 - Current phase: `Phase 3J` complete
 - Next phase: `Phase 3K`
-- Current real transport path: filesystem transport only
+- Current real transport path: `filesystem-transport-adapter` only
 - Current persistence model: browser-local review-state deltas only
 - Current writer state: no native Nuendo writer
 

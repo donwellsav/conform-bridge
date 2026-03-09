@@ -19,6 +19,15 @@ Conform Bridge uses a layered model:
 
 The layers are additive. Later layers do not replace earlier ones.
 
+## Current Status
+
+- Current phase: `Phase 3J` complete
+- Next phase: `Phase 3K`
+- Current real transport path: `filesystem-transport-adapter` only
+- Current persistence model: browser-local review-state deltas only
+- Current parser coverage: `fcpxml/xml`, `aaf`, `edl`, metadata CSV,
+  marker CSV, and `manifest.json`
+
 ## Layer 1: Intake
 
 ### SourceBundle
@@ -986,5 +995,7 @@ Operator-facing record that ties the full workflow together.
   when the fixture library is absent.
 - Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
 - Browser-local persistence is review-delta-only.
+- No native Nuendo writer exists yet.
+- Direct AAF parsing is real, but arbitrary AAF coverage is not complete.
 - Types must support the real implemented non-writer layers without implying
   that a native Nuendo writer already exists.

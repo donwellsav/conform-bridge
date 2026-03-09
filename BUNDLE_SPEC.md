@@ -13,6 +13,15 @@ Conform Bridge models:
 Direction must be modeled explicitly. File kind alone never determines inbound
 vs outbound direction.
 
+## Current Status
+
+- Current phase: `Phase 3J` complete
+- Next phase: `Phase 3K`
+- Current real transport path: `filesystem-transport-adapter` only
+- Current persistence model: browser-local review-state deltas only
+- Current parser coverage: `fcpxml/xml`, `aaf`, `edl`, metadata CSV,
+  marker CSV, and `manifest.json`
+
 ## Direction Contract
 
 - `stage` identifies intake vs delivery

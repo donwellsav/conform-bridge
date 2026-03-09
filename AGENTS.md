@@ -9,6 +9,8 @@ Resolve-to-Nuendo translation workflows.
 
 - Current phase: `Phase 3J` complete
 - Next phase: `Phase 3K`
+- Current real transport path: `filesystem-transport-adapter` only
+- Current persistence model: browser-local review-state deltas only
 - Real intake parsing exists for `fcpxml/xml`, `aaf`, `edl`, metadata CSV,
   marker CSV, and `manifest.json`
 - Importer precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`
@@ -17,7 +19,6 @@ Resolve-to-Nuendo translation workflows.
 - Delivery planning, execution prep, staging, handoff, external packaging,
   adapter dry runs, runner contracts, transport packaging, receipt
   normalization/ingestion, and executor compatibility validation all exist
-- Filesystem transport is the current real external transport path
 - No native Nuendo writer exists
 
 ## Required Engineering Rules

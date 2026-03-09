@@ -18,7 +18,7 @@ Native Nuendo writing is still intentionally out of scope.
 
 - Current phase: `Phase 3J` complete
 - Next phase: `Phase 3K`
-- Current real transport path: `filesystem-transport-adapter`
+- Current real transport path: `filesystem-transport-adapter` only
 - Current persistence model: browser-local review-state deltas only
 - Current real writer path: none
 
