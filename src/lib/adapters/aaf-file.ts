@@ -1,13 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { parseAafText, type ParseAafContext, type ParsedAafSource } from "../parsers/aaf";
-
-const OLE_COMPOUND_HEADER = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+import { OLE_COMPOUND_HEADER, parseAafContainerBuffer } from "../parsers/aaf-container";
 
 export type AafContainerKind = "ole-compound" | "text" | "unknown";
+export type AafExtractionMode = "direct" | "adapter" | "text" | "unparsed";
 
 export interface AafExtractionEnvelope {
   containerKind: AafContainerKind;
+  extractionMode: AafExtractionMode;
   adapterPath?: string;
   parsed: ParsedAafSource | null;
 }
@@ -58,16 +59,27 @@ export function extractAafFromFileSync(filePath: string, context: ParseAafContex
   const containerKind = detectContainerKind(buffer);
 
   if (containerKind === "ole-compound") {
+    const directParsed = parseAafContainerBuffer(buffer, context);
+    if (directParsed) {
+      return {
+        containerKind,
+        extractionMode: "direct",
+        parsed: directParsed,
+      };
+    }
+
     const adapterPath = findAdapterPath(filePath);
     if (!adapterPath) {
       return {
         containerKind,
+        extractionMode: "unparsed",
         parsed: null,
       };
     }
 
     return {
       containerKind,
+      extractionMode: "adapter",
       adapterPath,
       parsed: parseAafText(readFileSync(adapterPath, "utf8"), context),
     };
@@ -76,12 +88,14 @@ export function extractAafFromFileSync(filePath: string, context: ParseAafContex
   if (containerKind === "text") {
     return {
       containerKind,
+      extractionMode: "text",
       parsed: parseAafText(buffer.toString("utf8"), context),
     };
   }
 
   return {
     containerKind,
+    extractionMode: "unparsed",
     parsed: null,
   };
 }

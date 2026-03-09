@@ -15,7 +15,8 @@
 - [x] Add structured AAF parsing as the next intake milestone after FCPXML/XML.
 - [x] Deepen AAF ingestion beyond text-dump fixtures into richer composition, mob, and media reference parsing.
 - [x] Add binary/container-aware AAF extraction from real files with a stable external AAF-derived adapter fallback.
-- [ ] Add direct in-repo AAF container graph parsing beyond the current adapter-assisted extraction boundary.
+- [x] Add direct in-repo AAF container graph parsing while keeping adapter fallback as a compatibility path.
+- [ ] Expand direct AAF container parsing beyond the current embedded graph coverage and reduce adapter fallback dependence.
 - [ ] Add richer mapping editors for tracks, markers, metadata, and field recorder candidates.
 - [ ] Add validation rules that inspect real turnover completeness.
 - [ ] Add save/load behavior beyond in-browser draft state if the product direction requires it.

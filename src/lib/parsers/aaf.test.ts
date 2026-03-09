@@ -6,8 +6,132 @@ import test from "node:test";
 import { parseAafText } from "./aaf";
 import type { IntakeAsset } from "../types";
 
-const aafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only", "resolve", "RVR_205_R1_LOCK.aaf.adapter");
 const missingMediaAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-207-aaf-missing-media", "resolve", "RVR_207_R1_LOCK.aaf.adapter");
+const normalizedAafPayload = JSON.stringify({
+  format: "conform-bridge-aaf-derived/v2",
+  composition: {
+    name: "RVR_205_R1_AAF_PRIMARY",
+    mobName: "RVR_205_R1_COMPOSITION",
+    editRate: "24000/1001",
+    sampleRate: 48000,
+    startTimecode: "01:00:00:00",
+    durationTimecode: "00:08:10:00",
+    dropFrame: false,
+  },
+  tracks: [
+    {
+      slotId: "1",
+      index: 1,
+      name: "DX BOOM A",
+      role: "dx",
+      channelCount: 1,
+      channelLayout: "mono",
+    },
+    {
+      slotId: "2",
+      index: 2,
+      name: "DX BOOM B",
+      role: "dx",
+      channelCount: 1,
+      channelLayout: "mono",
+    },
+  ],
+  mediaRefs: [
+    {
+      id: "mr-1",
+      fileName: "ROLL_070A_01.BWF",
+      mobName: "ROLL_070A_01",
+      reel: "070A",
+      tape: "R070A",
+      channelCount: 8,
+      channelLayout: "poly_8",
+      hasBwf: true,
+      hasIXml: true,
+      missing: false,
+    },
+    {
+      id: "mr-2",
+      fileName: "ROLL_070A_02.BWF",
+      mobName: "ROLL_070A_02",
+      reel: "070A",
+      tape: "R070A",
+      channelCount: 8,
+      channelLayout: "poly_8",
+      hasBwf: true,
+      hasIXml: true,
+      missing: false,
+    },
+  ],
+  events: [
+    {
+      id: "evt-1",
+      trackSlotId: "1",
+      trackIndex: 1,
+      clipName: "BOOM_070A_01_A",
+      mediaRefId: "mr-1",
+      timing: {
+        recordIn: "01:00:12:00",
+        recordOut: "01:00:16:12",
+        sourceIn: "09:10:00:00",
+        sourceOut: "09:10:04:12",
+      },
+      metadata: {
+        reel: "070A",
+        tape: "R070A",
+        scene: "12C",
+        take: "3",
+        notes: "Primary boom event from the AAF-derived fixture.",
+      },
+      effects: {
+        fadeIn: true,
+        fadeOut: false,
+        speedRatio: "1/1",
+      },
+      flags: {
+        offline: false,
+        nested: false,
+        flattened: true,
+      },
+    },
+    {
+      id: "evt-2",
+      trackSlotId: "2",
+      trackIndex: 2,
+      clipName: "BOOM_070A_02_B",
+      mediaRefId: "mr-2",
+      timing: {
+        recordIn: "01:00:20:00",
+        recordOut: "01:00:24:00",
+        sourceIn: "09:10:08:00",
+        sourceOut: "09:10:12:00",
+      },
+      metadata: {
+        reel: "070A",
+        tape: "R070A",
+        scene: "12C",
+        take: "4",
+      },
+      effects: {
+        fadeIn: false,
+        fadeOut: true,
+        speedRatio: "1001/960",
+      },
+      flags: {
+        offline: false,
+        nested: false,
+        flattened: true,
+      },
+    },
+  ],
+  markers: [
+    {
+      timecode: "01:00:22:00",
+      name: "AAF-only marker",
+      color: "yellow",
+      note: "Parsed from the richer AAF-derived fixture.",
+    },
+  ],
+});
 
 const assets: IntakeAsset[] = [
   {
@@ -49,7 +173,7 @@ const assets: IntakeAsset[] = [
 ];
 
 test("parseAafText hydrates timeline, tracks, clips, and markers from the normalized AAF adapter payload", () => {
-  const parsed = parseAafText(readFileSync(aafFixturePath, "utf8"), {
+  const parsed = parseAafText(normalizedAafPayload, {
     bundleId: "bundle-rvr-205-aaf-only",
     translationModelId: "model-rvr-205-aaf-only",
     timelineId: "timeline-rvr-205-aaf-only",

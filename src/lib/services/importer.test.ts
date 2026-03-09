@@ -123,6 +123,7 @@ test("importTurnoverFolderSync uses AAF as the primary timeline source when FCPX
   assert.equal(result.clipEvents[1]?.hasSpeedEffect, true);
   assert.ok(!issueCodes.includes("AAF_TRACK_COUNT_MISMATCH"));
   assert.ok(!issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
+  assert.ok(!issueCodes.includes("AAF_ADAPTER_FALLBACK"));
 });
 
 test("importTurnoverFolderSync keeps FCPXML primary, enriches from AAF, and records AAF reconciliation issues", () => {
@@ -145,6 +146,7 @@ test("importTurnoverFolderSync keeps FCPXML primary, enriches from AAF, and reco
   assert.ok(issueCodes.includes("AAF_REEL_TAPE_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_MARKER_COVERAGE_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
+  assert.ok(issueCodes.includes("AAF_ADAPTER_FALLBACK"));
 });
 
 test("importTurnoverFolderSync preserves explicit missing-media issues for AAF-primary fixtures", () => {
@@ -163,4 +165,5 @@ test("importTurnoverFolderSync preserves explicit missing-media issues for AAF-p
   assert.ok(issueCodes.includes("SOURCE_FILE_MISSING_FROM_INTAKE"));
   assert.ok(issueCodes.includes("MISSING_PRODUCTION_ROLL"));
   assert.ok(issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
+  assert.ok(issueCodes.includes("AAF_ADAPTER_FALLBACK"));
 });

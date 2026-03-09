@@ -1623,6 +1623,31 @@ function createAafReconciliationIssues(
   return issues;
 }
 
+function createAafDiagnosticIssues(
+  jobId: string,
+  aafExtraction: { extractionMode: "direct" | "adapter" | "text" | "unparsed"; adapterPath?: string } | null,
+) {
+  if (!aafExtraction || aafExtraction.extractionMode !== "adapter") {
+    return [] as PreservationIssue[];
+  }
+
+  return [{
+    id: `issue-${slugify(jobId)}-aaf-adapter-fallback`,
+    jobId,
+    category: "manual-review",
+    severity: "info",
+    scope: "intake",
+    code: "AAF_ADAPTER_FALLBACK",
+    title: "AAF adapter fallback was required",
+    description: "Direct in-repo AAF container parsing did not extract this file, so the importer used the compatibility adapter payload instead.",
+    sourceLocation: aafExtraction.adapterPath ?? "AAF adapter sidecar",
+    impact: "Canonical hydration succeeded, but direct AAF container coverage is incomplete for this file shape.",
+    recommendedAction: "Keep the adapter payload available until direct parsing supports this AAF structure natively.",
+    requiresDecision: false,
+    affectedItems: [aafExtraction.adapterPath ?? "adapter fallback used"],
+  } satisfies PreservationIssue];
+}
+
 function buildTimelineFromCanonical(
   translationModelId: string,
   timelineId: string,
@@ -1732,7 +1757,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
         },
       )
     : null;
-  const parsedAaf = aafAsset
+  const extractedAaf = aafAsset
     ? extractAafFromFileSync(
         join(folderPath, aafAsset.relativePath ?? aafAsset.name),
         {
@@ -1746,8 +1771,9 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
           fallbackStartTimecode: startTimecode,
           fallbackDropFrame: manifest?.dropFrame ?? false,
         },
-      ).parsed
+      )
     : null;
+  const parsedAaf = extractedAaf?.parsed ?? null;
   const metadataHydration = metadataRows.length > 0 ? hydrateFromMetadataRows(bundleId, timelineId, fps, metadataRows, assets) : null;
   const edlHydration = parsedEdl.events.length > 0 ? createFallbackClipsFromEdl(bundleId, timelineId, fps, parsedEdl.events, assets) : null;
 
@@ -1896,6 +1922,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       : null,
     assets,
   );
+  const aafDiagnosticIssues = createAafDiagnosticIssues(jobId, extractedAaf);
   const tracks = primaryHydration.tracks;
   const clipEvents = primaryHydration.clipEvents;
   const timeline = primaryHydration.timeline;
@@ -1935,7 +1962,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     fieldRecorderBlocked,
     manifest?.expectedFiles ?? [],
     manifest?.expectedProductionRolls ?? [],
-    [...reconciliationIssues, ...aafReconciliationIssues],
+    [...reconciliationIssues, ...aafReconciliationIssues, ...aafDiagnosticIssues],
   );
 
   const translationModel = {
