@@ -10,7 +10,7 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 let cachedDraftRawValue: string | null | undefined;
-let cachedDraftDefaults: NewJobDraft | undefined;
+let cachedDraftDefaultsSignature: string | undefined;
 let cachedDraftSnapshot: NewJobDraft | undefined;
 
 function emit() {
@@ -23,6 +23,10 @@ function isString(value: unknown): value is string {
 
 function isStepIndex(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 3;
+}
+
+function createDraftDefaultsSignature(defaults: NewJobDraft) {
+  return [defaults.stepIndex, defaults.selectedBundleId, defaults.selectedTemplateId].join("::");
 }
 
 export function subscribeToDraft(listener: Listener) {
@@ -50,18 +54,19 @@ export function readStoredDraft(defaults: NewJobDraft): NewJobDraft {
   }
 
   const rawValue = window.localStorage.getItem(DRAFT_STORAGE_KEY);
+  const defaultsSignature = createDraftDefaultsSignature(defaults);
 
   if (
     cachedDraftSnapshot
     && cachedDraftRawValue === rawValue
-    && cachedDraftDefaults === defaults
+    && cachedDraftDefaultsSignature === defaultsSignature
   ) {
     return cachedDraftSnapshot;
   }
 
   if (!rawValue) {
     cachedDraftRawValue = null;
-    cachedDraftDefaults = defaults;
+    cachedDraftDefaultsSignature = defaultsSignature;
     cachedDraftSnapshot = defaults;
     return defaults;
   }
@@ -69,12 +74,12 @@ export function readStoredDraft(defaults: NewJobDraft): NewJobDraft {
   try {
     const nextDraft = mergeDraft(defaults, JSON.parse(rawValue));
     cachedDraftRawValue = rawValue;
-    cachedDraftDefaults = defaults;
+    cachedDraftDefaultsSignature = defaultsSignature;
     cachedDraftSnapshot = nextDraft;
     return nextDraft;
   } catch {
     cachedDraftRawValue = rawValue;
-    cachedDraftDefaults = defaults;
+    cachedDraftDefaultsSignature = defaultsSignature;
     cachedDraftSnapshot = defaults;
     return defaults;
   }
@@ -87,7 +92,7 @@ export function writeStoredDraft(draft: NewJobDraft) {
 
   const serializedDraft = JSON.stringify(draft);
   cachedDraftRawValue = serializedDraft;
-  cachedDraftDefaults = draft;
+  cachedDraftDefaultsSignature = createDraftDefaultsSignature(draft);
   cachedDraftSnapshot = draft;
   window.localStorage.setItem(DRAFT_STORAGE_KEY, serializedDraft);
   emit();

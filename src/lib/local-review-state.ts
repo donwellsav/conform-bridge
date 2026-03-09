@@ -200,12 +200,6 @@ function coerceStoredReviewState(candidate: unknown): ReviewState | undefined {
   };
 }
 
-// Cached empty store for useSyncExternalStore server snapshot to prevent infinite loops
-const EMPTY_REVIEW_STATE_STORE: ReviewStateStore = {
-  version: REVIEW_STATE_VERSION,
-  states: {},
-};
-
 export function createEmptyReviewStateStore(): ReviewStateStore {
   return EMPTY_REVIEW_STATE_STORE;
 }

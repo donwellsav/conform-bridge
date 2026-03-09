@@ -6,7 +6,7 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 let cachedSettingsRawValue: string | null | undefined;
-let cachedSettingsDefaults: AppSettings | undefined;
+let cachedSettingsDefaultsSignature: string | undefined;
 let cachedSettingsSnapshot: AppSettings | undefined;
 
 function emit() {
@@ -27,6 +27,17 @@ function isReportGrouping(value: unknown): value is AppSettings["defaultReportGr
 
 function isString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
+}
+
+function createSettingsDefaultsSignature(defaults: AppSettings) {
+  return [
+    defaults.defaultTemplateId,
+    defaults.showDenseTables,
+    defaults.defaultHandlesFrames,
+    defaults.defaultReferenceVideo,
+    defaults.defaultReportGrouping,
+    defaults.localPersistenceEnabled,
+  ].join("::");
 }
 
 export function mergeStoredSettings(defaults: AppSettings, candidate: unknown): AppSettings {
@@ -57,18 +68,19 @@ export function readStoredSettings(defaults: AppSettings): AppSettings {
   }
 
   const rawValue = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+  const defaultsSignature = createSettingsDefaultsSignature(defaults);
 
   if (
     cachedSettingsSnapshot
     && cachedSettingsRawValue === rawValue
-    && cachedSettingsDefaults === defaults
+    && cachedSettingsDefaultsSignature === defaultsSignature
   ) {
     return cachedSettingsSnapshot;
   }
 
   if (!rawValue) {
     cachedSettingsRawValue = null;
-    cachedSettingsDefaults = defaults;
+    cachedSettingsDefaultsSignature = defaultsSignature;
     cachedSettingsSnapshot = defaults;
     return defaults;
   }
@@ -76,12 +88,12 @@ export function readStoredSettings(defaults: AppSettings): AppSettings {
   try {
     const nextSettings = mergeStoredSettings(defaults, JSON.parse(rawValue));
     cachedSettingsRawValue = rawValue;
-    cachedSettingsDefaults = defaults;
+    cachedSettingsDefaultsSignature = defaultsSignature;
     cachedSettingsSnapshot = nextSettings;
     return nextSettings;
   } catch {
     cachedSettingsRawValue = rawValue;
-    cachedSettingsDefaults = defaults;
+    cachedSettingsDefaultsSignature = defaultsSignature;
     cachedSettingsSnapshot = defaults;
     return defaults;
   }
@@ -102,7 +114,7 @@ export function writeStoredSettings(settings: AppSettings) {
 
   if (!settings.localPersistenceEnabled) {
     cachedSettingsRawValue = null;
-    cachedSettingsDefaults = settings;
+    cachedSettingsDefaultsSignature = createSettingsDefaultsSignature(settings);
     cachedSettingsSnapshot = settings;
     window.localStorage.removeItem(SETTINGS_STORAGE_KEY);
     emit();
@@ -111,7 +123,7 @@ export function writeStoredSettings(settings: AppSettings) {
 
   const serializedSettings = JSON.stringify(settings);
   cachedSettingsRawValue = serializedSettings;
-  cachedSettingsDefaults = settings;
+  cachedSettingsDefaultsSignature = createSettingsDefaultsSignature(settings);
   cachedSettingsSnapshot = settings;
   window.localStorage.setItem(SETTINGS_STORAGE_KEY, serializedSettings);
   emit();

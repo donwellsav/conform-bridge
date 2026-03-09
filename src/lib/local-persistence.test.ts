@@ -60,7 +60,7 @@ test("settings storage returns a stable snapshot when storage is unchanged", () 
 
   withMockWindow({ [SETTINGS_STORAGE_KEY]: serializedSettings }, () => {
     const firstSettings = readStoredSettings(defaults);
-    const secondSettings = readStoredSettings(defaults);
+    const secondSettings = readStoredSettings({ ...defaults });
 
     assert.equal(firstSettings, secondSettings);
   });
@@ -81,8 +81,41 @@ test("draft storage returns a stable snapshot when storage is unchanged", () => 
 
   withMockWindow({ [DRAFT_STORAGE_KEY]: serializedDraft }, () => {
     const firstDraft = readStoredDraft(defaults);
-    const secondDraft = readStoredDraft(defaults);
+    const secondDraft = readStoredDraft({ ...defaults });
 
     assert.equal(firstDraft, secondDraft);
+  });
+});
+
+test("draft storage returns a stable default snapshot when no stored value exists", () => {
+  const defaults: NewJobDraft = {
+    stepIndex: 0,
+    selectedBundleId: "bundle-1",
+    selectedTemplateId: "template-dialogue",
+  };
+
+  withMockWindow({}, () => {
+    const firstDraft = readStoredDraft(defaults);
+    const secondDraft = readStoredDraft({ ...defaults });
+
+    assert.equal(firstDraft, secondDraft);
+  });
+});
+
+test("settings storage returns a stable default snapshot when no stored value exists", () => {
+  const defaults: AppSettings = {
+    defaultTemplateId: "template-dialogue",
+    showDenseTables: true,
+    defaultHandlesFrames: 12,
+    defaultReferenceVideo: true,
+    defaultReportGrouping: "severity",
+    localPersistenceEnabled: true,
+  };
+
+  withMockWindow({}, () => {
+    const firstSettings = readStoredSettings(defaults);
+    const secondSettings = readStoredSettings({ ...defaults });
+
+    assert.equal(firstSettings, secondSettings);
   });
 });
