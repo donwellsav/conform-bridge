@@ -7,7 +7,7 @@ import { planNuendoDeliverySync } from "./services/exporter";
 
 test("imported fixture data flows through exporter planning into dashboard and job selectors", () => {
   assert.equal(dataSource.dataMode, "imported");
-  assert.equal(dataSource.jobs.length, 6);
+  assert.equal(dataSource.jobs.length, 7);
 
   const job = dataSource.jobs[0];
   assert.ok(job);
@@ -29,6 +29,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(missingMediaJob);
   const broaderDirectAafJob = dataSource.jobs.find((candidate) => candidate.id === "job-rvr-208-aaf-mob-graph");
   assert.ok(broaderDirectAafJob);
+  const partialFallbackJob = dataSource.jobs.find((candidate) => candidate.id === "job-rvr-209-aaf-partial-fallback");
+  assert.ok(partialFallbackJob);
   const mappingMetric = dataSource.dashboardMetrics.find((metric) => metric.label === "Mapping reviews");
   assert.ok(mappingMetric);
 });

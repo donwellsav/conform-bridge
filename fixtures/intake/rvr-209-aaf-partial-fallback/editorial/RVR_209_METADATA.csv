@@ -1,0 +1,2 @@
+timelineName,trackIndex,trackName,role,channelLayout,clipName,sourceFileName,reel,tape,scene,take,recordIn,recordOut,sourceIn,sourceOut,channelCount,isPolyWav,hasBwf,hasIXml,isOffline,isNested,isFlattened,hasSpeedEffect,hasFadeIn,hasFadeOut,eventDescription,clipNotes
+RVR_209_R1,1,DX BOOM A,dx,mono,BOOM_120A_01_A,ROLL_120A_01.BWF,120A,R120A,18B,5,01:00:05:00,01:00:09:12,10:00:05:00,10:00:09:12,8,true,true,true,false,false,true,false,true,false,Metadata row aligned with fallback adapter,This fixture keeps the adapter path alive while direct parsing broadens

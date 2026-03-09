@@ -11,6 +11,7 @@ const aafOnlyFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-205
 const aafVsFcpxmlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-206-aaf-vs-fcpxml");
 const aafMissingMediaFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-207-aaf-missing-media");
 const broaderAafGraphFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-208-aaf-mob-graph");
+const partialFallbackAafFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-209-aaf-partial-fallback");
 const manifestPath = resolve(fcpxmlFixtureRoot, "editorial", "manifest.json");
 const metadataPath = resolve(fcpxmlFixtureRoot, "editorial", "RVR_203_METADATA.csv");
 const importer = ("default" in importerModule ? importerModule.default : importerModule) as typeof importerModule;
@@ -148,7 +149,7 @@ test("importTurnoverFolderSync keeps FCPXML primary, enriches from AAF, and reco
   assert.ok(issueCodes.includes("AAF_REEL_TAPE_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_MARKER_COVERAGE_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
-  assert.ok(issueCodes.includes("AAF_ADAPTER_FALLBACK"));
+  assert.ok(!issueCodes.includes("AAF_ADAPTER_FALLBACK"));
 });
 
 test("importTurnoverFolderSync preserves explicit missing-media issues for AAF-primary fixtures", () => {
@@ -157,7 +158,7 @@ test("importTurnoverFolderSync preserves explicit missing-media issues for AAF-p
   assert.equal(result.timeline.name, "RVR_207_R1_AAF_PRIMARY");
   assert.equal(result.timeline.trackIds.length, 2);
   assert.equal(result.clipEvents.length, 2);
-  assert.equal(result.markers.length, 1);
+  assert.equal(result.markers.length, 3);
 
   const missingClip = result.clipEvents.find((clipEvent) => clipEvent.clipName === "LAV_090B_02_B");
   const issueCodes = result.analysisReport.groups.flatMap((group) => group.findings.map((finding) => finding.code));
@@ -167,7 +168,25 @@ test("importTurnoverFolderSync preserves explicit missing-media issues for AAF-p
   assert.ok(issueCodes.includes("SOURCE_FILE_MISSING_FROM_INTAKE"));
   assert.ok(issueCodes.includes("MISSING_PRODUCTION_ROLL"));
   assert.ok(issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
-  assert.ok(issueCodes.includes("AAF_ADAPTER_FALLBACK"));
+  assert.ok(!issueCodes.includes("AAF_ADAPTER_FALLBACK"));
+});
+
+test("importTurnoverFolderSync keeps adapter fallback available for partially parsed AAF layouts and reports why it was needed", () => {
+  const result = importer.importTurnoverFolderSync(partialFallbackAafFixtureRoot);
+
+  assert.equal(result.timeline.name, "RVR_209_R1_AAF_FALLBACK");
+  assert.equal(result.timeline.trackIds.length, 1);
+  assert.equal(result.clipEvents.length, 1);
+  assert.equal(result.markers.length, 1);
+
+  const fallbackIssue = result.analysisReport.groups
+    .flatMap((group) => group.findings)
+    .find((finding) => finding.code === "AAF_ADAPTER_FALLBACK");
+
+  assert.ok(fallbackIssue);
+  assert.match(fallbackIssue?.description ?? "", /compatibility adapter payload/i);
+  assert.ok(fallbackIssue?.affectedItems.some((item) => /unsupported segment kind/i.test(item)));
+  assert.ok(fallbackIssue?.affectedItems.some((item) => /could not hydrate any clip events/i.test(item)));
 });
 
 test("importTurnoverFolderSync directly traverses broader AAF mob graphs and preserves locator and descriptor detail", () => {

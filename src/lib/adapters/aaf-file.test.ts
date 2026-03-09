@@ -8,7 +8,8 @@ import { extractAafFromFileSync } from "./aaf-file";
 import type { IntakeAsset } from "../types";
 
 const directBinaryAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only", "resolve", "RVR_205_R1_LOCK.aaf");
-const adapterBinaryAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-206-aaf-vs-fcpxml", "resolve", "RVR_206_R2_LOCK.aaf");
+const broaderDirectBinaryAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-206-aaf-vs-fcpxml", "resolve", "RVR_206_R2_LOCK.aaf");
+const partialFallbackBinaryAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-209-aaf-partial-fallback", "resolve", "RVR_209_R1_LOCK.aaf");
 const adapterFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-206-aaf-vs-fcpxml", "resolve", "RVR_206_R2_LOCK.aaf.adapter");
 
 const assets: IntakeAsset[] = [
@@ -51,18 +52,33 @@ test("extractAafFromFileSync reads direct in-repo AAF container graph data from 
 
   assert.equal(extracted.containerKind, "ole-compound");
   assert.equal(extracted.extractionMode, "direct");
+  assert.equal(extracted.directCoverage, "full");
   assert.equal(extracted.adapterPath, undefined);
   assert.equal(extracted.parsed?.timeline.name, "RVR_205_R1_AAF_PRIMARY");
   assert.equal(extracted.parsed?.clipEvents.length, 2);
 });
 
-test("extractAafFromFileSync falls back to the adapter payload when direct parsing does not cover the file", () => {
-  const extracted = extractAafFromFileSync(adapterBinaryAafFixturePath, createContext());
+test("extractAafFromFileSync directly parses broader OLE-layout fixtures before any adapter is considered", () => {
+  const extracted = extractAafFromFileSync(broaderDirectBinaryAafFixturePath, createContext());
+
+  assert.equal(extracted.containerKind, "ole-compound");
+  assert.equal(extracted.extractionMode, "direct");
+  assert.equal(extracted.directCoverage, "full");
+  assert.equal(extracted.adapterPath, undefined);
+  assert.equal(extracted.parsed?.timeline.name, "RVR_206_R2_AAF_SECONDARY");
+  assert.equal(extracted.parsed?.markers.length, 2);
+});
+
+test("extractAafFromFileSync falls back to the adapter payload when direct parsing only partially covers the file", () => {
+  const extracted = extractAafFromFileSync(partialFallbackBinaryAafFixturePath, createContext());
 
   assert.equal(extracted.containerKind, "ole-compound");
   assert.equal(extracted.extractionMode, "adapter");
-  assert.match(extracted.adapterPath ?? "", /RVR_206_R2_LOCK\.aaf\.adapter$/);
-  assert.equal(extracted.parsed?.timeline.name, "RVR_206_R2_AAF_SECONDARY");
+  assert.equal(extracted.directCoverage, "partial");
+  assert.match(extracted.adapterPath ?? "", /RVR_209_R1_LOCK\.aaf\.adapter$/);
+  assert.match(extracted.fallbackReason ?? "", /could not hydrate any clip events/i);
+  assert.ok(extracted.diagnostics.some((diagnostic) => /unsupported segment kind/i.test(diagnostic)));
+  assert.equal(extracted.parsed?.timeline.name, "RVR_209_R1_AAF_FALLBACK");
 });
 
 test("extractAafFromFileSync keeps the legacy text fixture path as a fallback", () => {

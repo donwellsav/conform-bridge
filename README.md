@@ -6,13 +6,13 @@ Current workflow model:
 
 `Resolve/editorial intake -> canonical normalized translation model -> planned Nuendo delivery package`
 
-This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF container parsing with adapter fallback, and real delivery planning, but it does not write Nuendo files yet.
+This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, and real delivery planning, but it does not write Nuendo files yet.
 
 Current phase:
-- `Phase 2J` completed: operator review-state persistence and reconform-ready saved review tooling are in place.
+- `Phase 2K` completed: direct AAF parsing now covers more non-trivial layouts directly, while `.adapter` fallback remains as a narrower compatibility path.
 
 Next planned phase:
-- `Phase 2K`: reduce remaining AAF compatibility fallback dependence.
+- `Phase 3`: keep delivery execution prep separate from planning until the writer boundary is ready.
 
 ## Phase History
 
@@ -129,6 +129,17 @@ Implemented:
 - reset-to-imported-state controls without persisting the imported canonical model itself
 - SSR-safe persistence tests, overlay tests, and exporter-preview regression coverage
 
+### Phase 2K
+Reduced remaining AAF compatibility fallback dependence.
+
+Implemented:
+- broader direct in-repo AAF parsing for supported decoded-OLE layout payloads in addition to the existing embedded graph path
+- direct parsing for more non-trivial AAF fixture layouts, including stream-backed mob/slot/component extraction
+- richer direct extraction of composition mobs, mob slots, source mobs, source clips, locators/comments, media descriptors, source clip identity, and missing-media hints
+- stronger adapter-fallback diagnostics that now preserve payload format, fallback reason, and direct-parse diagnostics when compatibility sidecars are still required
+- explicit partial-fallback coverage through a dedicated compatibility fixture while keeping current fixtures on the direct path where possible
+- regression coverage proving existing direct fixtures still hydrate the same canonical model and saved review-state flow remains intact
+
 ## Current Status
 
 Implemented now:
@@ -136,6 +147,7 @@ Implemented now:
 - typed intake, canonical, and delivery domain model
 - real intake folder scanning and classification
 - real parsing for FCPXML/XML, broader direct in-repo AAF container parsing with adapter fallback, metadata CSV, marker CSV, `manifest.json`, and simple EDL extraction
+- direct AAF parsing for embedded graph payloads, broader decoded-OLE layout payloads, locators/comments, media descriptors, and transition/effect hints where inferable
 - Canonical hydration for bundles, timelines, tracks, clips, markers, and analysis
 - Primary timeline hydration from FCPXML/XML when present, with AAF enrichment and `aaf -> edl -> metadata` fallback after that
 - Deterministic delivery planning in `exporter.ts`
@@ -144,12 +156,14 @@ Implemented now:
 - browser-local persisted review deltas for mappings, validation acknowledgements, and reconform review decisions
 - reconform review with saved per-change status, notes, filters, and summary counts
 - Fixture-backed tests for importer, exporter, and data flow
+- measurably reduced adapter dependence in the current fixture library: direct parsing now covers `rvr-205`, `rvr-206`, `rvr-207`, and `rvr-208`, while `rvr-209` remains the explicit compatibility-fallback case
 
 ## Known Limitations
 
 - No Nuendo writer exists yet.
 - Operator review persistence is browser-local only; no backend or shared multi-user state exists.
 - Full arbitrary-production AAF graph traversal without compatibility fallback is not complete yet.
+- `.adapter` fallback is still required for unsupported or only-partially-parsed AAF layouts, even though the current fixture library depends on it less than before.
 - BWF/WAV and MOV/MP4 assets are classified but not deeply parsed.
 - Auth, billing, database, backend, and marketing site remain out of scope.
 
@@ -215,6 +229,7 @@ The repo includes real fixture turnover folders:
 - `fixtures/intake/rvr-206-aaf-vs-fcpxml`
 - `fixtures/intake/rvr-207-aaf-missing-media`
 - `fixtures/intake/rvr-208-aaf-mob-graph`
+- `fixtures/intake/rvr-209-aaf-partial-fallback`
 
 `rvr-203-r3` includes:
 - Resolve AAF
@@ -244,7 +259,8 @@ One production roll is intentionally missing so analysis, reconciliation, and de
 
 `rvr-206-aaf-vs-fcpxml` includes:
 - FCPXML as the primary structured timeline source
-- a binary/container-aware `.aaf` file plus adapter fallback payload as the secondary structured source for enrichment and reconciliation
+- a broader decoded-OLE-style `.aaf` file that now parses directly as the secondary structured source for enrichment and reconciliation
+- a retained adapter sidecar kept only as a compatibility reference path
 - metadata CSV
 - marker CSV
 - `manifest.json`
@@ -252,8 +268,9 @@ One production roll is intentionally missing so analysis, reconciliation, and de
 - production-audio BWF placeholders
 
 `rvr-207-aaf-missing-media` includes:
-- a binary/container-aware `.aaf` file plus adapter fallback payload as the primary structured timeline source
-- explicit missing-media references inside the AAF-derived payload
+- a broader decoded-OLE-style `.aaf` file that now parses directly as the primary structured timeline source
+- explicit missing-media references plus heavier locator coverage inside the direct AAF payload
+- a retained adapter sidecar kept only as a compatibility reference path
 - metadata CSV
 - `manifest.json`
 - reference video placeholder
@@ -265,6 +282,12 @@ One production roll is intentionally missing so analysis, reconciliation, and de
 - `manifest.json`
 - reference video placeholder
 - production-audio BWF placeholders that match the direct media descriptors
+
+`rvr-209-aaf-partial-fallback` includes:
+- a direct-parse-first `.aaf` container that is intentionally only partially covered by the in-repo parser
+- a retained `.adapter` sidecar that keeps canonical hydration working for this unsupported layout class
+- metadata CSV, `manifest.json`, reference video placeholder, and a production-audio roll placeholder
+- importer diagnostics that explain why compatibility fallback was still required
 
 ## Running Locally
 
@@ -315,8 +338,9 @@ npm run build
 
 Parsed:
 - FCPXML / XML timeline structure
-- broader direct in-repo AAF container parsing for supported binary fixture shapes
-- adapter fallback payload normalization when direct parsing does not cover a file
+- direct AAF parsing for embedded graph payloads and broader decoded-OLE layout payloads
+- direct extraction of composition mobs, mob slots, source mobs, source clips, locators/comments, media descriptors, and transition/effect hints for the supported fixture classes
+- adapter fallback payload normalization when direct parsing still cannot hydrate a file
 - metadata CSV
 - marker CSV
 - `manifest.json`
@@ -344,6 +368,7 @@ Reconciliation currently flags:
 - AAF-vs-primary source file mismatch
 - AAF-vs-primary reel/tape mismatch
 - AAF-vs-primary marker coverage mismatch
+- AAF direct-parse fallback-required diagnostics when compatibility sidecars were still needed
 - AAF-referenced media missing from intake
 - missing reel / tape / scene / take
 - source files referenced by the timeline exchange but missing from intake
@@ -369,15 +394,6 @@ Current operator tooling includes:
 
 ## Planned Next Phases
 
-### Phase 2K
-Reduce remaining AAF compatibility fallback dependence.
-
-Targets:
-- broader real-world OLE/AAF graph traversal
-- less dependence on embedded in-repo graph payloads
-- more composition mob, slot, source mob, and locator extraction from non-fixture layouts
-- better transition and effect coverage
-
 ### Phase 3
 Delivery execution after planning is stable.
 
@@ -389,6 +405,6 @@ Targets:
 ## Next Recommended Work
 
 - reduce remaining AAF adapter and compatibility fallback dependence while keeping importer precedence at `fcpxml/xml -> aaf -> edl -> metadata`
-- broaden direct AAF coverage toward more arbitrary production OLE/AAF layouts before adding any write path
+- broaden direct AAF coverage from supported fixture layouts toward more arbitrary production OLE/AAF layouts before adding any write path
 - prepare Phase 3 delivery execution only after AAF coverage and saved operator review state feel stable
 - keep delivery execution strictly separate from exporter planning until a real writer boundary is ready

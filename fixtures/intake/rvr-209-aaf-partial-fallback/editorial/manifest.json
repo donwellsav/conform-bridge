@@ -1,0 +1,23 @@
+{
+  "bundleName": "RVR_209_R1_TURNOVER",
+  "jobCode": "RVR209R1",
+  "title": "River Run Episode 209 Revision 1",
+  "sequenceName": "RVR_209_R1",
+  "pictureLock": true,
+  "fps": "23.976",
+  "startTimecode": "01:00:00:00",
+  "durationTimecode": "00:05:10:00",
+  "sampleRate": 48000,
+  "handlesFrames": 12,
+  "dropFrame": false,
+  "templateId": "tpl-dialogue-premix",
+  "outputPresetId": "tpl-dialogue-premix",
+  "expectedFiles": [
+    "RVR_209_R1_LOCK.aaf",
+    "RVR_209_METADATA.csv",
+    "RVR_209_REF.mov"
+  ],
+  "expectedProductionRolls": [
+    "ROLL_120A_01.BWF"
+  ]
+}

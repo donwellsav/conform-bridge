@@ -1661,27 +1661,62 @@ function createAafReconciliationIssues(
 
 function createAafDiagnosticIssues(
   jobId: string,
-  aafExtraction: { extractionMode: "direct" | "adapter" | "text" | "unparsed"; adapterPath?: string } | null,
+  aafExtraction: {
+    extractionMode: "direct" | "adapter" | "text" | "unparsed";
+    directCoverage: "full" | "partial" | "none";
+    payloadFormat?: string;
+    diagnostics: string[];
+    fallbackReason?: string;
+    adapterPath?: string;
+  } | null,
 ) {
-  if (!aafExtraction || aafExtraction.extractionMode !== "adapter") {
+  if (!aafExtraction) {
     return [] as PreservationIssue[];
   }
 
-  return [{
-    id: `issue-${slugify(jobId)}-aaf-adapter-fallback`,
-    jobId,
-    category: "manual-review",
-    severity: "info",
-    scope: "intake",
-    code: "AAF_ADAPTER_FALLBACK",
-    title: "AAF adapter fallback was required",
-    description: "Direct in-repo AAF container parsing did not extract this file, so the importer used the compatibility adapter payload instead.",
-    sourceLocation: aafExtraction.adapterPath ?? "AAF adapter sidecar",
-    impact: "Canonical hydration succeeded, but direct AAF container coverage is incomplete for this file shape.",
-    recommendedAction: "Keep the adapter payload available until direct parsing supports this AAF structure natively.",
-    requiresDecision: false,
-    affectedItems: [aafExtraction.adapterPath ?? "adapter fallback used"],
-  } satisfies PreservationIssue];
+  const diagnostics = [
+    aafExtraction.payloadFormat ? `payload=${aafExtraction.payloadFormat}` : undefined,
+    aafExtraction.fallbackReason,
+    ...aafExtraction.diagnostics,
+  ].filter((value): value is string => Boolean(value && value.trim().length > 0));
+
+  if (aafExtraction.extractionMode === "adapter") {
+    return [{
+      id: `issue-${slugify(jobId)}-aaf-adapter-fallback`,
+      jobId,
+      category: "manual-review",
+      severity: "info",
+      scope: "intake",
+      code: "AAF_ADAPTER_FALLBACK",
+      title: "AAF adapter fallback was required",
+      description: "Direct in-repo AAF parsing inspected this container first but still required the compatibility adapter payload for canonical hydration.",
+      sourceLocation: aafExtraction.adapterPath ?? "AAF adapter sidecar",
+      impact: "Canonical hydration succeeded, but direct AAF coverage is still incomplete for this container layout.",
+      recommendedAction: "Keep the adapter payload available until direct parsing supports this AAF structure natively.",
+      requiresDecision: false,
+      affectedItems: diagnostics.length > 0 ? diagnostics : [aafExtraction.adapterPath ?? "adapter fallback used"],
+    } satisfies PreservationIssue];
+  }
+
+  if (aafExtraction.extractionMode === "unparsed") {
+    return [{
+      id: `issue-${slugify(jobId)}-aaf-unparsed`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "intake",
+      code: "AAF_DIRECT_PARSE_UNSUPPORTED",
+      title: "AAF could not be parsed directly",
+      description: "The importer detected an AAF file, but direct in-repo parsing could not hydrate it and no compatibility payload was used.",
+      sourceLocation: "AAF container inspection",
+      impact: "Canonical hydration fell back to other intake sources, so AAF-specific enrichment and reconciliation may be incomplete.",
+      recommendedAction: "Review the AAF diagnostics and add compatibility coverage for this file shape before relying on it.",
+      requiresDecision: false,
+      affectedItems: diagnostics.length > 0 ? diagnostics : ["unparsed AAF container"],
+    } satisfies PreservationIssue];
+  }
+
+  return [] as PreservationIssue[];
 }
 
 function buildTimelineFromCanonical(

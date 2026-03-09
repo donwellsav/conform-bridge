@@ -72,21 +72,22 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Nuendo project writing still does not exist.
 
 ## Current Status
-- `Phase 2J` is complete.
+- `Phase 2K` is complete.
 - Intake, canonical, and delivery layers are explicit in docs, types, routes, and tests.
 - Operator-facing mapping and validation review is available on the Job Detail route.
 - Operator review progress now persists locally in the browser as deltas over imported data.
 - Delivery planning remains planning-only and does not write files.
+- Direct AAF parsing now covers the current embedded-graph and broader decoded-OLE fixture layouts first, while `.adapter` fallback remains a narrower compatibility path.
 
 ## Known Limitations
 - No Nuendo writer exists yet.
 - Operator review persistence is browser-local only; no backend or shared multi-user state exists.
-- Some AAF layouts still require compatibility fallback payloads.
+- Some AAF layouts still require compatibility fallback payloads when the in-repo parser only partially covers the container graph.
 - BWF/WAV and MOV/MP4 assets are classified, but not deeply parsed.
 
 ## Next Recommended Work
-- `Phase 2K`: keep reducing AAF compatibility fallback dependence and broaden direct parsing coverage.
-- Continue preparing delivery execution only after saved review state and delivery planning remain stable.
+- `Phase 3`: keep delivery execution and any future writer boundary separate from current delivery planning.
+- Continue broadening direct AAF coverage only where new production samples still require compatibility fallback.
 - Keep exporter planning and any future writer boundary strictly separate.
 
 ## Rendering Rules

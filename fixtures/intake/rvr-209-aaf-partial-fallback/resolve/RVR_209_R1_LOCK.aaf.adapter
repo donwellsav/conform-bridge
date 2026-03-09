@@ -1,0 +1,75 @@
+{
+  "format": "conform-bridge-aaf-derived/v2",
+  "composition": {
+    "name": "RVR_209_R1_AAF_FALLBACK",
+    "mobName": "RVR_209_R1_AAF_COMPOSITION",
+    "editRate": "24000/1001",
+    "sampleRate": 48000,
+    "startTimecode": "01:00:00:00",
+    "durationTimecode": "00:05:10:00",
+    "dropFrame": false
+  },
+  "tracks": [
+    {
+      "slotId": "1",
+      "index": 1,
+      "name": "DX BOOM A",
+      "role": "dx",
+      "channelCount": 1,
+      "channelLayout": "mono"
+    }
+  ],
+  "mediaRefs": [
+    {
+      "id": "mr-1",
+      "fileName": "ROLL_120A_01.BWF",
+      "mobName": "ROLL_120A_01",
+      "reel": "120A",
+      "tape": "R120A",
+      "channelCount": 8,
+      "channelLayout": "poly_8",
+      "hasBwf": true,
+      "hasIXml": true,
+      "missing": false
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-1",
+      "trackSlotId": "1",
+      "trackIndex": 1,
+      "clipName": "BOOM_120A_01_A",
+      "mediaRefId": "mr-1",
+      "timing": {
+        "recordIn": "01:00:05:00",
+        "recordOut": "01:00:09:12",
+        "sourceIn": "10:00:05:00",
+        "sourceOut": "10:00:09:12"
+      },
+      "metadata": {
+        "reel": "120A",
+        "tape": "R120A",
+        "scene": "18B",
+        "take": "5"
+      },
+      "effects": {
+        "fadeIn": true,
+        "fadeOut": false,
+        "speedRatio": "1/1"
+      },
+      "flags": {
+        "offline": false,
+        "nested": false,
+        "flattened": true
+      }
+    }
+  ],
+  "markers": [
+    {
+      "timecode": "01:00:07:00",
+      "name": "Fallback review",
+      "color": "yellow",
+      "note": "Adapter-backed marker retained until direct parsing covers this layout."
+    }
+  ]
+}

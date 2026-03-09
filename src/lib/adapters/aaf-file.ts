@@ -1,7 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { parseAafText, type ParseAafContext, type ParsedAafSource } from "../parsers/aaf";
-import { OLE_COMPOUND_HEADER, parseAafContainerBuffer } from "../parsers/aaf-container";
+import {
+  OLE_COMPOUND_HEADER,
+  inspectAafContainerBuffer,
+  type AafContainerDirectCoverage,
+} from "../parsers/aaf-container";
 
 export type AafContainerKind = "ole-compound" | "text" | "unknown";
 export type AafExtractionMode = "direct" | "adapter" | "text" | "unparsed";
@@ -9,6 +13,10 @@ export type AafExtractionMode = "direct" | "adapter" | "text" | "unparsed";
 export interface AafExtractionEnvelope {
   containerKind: AafContainerKind;
   extractionMode: AafExtractionMode;
+  directCoverage: AafContainerDirectCoverage;
+  payloadFormat?: string;
+  diagnostics: string[];
+  fallbackReason?: string;
   adapterPath?: string;
   parsed: ParsedAafSource | null;
 }
@@ -59,12 +67,15 @@ export function extractAafFromFileSync(filePath: string, context: ParseAafContex
   const containerKind = detectContainerKind(buffer);
 
   if (containerKind === "ole-compound") {
-    const directParsed = parseAafContainerBuffer(buffer, context);
-    if (directParsed) {
+    const inspection = inspectAafContainerBuffer(buffer, context);
+    if (inspection.parsed) {
       return {
         containerKind,
         extractionMode: "direct",
-        parsed: directParsed,
+        directCoverage: inspection.directCoverage,
+        payloadFormat: inspection.payloadFormat,
+        diagnostics: inspection.diagnostics,
+        parsed: inspection.parsed,
       };
     }
 
@@ -73,6 +84,10 @@ export function extractAafFromFileSync(filePath: string, context: ParseAafContex
       return {
         containerKind,
         extractionMode: "unparsed",
+        directCoverage: inspection.directCoverage,
+        payloadFormat: inspection.payloadFormat,
+        diagnostics: inspection.diagnostics,
+        fallbackReason: inspection.fallbackReason,
         parsed: null,
       };
     }
@@ -80,6 +95,10 @@ export function extractAafFromFileSync(filePath: string, context: ParseAafContex
     return {
       containerKind,
       extractionMode: "adapter",
+      directCoverage: inspection.directCoverage,
+      payloadFormat: inspection.payloadFormat,
+      diagnostics: inspection.diagnostics,
+      fallbackReason: inspection.fallbackReason,
       adapterPath,
       parsed: parseAafText(readFileSync(adapterPath, "utf8"), context),
     };
@@ -89,6 +108,8 @@ export function extractAafFromFileSync(filePath: string, context: ParseAafContex
     return {
       containerKind,
       extractionMode: "text",
+      directCoverage: "full",
+      diagnostics: [],
       parsed: parseAafText(buffer.toString("utf8"), context),
     };
   }
@@ -96,6 +117,9 @@ export function extractAafFromFileSync(filePath: string, context: ParseAafContex
   return {
     containerKind,
     extractionMode: "unparsed",
+    directCoverage: "none",
+    diagnostics: ["The file was not recognized as an OLE compound AAF or a text fixture."],
+    fallbackReason: "AAF extraction could not classify this file as a supported container or text payload.",
     parsed: null,
   };
 }

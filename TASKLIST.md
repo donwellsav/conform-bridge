@@ -1,9 +1,9 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 2J` complete.
-- Next phase: `Phase 2K` reduce remaining AAF compatibility fallback dependence.
-- Following phase: `Phase 3` delivery execution once planning and review state stay stable.
+- Current phase: `Phase 2K` complete.
+- Next phase: `Phase 3` delivery execution prep once planning and review state stay stable.
+- Ongoing compatibility work: keep shrinking remaining AAF fallback cases when new production samples justify it.
 
 ## Phase 1 Scaffold
 - [x] Write product, schema, bundle, agent, and task specs.
@@ -26,6 +26,7 @@
 - [x] Add validation rules that inspect real turnover completeness and delivery blockers.
 - [x] Persist operator review deltas locally in the browser without duplicating the imported canonical model.
 - [x] Add saved validation acknowledgements and reconform-ready review decisions on top of imported analysis.
-- [ ] Broaden direct AAF parsing beyond current in-repo graph payload coverage toward more arbitrary real-world OLE/AAF layouts.
-- [ ] Reduce `.adapter` compatibility fallback dependence for more real-world AAF layouts.
+- [x] Broaden direct AAF parsing beyond current in-repo graph payload coverage toward more arbitrary real-world OLE/AAF layouts.
+- [x] Reduce `.adapter` compatibility fallback dependence for more real-world AAF layouts while keeping compatibility fallback available.
 - [ ] Prepare delivery execution only after saved review state and exporter planning remain stable.
+- [ ] Keep reducing unsupported AAF edge cases only when real containers still require compatibility fallback.
