@@ -498,6 +498,122 @@ Aggregate adapter view for one packaged delivery handoff.
 - `readiness`
 - `summary`
 
+## Layer 7: Writer Runner Contracts
+
+### WriterRunnerInput
+Normalized runner-facing contract derived from the external execution package plus adapter dry-run output.
+- `version`
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `packageStatus`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `packageRoot`
+- `handoffRoot`
+- `adapterBundleId`
+- `artifactInputs`
+
+### WriterRunnerArtifactInput
+Deferred artifact contract normalized for runner request generation after adapter dry runs.
+- `artifactId`
+- `fileName`
+- `artifactKind`
+- `requiredCapability`
+- `plannedOutputPath`
+- `relativePath`
+- `packageStatus`
+- `adapterId`
+- `adapterReadiness`
+- `runnerReadiness`
+- `blockerReasons`
+- `dependencyIds`
+- `payload`
+
+### WriterRunRequest
+Deterministic runnable, blocked, or unsupported request set for the current deferred artifact bundle.
+- `version`
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `packageStatus`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `requestSequence`
+- `requests`
+- `readiness`
+- `summary`
+
+### WriterRunArtifactRequest
+Per-artifact request derived from one deferred artifact contract plus runner matching.
+- `id`
+- `artifactId`
+- `fileName`
+- `artifactKind`
+- `requiredCapability`
+- `adapterId`
+- `runnerId`
+- `requestReadiness`
+- `plannedOutputPath`
+- `relativePath`
+- `dependencyIds`
+- `blockedReasons`
+- `payload`
+
+### WriterRunResponse
+Deterministic runner response set produced by the current reference no-op runner.
+- `version`
+- `id`
+- `requestId`
+- `runnerId`
+- `status`
+- `attempts`
+- `summary`
+
+### WriterRunReceipt
+Normalized receipt summary for one writer-run request/response cycle.
+- `version`
+- `id`
+- `requestId`
+- `responseId`
+- `jobId`
+- `deliveryPackageId`
+- `packageStatus`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `runnerReadiness`
+- `runnerId`
+- `sequence`
+- `summary`
+- `artifacts`
+
+### WriterRunner
+Runner boundary that consumes runner inputs and request bundles after adapter dry runs.
+- `id`
+- `version`
+- `label`
+- `capabilities`
+- `validate(input)`
+- `run(request)`
+
+### WriterRunBundle
+Aggregate runner view for one packaged delivery handoff.
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `rootRelativePath`
+- `input`
+- `validation`
+- `request`
+- `response`
+- `receipt`
+- `entries`
+- `readiness`
+- `summary`
+
 ## Orchestration Entity
 
 ### TranslationJob
@@ -537,7 +653,8 @@ Operator-facing record that ties the three layers together.
 - One `DeliveryHandoffManifest` references one `DeferredWriterInput` document containing many `DeferredWriterArtifact` contracts.
 - One `DeliveryHandoffManifest` may be packaged into one `ExternalExecutionPackage` together with staged outputs and package metadata.
 - One `ExternalExecutionPackage` may produce one `WriterAdapterInput` document and one `WriterAdapterBundle` for adapter matching and dry-run validation.
-- One `WriterAdapterBundle` contains many `WriterAdapterResult` records and many `WriterAdapterArtifactMatch` records.
+- One `WriterAdapterBundle` contains many `WriterAdapterDryRunResult` records and many `WriterAdapterArtifactMatch` records.
+- One `WriterAdapterBundle` may produce one `WriterRunnerInput`, one `WriterRunRequest`, one `WriterRunResponse`, and one `WriterRunReceipt` in the downstream runner layer.
 - One `TranslationJob` may contain many `ConformChangeEvent` records.
 
 ## Current Repo Rules
@@ -546,4 +663,4 @@ Operator-facing record that ties the three layers together.
 - The repo prefers real fixture imports and falls back to deterministic mock data only when the fixture library is absent.
 - Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
 - Operator mapping editors persist browser-local review deltas keyed by job plus source signature.
-- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, external execution packaging, and writer-adapter dry runs without implying that a Nuendo writer already exists.
+- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, external execution packaging, writer-adapter dry runs, and writer-runner requests/responses/receipts without implying that a Nuendo writer already exists.

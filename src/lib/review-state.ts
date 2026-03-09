@@ -11,6 +11,7 @@ import { prepareDeliveryHandoffSync } from "./services/delivery-handoff";
 import { createOverlayReviewInfluence, prepareDeliveryStagingSync } from "./services/delivery-staging";
 import { planNuendoDeliverySync } from "./services/exporter";
 import { prepareWriterAdapterBundleSync } from "./services/writer-adapters";
+import { prepareWriterRunBundleSync } from "./services/writer-runner";
 import type {
   AnalysisReport,
   ClipEvent,
@@ -41,6 +42,7 @@ import type {
   ValidationAcknowledgement,
   ValidationReviewStatus,
   WriterAdapterBundle,
+  WriterRunBundle,
 } from "./types";
 import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
 
@@ -94,6 +96,7 @@ export interface ReviewOverlayResult {
   previewHandoff: DeliveryHandoffBundle;
   previewExternalPackage: ExternalExecutionPackage;
   previewWriterAdapters: WriterAdapterBundle;
+  previewWriterRuns: WriterRunBundle;
   reconformItems: ReconformReviewItem[];
   reviewCounts: {
     mappingOpenCount: number;
@@ -795,6 +798,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     handoffBundle: previewHandoff,
   });
   const previewWriterAdapters = prepareWriterAdapterBundleSync(previewExternalPackage);
+  const previewWriterRuns = prepareWriterRunBundleSync(previewExternalPackage, previewWriterAdapters);
 
   return {
     reviewState,
@@ -810,6 +814,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewHandoff,
     previewExternalPackage,
     previewWriterAdapters,
+    previewWriterRuns,
     reconformItems,
     reviewCounts: {
       mappingOpenCount: mappingReviewSummary.total,

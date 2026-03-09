@@ -34,6 +34,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Delivery handoff is a separate boundary after staging. It may formalize stable writer-input contracts, readiness states, and dependency graphs for deferred artifacts, but it must not write native Nuendo session/project files in this phase.
 - External execution packaging is a separate boundary after handoff. It may bundle staged outputs, handoff contracts, checksums, and package metadata for external execution, but it must not write native Nuendo session/project files in this phase.
 - Writer adapters are a separate boundary after external execution packaging. They may validate packaged deferred contracts, match capabilities, and generate deterministic dry-run plans, but they must not write native Nuendo session/project files in this phase.
+- Writer runners are a separate boundary after writer adapters. They may normalize runnable requests, simulate no-op runs, and emit deterministic responses and receipts, but they must not write native Nuendo session/project files in this phase.
 
 ## Current Non-Goals
 - No real Nuendo export writing.
@@ -68,6 +69,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Delivery handoff through `src/lib/services/delivery-handoff.ts` for deterministic deferred-writer contracts and handoff manifests.
 - External execution packaging through `src/lib/services/external-execution-package.ts` for deterministic package export, indexing, and checksum generation on top of staged and handoff outputs.
 - Writer-adapter validation through `src/lib/services/writer-adapters.ts` and `src/lib/services/writer-adapter-registry.ts` for normalized adapter input, capability matching, unsupported-reason reporting, and dry-run plans.
+- Writer-runner normalization and no-op receipts through `src/lib/services/writer-runner.ts` and `src/lib/services/writer-runner-registry.ts` for deterministic request, response, and receipt generation after adapter dry runs.
 - Operator mapping editors for track, marker, metadata, and field recorder review.
 - Validation rules that merge intake completeness, reconciliation, and delivery-blocker findings into `PreservationIssue` records.
 - Browser-local persistence for operator review deltas, validation acknowledgements, and reconform review decisions.
@@ -86,7 +88,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - AAF and reference video outputs remain deferred binary artifacts, not generated files.
 
 ## Current Status
-- `Phase 3E` is complete.
+- `Phase 3F` is complete.
 - Intake, canonical, and delivery layers are explicit in docs, types, routes, and tests.
 - Operator-facing mapping and validation review is available on the Job Detail route.
 - Operator review progress now persists locally in the browser as deltas over imported data.
@@ -96,6 +98,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Delivery handoff now formalizes deferred-writer inputs, delivery/review signatures, dependency graphs, and readiness status for deferred binary artifacts.
 - External execution packaging now bundles staged outputs plus handoff contracts into a deterministic export package with checksums, package manifests, generated-artifact indexes, and package-level readiness status.
 - Writer adapters now consume packaged external execution output through a stable registry, capability matching, unsupported-reason reporting, and deterministic dry-run plans without executing any real writer.
+- Writer runners now consume packaged external execution output plus adapter dry runs through deterministic request, response, and receipt contracts without executing any real writer.
 - Direct AAF parsing now covers the current embedded-graph and broader decoded-OLE fixture layouts first, while `.adapter` fallback remains a narrower compatibility path.
 
 ## Known Limitations
@@ -104,11 +107,11 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Some AAF layouts still require compatibility fallback payloads when the in-repo parser only partially covers the container graph.
 - BWF/WAV and MOV/MP4 assets are classified, but not deeply parsed.
 - Binary delivery artifacts still stop at deferred staged descriptors in this phase.
-- Native Nuendo writer execution remains out of scope even though deferred writer inputs, external execution packages, and writer-adapter dry runs are now formalized.
-- Only the reference no-op writer adapter is implemented. Future AAF and reference-video adapters remain placeholder capability declarations.
+- Native Nuendo writer execution remains out of scope even though deferred writer inputs, external execution packages, writer-adapter dry runs, and writer-runner receipts are now formalized.
+- Only the reference no-op writer adapter and reference no-op writer runner are implemented. Future AAF and reference-video adapters remain placeholder capability declarations, and no real writer runner exists yet.
 
 ## Next Recommended Work
-- `Phase 3F`: define writer-runner request/response and receipt contracts on top of packaged external execution output plus writer-adapter dry runs.
+- `Phase 3G`: formalize external runner transport and execution audit flow on top of writer-runner contracts while native Nuendo writing remains deferred.
 - Continue broadening direct AAF coverage only where new production samples still require compatibility fallback.
 - Keep exporter planning, execution prep, staging, handoff, package export, adapter dry runs, and any future writer execution strictly separate.
 

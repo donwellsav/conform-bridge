@@ -69,14 +69,15 @@ A planned Nuendo delivery package may include:
 - `placeholder`
 
 ## Downstream Delivery Layers
-The delivery side now has four explicit downstream layers after canonical normalization:
+The delivery side now has six explicit downstream layers after canonical normalization:
 - Delivery planning in `exporter.ts`
 - Delivery execution prep in `delivery-execution.ts`
 - Delivery staging and handoff contract generation in `delivery-staging.ts` and `delivery-handoff.ts`
 - External execution packaging in `external-execution-package.ts`
 - Writer-adapter validation and dry-run matching in `writer-adapters.ts`
+- Writer-runner request, response, and receipt generation in `writer-runner.ts`
 
-These layers must stay separate. Planning does not generate files, execution prep only generates safe serializable payloads, staging only materializes staged bundle outputs, handoff only formalizes deferred-writer contracts, external package export only bundles staged output plus handoff metadata for downstream execution, and writer adapters only validate packaged deferred contracts plus dry-run capability matches.
+These layers must stay separate. Planning does not generate files, execution prep only generates safe serializable payloads, staging only materializes staged bundle outputs, handoff only formalizes deferred-writer contracts, external package export only bundles staged output plus handoff metadata for downstream execution, writer adapters only validate packaged deferred contracts plus dry-run capability matches, and writer runners only generate runnable contracts plus deterministic no-op receipts.
 
 ## Shared File Kinds
 The following file kinds may appear on either side of the workflow depending on `stage` and `origin`:
@@ -120,6 +121,7 @@ The following roles may appear as intake or delivery artifacts depending on the 
 - Deferred writer-input readiness, dependencies, and blockers
 - External package status, checksums, generated-artifact indexes, and packaged entry paths
 - Writer-adapter matches, dry-run readiness, and unsupported reasons for deferred artifacts
+- Writer-runner requests, responses, receipts, and runnable-versus-blocked deferred artifact state
 
 ## Current Parser Coverage
 The current repo scans real local fixture folders and parses these intake formats:
@@ -144,5 +146,6 @@ Timeline precedence is:
 - Deferred-writer contracts are formalized, but no writer executes them yet.
 - External execution packages can now be written to disk for downstream runners, but native Nuendo writing still does not exist.
 - Writer adapters currently validate and dry-run packaged deferred contracts, but only the reference no-op adapter is implemented; future AAF/reference-video adapters remain placeholders.
+- Writer runners currently emit deterministic no-op requests, responses, and receipts, but only the reference no-op runner is implemented; no native writer execution exists yet.
 
 No Nuendo write path, fake backend processing, or binary file write-back behavior should be implied by the current repo.

@@ -8,6 +8,7 @@ import { createImportedBaseReviewInfluence, prepareDeliveryStagingSync } from ".
 import { planNuendoDeliverySync } from "./services/exporter";
 import { importFixtureLibrarySync, type ImportedIntakeData } from "./services/importer";
 import { prepareWriterAdapterBundleSync } from "./services/writer-adapters";
+import { prepareWriterRunBundleSync } from "./services/writer-runner";
 import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
 import type {
   ActivityItem,
@@ -32,6 +33,7 @@ import type {
   TranslationJob,
   TranslationModel,
   WriterAdapterBundle,
+  WriterRunBundle,
 } from "./types";
 
 interface ImportedAppData extends ImportedIntakeData {
@@ -42,6 +44,7 @@ interface ImportedAppData extends ImportedIntakeData {
   deliveryHandoffBundles: DeliveryHandoffBundle[];
   externalExecutionPackages: ExternalExecutionPackage[];
   writerAdapterBundles: WriterAdapterBundle[];
+  writerRunBundles: WriterRunBundle[];
   dashboardMetrics: DashboardMetric[];
   activityFeed: ActivityItem[];
 }
@@ -127,6 +130,7 @@ function createImportedAppData(): ImportedAppData {
       deliveryHandoffBundles: [],
       externalExecutionPackages: [],
       writerAdapterBundles: [],
+      writerRunBundles: [],
       dashboardMetrics: [],
       activityFeed: [],
     };
@@ -286,6 +290,7 @@ function createImportedAppData(): ImportedAppData {
       handoffBundle,
     });
     const writerAdapterBundle = prepareWriterAdapterBundleSync(externalExecutionPackage);
+    const writerRunBundle = prepareWriterRunBundleSync(externalExecutionPackage, writerAdapterBundle);
 
     return {
       job: updatedJob,
@@ -298,6 +303,7 @@ function createImportedAppData(): ImportedAppData {
       handoffBundle,
       externalExecutionPackage,
       writerAdapterBundle,
+      writerRunBundle,
     };
   });
 
@@ -312,6 +318,7 @@ function createImportedAppData(): ImportedAppData {
     deliveryHandoffBundles: jobRecords.map((record) => record.handoffBundle),
     externalExecutionPackages: jobRecords.map((record) => record.externalExecutionPackage),
     writerAdapterBundles: jobRecords.map((record) => record.writerAdapterBundle),
+    writerRunBundles: jobRecords.map((record) => record.writerRunBundle),
     jobs: jobRecords.map((record) => record.job),
     dashboardMetrics: [],
     activityFeed: [],
@@ -346,6 +353,7 @@ export const deliveryStagingBundles = hasImportedBundles ? importedData.delivery
 export const deliveryHandoffBundles = hasImportedBundles ? importedData.deliveryHandoffBundles : [];
 export const externalExecutionPackages = hasImportedBundles ? importedData.externalExecutionPackages : [];
 export const writerAdapterBundles = hasImportedBundles ? importedData.writerAdapterBundles : [];
+export const writerRunBundles = hasImportedBundles ? importedData.writerRunBundles : [];
 export const mappingProfiles = hasImportedBundles ? importedData.mappingProfiles : fallback.mappingProfiles;
 export const mappingRules = hasImportedBundles ? importedData.mappingRules : fallback.mappingRules;
 export const fieldRecorderCandidates = hasImportedBundles ? importedData.fieldRecorderCandidates : fallback.fieldRecorderCandidates;
@@ -367,6 +375,7 @@ const deliveryStagingBundleMap = new Map(deliveryStagingBundles.map((bundle) => 
 const deliveryHandoffBundleMap = new Map(deliveryHandoffBundles.map((bundle) => [bundle.jobId, bundle]));
 const externalExecutionPackageMap = new Map(externalExecutionPackages.map((bundle) => [bundle.jobId, bundle]));
 const writerAdapterBundleMap = new Map(writerAdapterBundles.map((bundle) => [bundle.jobId, bundle]));
+const writerRunBundleMap = new Map(writerRunBundles.map((bundle) => [bundle.jobId, bundle]));
 const jobMap = new Map(jobs.map((job) => [job.id, job]));
 const translationModelMap = new Map(translationModels.map((model) => [model.id, model]));
 
@@ -470,6 +479,10 @@ export function getExternalExecutionPackage(jobId: string): ExternalExecutionPac
 
 export function getWriterAdapterBundle(jobId: string): WriterAdapterBundle | undefined {
   return writerAdapterBundleMap.get(jobId);
+}
+
+export function getWriterRunBundle(jobId: string): WriterRunBundle | undefined {
+  return writerRunBundleMap.get(jobId);
 }
 
 export function getAnalysisReportForJob(jobId: string): AnalysisReport | undefined {

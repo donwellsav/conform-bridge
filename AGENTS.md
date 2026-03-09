@@ -28,13 +28,14 @@ This repository is a frontend-only internal operator application for Resolve to 
 - Deferred writer-input contracts and handoff manifests exist in `delivery-handoff.ts`.
 - External execution packaging exists in `external-execution-package.ts`.
 - Writer-adapter validation, capability matching, and dry-run planning exist in `writer-adapters.ts` and `writer-adapter-registry.ts`.
+- Writer-runner request, response, and receipt contracts exist in `writer-runner.ts` and `writer-runner-registry.ts`.
 - Operator review persistence exists as browser-local review deltas keyed by job plus source signature.
 
 ## Ongoing Scope Rules
 - No real Nuendo export writer.
 - No auth, billing, database, or marketing pages.
 - No AI chat UI.
-- Do not collapse planning, execution prep, staging, handoff, external package export, and future writer execution into one layer.
+- Do not collapse planning, execution prep, staging, handoff, external package export, writer-adapter dry runs, writer-runner contracts, and future writer execution into one layer.
 
 ## Mock Data Rules
 - Mock bundles must reflect real Resolve/Nuendo workflows and remain compatible with the current intake -> canonical -> delivery contract.
@@ -54,4 +55,4 @@ The scaffold must include:
 ## Review Standard
 Reject work that hides hydration problems with client-only wrappers, uses browser APIs on first render, or introduces backend-looking abstractions for features that do not exist yet.
 Reject wording that implies the repo is still scaffold-only or mock-only when describing the current implementation state.
-Reject wording that implies browser-local review persistence, staged bundle output, deferred writer contracts, external execution packaging, or writer-adapter dry runs do not exist.
+Reject wording that implies browser-local review persistence, staged bundle output, deferred writer contracts, external execution packaging, writer-adapter dry runs, or writer-runner receipts do not exist.

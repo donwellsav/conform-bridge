@@ -12,6 +12,7 @@ import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { WriterAdapterPreview } from "@/components/writer-adapter-preview";
+import { WriterRunnerPreview } from "@/components/writer-runner-preview";
 import {
   getBundle,
   getDeliveryExecutionPlan,
@@ -24,6 +25,7 @@ import {
   getOutputPreset,
   getReport,
   getWriterAdapterBundle,
+  getWriterRunBundle,
   jobs,
 } from "@/lib/data-source";
 
@@ -48,9 +50,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
   const handoffBundle = getDeliveryHandoffBundle(job.id);
   const stagingBundle = getDeliveryStagingBundle(job.id);
   const writerAdapterBundle = getWriterAdapterBundle(job.id);
+  const writerRunBundle = getWriterRunBundle(job.id);
   const reviewContext = getJobReviewContext(job.id);
 
-  if (!bundle || !report || !outputPreset || !reviewContext || !executionPlan || !stagingBundle || !handoffBundle || !externalExecutionPackage || !writerAdapterBundle) {
+  if (!bundle || !report || !outputPreset || !reviewContext || !executionPlan || !stagingBundle || !handoffBundle || !externalExecutionPackage || !writerAdapterBundle || !writerRunBundle) {
     notFound();
   }
 
@@ -145,6 +148,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
             </div>
             <div className="mt-5 border-t border-border/70 pt-5">
               <WriterAdapterPreview bundle={writerAdapterBundle} />
+            </div>
+            <div className="mt-5 border-t border-border/70 pt-5">
+              <WriterRunnerPreview bundle={writerRunBundle} />
             </div>
           </SectionCard>
           <MappingView context={reviewContext} />

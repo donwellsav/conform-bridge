@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { WriterAdapterPreview } from "@/components/writer-adapter-preview";
+import { WriterRunnerPreview } from "@/components/writer-runner-preview";
 import { createEmptyReviewStateStore, readStoredReviewStateStore, resolveStoredReviewState, subscribeToReviewStates, clearStoredReviewState, writeStoredReviewState } from "@/lib/local-review-state";
 import { getFieldRecorderDecision, getMarkerAction } from "@/lib/mapping-workflow";
 import {
@@ -257,6 +258,9 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
         </div>
         <div className="mt-5 border-t border-border/70 pt-5">
           <WriterAdapterPreview bundle={overlay.previewWriterAdapters} />
+        </div>
+        <div className="mt-5 border-t border-border/70 pt-5">
+          <WriterRunnerPreview bundle={overlay.previewWriterRuns} />
         </div>
       </SectionCard>
 

@@ -79,6 +79,24 @@ export type WriterAdapterUnsupportedCode =
   | "package_blocked"
   | "artifact_blocked"
   | "dependency_gap";
+export type WriterRunnerId = "reference-noop-writer-runner";
+export type WriterRunnerVersion = 1;
+export type WriterRunnerCapability = WriterCapability;
+export type WriterRunnerInputVersion = 1;
+export type WriterRunRequestVersion = 1;
+export type WriterRunResponseVersion = 1;
+export type WriterRunReceiptVersion = 1;
+export type WriterRunnerReadiness = "ready" | "partial" | "blocked" | "unsupported";
+export type WriterRunResponseStatus = "simulated-noop" | "partial" | "blocked" | "unsupported";
+export type WriterRunRequestId = string;
+export type WriterRunBlockedReasonCode =
+  | "adapter_not_ready"
+  | "runner_not_available"
+  | "unsupported_capability"
+  | "package_blocked"
+  | "artifact_blocked"
+  | "dependency_gap";
+export type WriterRunnerUnsupportedCode = "runner_not_available" | "runner_not_implemented" | "unsupported_capability";
 
 export interface SourceSnapshot {
   sequenceName: string;
@@ -1011,6 +1029,186 @@ export interface WriterAdapterBundle {
   adapters: WriterAdapterResult[];
   artifactMatches: WriterAdapterArtifactMatch[];
   readiness: WriterAdapterReadiness;
+  summary: string;
+}
+
+export interface WriterRunBlockedReason {
+  code: WriterRunBlockedReasonCode;
+  artifactId?: string;
+  message: string;
+}
+
+export interface WriterRunnerUnsupportedReason {
+  code: WriterRunnerUnsupportedCode;
+  artifactId?: string;
+  capability?: WriterRunnerCapability;
+  message: string;
+}
+
+export interface WriterRunnerArtifactInput {
+  artifactId: string;
+  fileName: string;
+  artifactKind: DeferredWriterArtifactKind;
+  requiredCapability: WriterRunnerCapability;
+  plannedOutputPath: string;
+  relativePath: string;
+  packageStatus: ExternalExecutionStatus;
+  adapterId?: WriterAdapterId;
+  adapterReadiness: WriterAdapterReadiness;
+  runnerReadiness: WriterRunnerReadiness;
+  blockerReasons: WriterRunBlockedReason[];
+  dependencyIds: string[];
+  payload: Record<string, unknown>;
+}
+
+export interface WriterRunnerInput {
+  version: WriterRunnerInputVersion;
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  packageStatus: ExternalExecutionStatus;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  packageRoot: string;
+  handoffRoot: string;
+  adapterBundleId: string;
+  artifactInputs: WriterRunnerArtifactInput[];
+}
+
+export interface WriterRunArtifactRequest {
+  id: string;
+  artifactId: string;
+  fileName: string;
+  artifactKind: DeferredWriterArtifactKind;
+  requiredCapability: WriterRunnerCapability;
+  adapterId?: WriterAdapterId;
+  runnerId?: WriterRunnerId;
+  requestReadiness: WriterRunnerReadiness;
+  plannedOutputPath: string;
+  relativePath: string;
+  dependencyIds: string[];
+  blockedReasons: WriterRunBlockedReason[];
+  payload: Record<string, unknown>;
+}
+
+export interface WriterRunRequest {
+  version: WriterRunRequestVersion;
+  id: WriterRunRequestId;
+  jobId: string;
+  deliveryPackageId: string;
+  packageStatus: ExternalExecutionStatus;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  requestSequence: number;
+  requests: WriterRunArtifactRequest[];
+  readiness: WriterRunnerReadiness;
+  summary: string;
+}
+
+export interface WriterRunAttempt {
+  artifactId: string;
+  requestArtifactId: string;
+  attemptSequence: number;
+  adapterId?: WriterAdapterId;
+  runnerId?: WriterRunnerId;
+  requestReadiness: WriterRunnerReadiness;
+  responseStatus: WriterRunResponseStatus;
+  simulated: boolean;
+  note: string;
+  blockedReasons: WriterRunBlockedReason[];
+}
+
+export interface WriterRunResponse {
+  version: WriterRunResponseVersion;
+  id: string;
+  requestId: WriterRunRequestId;
+  runnerId: WriterRunnerId;
+  status: WriterRunResponseStatus;
+  attempts: WriterRunAttempt[];
+  summary: string;
+}
+
+export interface WriterRunReceiptArtifact {
+  artifactId: string;
+  fileName: string;
+  adapterId?: WriterAdapterId;
+  runnerId?: WriterRunnerId;
+  requestReadiness: WriterRunnerReadiness;
+  responseStatus: WriterRunResponseStatus;
+  outcome: "simulated-noop" | "partial" | "blocked" | "unsupported";
+  note: string;
+  blockedReasons: WriterRunBlockedReason[];
+}
+
+export interface WriterRunReceiptSummary {
+  totalArtifacts: number;
+  runnableCount: number;
+  simulatedCount: number;
+  partialCount: number;
+  blockedCount: number;
+  unsupportedCount: number;
+  note: string;
+}
+
+export interface WriterRunReceipt {
+  version: WriterRunReceiptVersion;
+  id: string;
+  requestId: WriterRunRequestId;
+  responseId: string;
+  jobId: string;
+  deliveryPackageId: string;
+  packageStatus: ExternalExecutionStatus;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  runnerReadiness: WriterRunnerReadiness;
+  runnerId: WriterRunnerId;
+  sequence: number;
+  summary: WriterRunReceiptSummary;
+  artifacts: WriterRunReceiptArtifact[];
+}
+
+export interface WriterRunnerValidationResult {
+  runnerId: WriterRunnerId;
+  readiness: WriterRunnerReadiness;
+  diagnostics: string[];
+  runnableArtifactIds: string[];
+  unsupportedReasons: WriterRunnerUnsupportedReason[];
+}
+
+export interface WriterRunner {
+  id: WriterRunnerId;
+  version: WriterRunnerVersion;
+  label: string;
+  capabilities: WriterRunnerCapability[];
+  validate(input: WriterRunnerInput): WriterRunnerValidationResult;
+  run(request: WriterRunRequest): WriterRunResponse;
+}
+
+export interface WriterRunEntry {
+  kind: "writer_run_entry";
+  relativePath: string;
+  fileName: "writer-run-requests.json" | "writer-run-responses.json" | "writer-run-receipts.json";
+  payloadKind: "writer_run_requests" | "writer_run_responses" | "writer_run_receipts";
+  mimeType: "application/json";
+  content: string;
+  summary: string;
+}
+
+export interface WriterRunBundle {
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  rootRelativePath: string;
+  input: WriterRunnerInput;
+  validation: WriterRunnerValidationResult;
+  request: WriterRunRequest;
+  response: WriterRunResponse;
+  receipt: WriterRunReceipt;
+  entries: WriterRunEntry[];
+  readiness: WriterRunnerReadiness;
   summary: string;
 }
 
