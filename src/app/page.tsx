@@ -1,10 +1,11 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
+import { ReviewAwareDashboardMetrics } from "@/components/review-aware-dashboard-metrics";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { activityFeed, dashboardMetrics, dataMode, getBundle, getExportArtifacts, getOutputPreset, jobs } from "@/lib/data-source";
+import { activityFeed, dataMode, getBundle, getExportArtifacts, getOutputPreset, jobs, reviewJobContexts } from "@/lib/data-source";
 
 export default function DashboardPage() {
   const currentJob = jobs[0];
@@ -18,8 +19,8 @@ export default function DashboardPage() {
         eyebrow="Dashboard"
         title="Resolve intake to Nuendo delivery planning"
         description={dataMode === "imported"
-          ? "Desktop-first operator overview of real imported intake packages, canonical timing assumptions, field recorder readiness, and planned delivery artifacts."
-          : "Desktop-first operator overview of intake packages, canonical timing assumptions, field recorder readiness, and planned delivery artifacts. Falling back to deterministic mock data because no imported intake fixture is available."}
+          ? "Desktop-first operator overview of real imported intake packages, canonical timing assumptions, saved operator review progress, field recorder readiness, and planned delivery artifacts."
+          : "Desktop-first operator overview of intake packages, canonical timing assumptions, saved operator review progress, field recorder readiness, and planned delivery artifacts. Falling back to deterministic mock data because no imported intake fixture is available."}
         actions={
           <>
             <Button asChild variant="secondary">
@@ -32,20 +33,7 @@ export default function DashboardPage() {
         }
       />
 
-      <section className="grid gap-4 xl:grid-cols-5">
-        {dashboardMetrics.map((metric) => (
-          <div key={metric.label} className="rounded-2xl border border-border/80 bg-panel p-4 shadow-[var(--shadow)]">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{metric.label}</p>
-              <Badge variant={metric.tone === "danger" ? "danger" : metric.tone === "warning" ? "warning" : metric.tone === "accent" ? "accent" : "neutral"}>
-                {dataMode === "imported" ? "Imported" : "Mock fallback"}
-              </Badge>
-            </div>
-            <p className="mt-3 text-3xl font-semibold tracking-[-0.02em] text-foreground">{metric.value}</p>
-            <p className="mt-2 text-sm leading-6 text-muted">{metric.note}</p>
-          </div>
-        ))}
-      </section>
+      <ReviewAwareDashboardMetrics contexts={reviewJobContexts} mode={dataMode} />
 
       <div className="grid gap-5 xl:grid-cols-[1.18fr_0.82fr]">
         <SectionCard eyebrow="Intake Package" title="Current intake package" description={dataMode === "imported" ? "This panel shows the inbound Resolve, editorial, and production-audio handoff scanned from a real local fixture folder." : "This panel shows the inbound Resolve and editorial handoff from fallback mock data because no imported fixture folder is available."}>

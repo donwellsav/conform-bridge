@@ -9,18 +9,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   getBundle,
-  getClipEventsForJob,
   getExportArtifacts,
-  getFieldRecorderCandidates,
   getJob,
-  getMappingProfile,
-  getMappingRules,
-  getMarkersForJob,
+  getJobReviewContext,
   getOutputPreset,
-  getPreservationIssues,
   getReport,
-  getTimelineForJob,
-  getTranslationModel,
   jobs,
 } from "@/lib/data-source";
 
@@ -38,18 +31,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
 
   const bundle = getBundle(job.sourceBundleId);
   const report = getReport(job.analysisReportId);
-  const mapping = getMappingProfile(job.id);
-  const mappingRules = getMappingRules(job.id);
-  const timeline = getTimelineForJob(job.id);
-  const translationModel = getTranslationModel(job.translationModelId);
   const outputPreset = getOutputPreset(job.outputPresetId ?? job.templateId);
   const artifacts = getExportArtifacts(job.id);
-  const markers = getMarkersForJob(job.id);
-  const clipEvents = getClipEventsForJob(job.id);
-  const fieldRecorderCandidates = getFieldRecorderCandidates(job.id);
-  const preservationIssues = getPreservationIssues(job.id);
+  const reviewContext = getJobReviewContext(job.id);
 
-  if (!bundle || !report || !mapping || !timeline || !translationModel || !outputPreset) {
+  if (!bundle || !report || !outputPreset || !reviewContext) {
     notFound();
   }
 
@@ -81,9 +67,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Canonical timeline</p>
-          <p className="mt-3 text-sm font-semibold text-foreground">{timeline.name}</p>
-          <p className="mt-2 font-mono text-xs text-muted">{timeline.startTimecode} / {timeline.durationTimecode}</p>
-          <p className="mt-2 text-xs text-muted">{timeline.startFrame} start frame / {timeline.durationFrames} frames</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{reviewContext.timeline.name}</p>
+          <p className="mt-2 font-mono text-xs text-muted">{reviewContext.timeline.startTimecode} / {reviewContext.timeline.durationTimecode}</p>
+          <p className="mt-2 text-xs text-muted">{reviewContext.timeline.startFrame} start frame / {reviewContext.timeline.durationFrames} frames</p>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Output preset</p>
@@ -117,7 +103,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         </div>
 
         <div className="space-y-5">
-          <SectionCard eyebrow="Delivery Package" title="Planned Nuendo outputs" description="Artifacts are listed as exporter-generated delivery outputs only. Intake analysis and validation are real, but no Nuendo writer exists yet.">
+          <SectionCard eyebrow="Delivery Package" title="Imported base delivery plan" description="These artifacts reflect the imported base plan. The saved operator overlay below recalculates its own delivery preview without changing the imported canonical source.">
             <div className="space-y-3">
               {artifacts.map((artifact) => (
                 <div key={artifact.id} className="rounded-2xl border border-border/80 bg-panel p-4">
@@ -131,20 +117,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
               ))}
             </div>
           </SectionCard>
-          <MappingView
-            job={job}
-            bundle={bundle}
-            translationModel={translationModel}
-            timeline={timeline}
-            mapping={mapping}
-            mappingRules={mappingRules}
-            markers={markers}
-            clipEvents={clipEvents}
-            fieldRecorderCandidates={fieldRecorderCandidates}
-            report={report}
-            outputPreset={outputPreset}
-            preservationIssues={preservationIssues}
-          />
+          <MappingView context={reviewContext} />
         </div>
       </div>
     </div>

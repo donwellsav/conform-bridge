@@ -42,6 +42,10 @@ export type MappingRuleStatus = "locked" | "review" | "issue";
 export type FieldRecorderCandidateStatus = "linked" | "candidate" | "missing";
 export type DeliveryDestination = "nuendo";
 export type ChangeType = "insert" | "delete" | "move" | "trim" | "replace";
+export type ReviewStateVersion = 1;
+export type ReviewStateKey = string;
+export type ValidationReviewStatus = "unreviewed" | "acknowledged" | "dismissed";
+export type ReconformReviewStatus = "unreviewed" | "acknowledged" | "needs-follow-up";
 
 export interface SourceSnapshot {
   sequenceName: string;
@@ -427,6 +431,56 @@ export interface ConformChangeEvent {
   oldFrame: number;
   newFrame: number;
   note: string;
+}
+
+export interface TrackMappingOverride {
+  mappingId: string;
+  targetLane?: string;
+  targetType?: TargetType;
+  action?: MappingAction;
+}
+
+export interface MetadataMappingOverride {
+  mappingId: string;
+  targetValue?: string;
+  status?: MetadataStatus;
+}
+
+export interface MarkerReviewDecision {
+  markerId: string;
+  action: MappingAction;
+  note: string;
+}
+
+export interface FieldRecorderReviewDecision {
+  candidateId: string;
+  status: FieldRecorderOverrideStatus;
+  note: string;
+}
+
+export interface ValidationAcknowledgement {
+  issueKey: string;
+  status: ValidationReviewStatus;
+  note: string;
+}
+
+export interface ReconformReviewDecision {
+  changeEventId: string;
+  status: ReconformReviewStatus;
+  note: string;
+}
+
+export interface ReviewState {
+  version: ReviewStateVersion;
+  key: ReviewStateKey;
+  jobId: string;
+  sourceSignature: string;
+  trackOverrides: TrackMappingOverride[];
+  metadataOverrides: MetadataMappingOverride[];
+  markerDecisions: MarkerReviewDecision[];
+  fieldRecorderDecisions: FieldRecorderReviewDecision[];
+  validationAcknowledgements: ValidationAcknowledgement[];
+  reconformDecisions: ReconformReviewDecision[];
 }
 
 export type ReConformChange = ConformChangeEvent;

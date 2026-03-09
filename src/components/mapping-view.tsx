@@ -1,42 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import { createEmptyReviewStateStore, readStoredReviewStateStore, resolveStoredReviewState, subscribeToReviewStates, clearStoredReviewState, writeStoredReviewState } from "@/lib/local-review-state";
+import { getFieldRecorderDecision, getMarkerAction } from "@/lib/mapping-workflow";
 import {
-  bulkSetFieldRecorderDecision,
-  bulkSetMarkerAction,
-  bulkSetMetadataStatus,
-  bulkSetTrackAction,
-  countMappingReviews,
-  getFieldRecorderDecision,
-  getMarkerAction,
-  setFieldRecorderDecision,
-  setMarkerAction,
-  updateMetadataMapping,
-  updateTrackMapping,
-} from "@/lib/mapping-workflow";
-import { planNuendoDeliverySync } from "@/lib/services/exporter";
-import type {
-  AnalysisReport,
-  ClipEvent,
-  FieldRecorderCandidate,
-  FieldRecorderOverrideStatus,
-  MappingProfile,
-  MappingRule,
-  Marker,
-  OutputPreset,
-  PreservationIssue,
-  SourceBundle,
-  Timeline,
-  TranslationJob,
-  TranslationModel,
-} from "@/lib/types";
-import { buildOperatorValidationIssues, rebuildAnalysisReport } from "@/lib/validation";
+  applyFieldRecorderReviewDecision,
+  applyMarkerReviewDecision,
+  applyMetadataOverride,
+  applyTrackOverride,
+  applyValidationReviewDecision,
+  buildReviewOverlay,
+  clearFieldRecorderReviewDecision,
+  clearMarkerReviewDecision,
+  clearMetadataOverride,
+  clearTrackOverride,
+  clearValidationReviewDecision,
+  createEmptyReviewState,
+  createReviewStateSourceSignature,
+  getFieldRecorderReviewDecision,
+  getMarkerReviewDecision,
+  hasMetadataOverride,
+  hasTrackOverride,
+  type ReviewJobContext,
+} from "@/lib/review-state";
+import type { FieldRecorderOverrideStatus, MappingAction, MetadataStatus, PreservationIssue } from "@/lib/types";
 
 function overrideVariant(status: FieldRecorderOverrideStatus) {
   switch (status) {
@@ -64,113 +58,151 @@ function actionButtonVariant(isActive: boolean) {
   return isActive ? "default" as const : "subtle" as const;
 }
 
-interface MappingViewProps {
-  job: TranslationJob;
-  bundle: SourceBundle;
-  translationModel: TranslationModel;
-  timeline: Timeline;
-  mapping: MappingProfile;
-  mappingRules: MappingRule[];
-  markers: Marker[];
-  clipEvents: ClipEvent[];
-  fieldRecorderCandidates: FieldRecorderCandidate[];
-  report: AnalysisReport;
-  outputPreset: OutputPreset;
-  preservationIssues: PreservationIssue[];
+function reviewBadgeVariant(isEdited: boolean) {
+  return isEdited ? "warning" as const : "neutral" as const;
 }
 
-export function MappingView({
-  job,
-  bundle,
-  translationModel,
-  timeline,
-  mapping,
-  mappingRules,
-  markers,
-  clipEvents,
-  fieldRecorderCandidates,
-  report,
-  outputPreset,
-  preservationIssues,
-}: MappingViewProps) {
-  const [mappingProfile, setMappingProfile] = useState(mapping);
-  const [ruleSet, setRuleSet] = useState(mappingRules);
-  const visibleMarkers = markers.filter((marker) => getMarkerAction(ruleSet, marker) !== "ignore");
-  const previewReportSeed: AnalysisReport = {
-    ...report,
-    totals: {
-      ...report.totals,
-      trackCount: mappingProfile.trackMappings.filter((track) => track.action !== "ignore").length,
-      markerCount: visibleMarkers.length,
-    },
+function applyBulkTrackAction(
+  reviewState: ReturnType<typeof createEmptyReviewState>,
+  context: ReviewJobContext,
+  action: MappingAction,
+) {
+  return context.mappingProfile.trackMappings.reduce(
+    (current, track) => applyTrackOverride(current, context.mappingProfile, track.id, { action }),
+    reviewState,
+  );
+}
+
+function applyBulkMetadataStatus(
+  reviewState: ReturnType<typeof createEmptyReviewState>,
+  context: ReviewJobContext,
+  status: MetadataStatus,
+) {
+  return context.mappingProfile.metadataMappings.reduce(
+    (current, mapping) => applyMetadataOverride(current, context.mappingProfile, mapping.id, { status }),
+    reviewState,
+  );
+}
+
+function applyBulkMarkerAction(
+  reviewState: ReturnType<typeof createEmptyReviewState>,
+  context: ReviewJobContext,
+  action: MappingAction,
+) {
+  return context.markers.reduce(
+    (current, marker) => applyMarkerReviewDecision(current, context.mappingRules, context.markers, marker.id, { action }),
+    reviewState,
+  );
+}
+
+function applyBulkFieldRecorderDecision(
+  reviewState: ReturnType<typeof createEmptyReviewState>,
+  context: ReviewJobContext,
+  status: FieldRecorderOverrideStatus,
+) {
+  return context.fieldRecorderCandidates.reduce(
+    (current, candidate) =>
+      applyFieldRecorderReviewDecision(current, context.mappingProfile, context.fieldRecorderCandidates, candidate.id, { status }),
+    reviewState,
+  );
+}
+
+function visibleValidationItems(items: ReturnType<typeof buildReviewOverlay>["validationItems"]) {
+  return [...items]
+    .filter((item) => item.isActionable || item.status !== "unreviewed" || item.note.trim().length > 0)
+    .sort((left, right) => {
+      if (left.isOpen !== right.isOpen) {
+        return left.isOpen ? -1 : 1;
+      }
+
+      return left.issue.title.localeCompare(right.issue.title);
+    });
+}
+
+export function MappingView({ context }: { context: ReviewJobContext }) {
+  const store = useSyncExternalStore(
+    subscribeToReviewStates,
+    readStoredReviewStateStore,
+    createEmptyReviewStateStore,
+  );
+  const hydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+
+  const sourceSignature = createReviewStateSourceSignature(context.job, context.bundle, context.timeline);
+  const defaultState = createEmptyReviewState(context.job.id, sourceSignature);
+  const reviewState = resolveStoredReviewState(defaultState, store);
+  const stored = Boolean(store.states[defaultState.key]);
+  const overlay = buildReviewOverlay(context, reviewState);
+  const actionableValidationItems = visibleValidationItems(overlay.validationItems);
+  const storageState = !hydrated
+    ? "Server defaults"
+    : stored
+      ? "Loaded from and persisted to local storage"
+      : "Ready to persist on the next operator edit";
+
+  const updateReviewState = (updater: (current: typeof reviewState) => typeof reviewState) => {
+    const latestState = resolveStoredReviewState(defaultState, readStoredReviewStateStore());
+    writeStoredReviewState(updater(latestState));
   };
-  const provisionalPlan = planNuendoDeliverySync(
-    job,
-    translationModel,
-    outputPreset,
-    previewReportSeed,
-    mappingProfile,
-    preservationIssues,
-  );
-  const previewIssues = buildOperatorValidationIssues({
-    job,
-    sourceBundle: bundle,
-    clipEvents,
-    markers: visibleMarkers,
-    exportArtifacts: provisionalPlan.exportArtifacts,
-    fieldRecorderCandidates,
-    mappingProfile,
-    mappingRules: ruleSet,
-    existingIssues: preservationIssues.filter((issue) => issue.code !== "DELIVERY_ARTIFACT_BLOCKED"),
-  });
-  const previewReport = rebuildAnalysisReport(
-    previewReportSeed,
-    bundle,
-    clipEvents,
-    visibleMarkers,
-    provisionalPlan.exportArtifacts,
-    previewIssues,
-    mappingProfile,
-    ruleSet,
-    fieldRecorderCandidates,
-  );
-  const previewPlan = planNuendoDeliverySync(
-    job,
-    translationModel,
-    outputPreset,
-    previewReport,
-    mappingProfile,
-    previewIssues,
-  );
-  const reviewSummary = countMappingReviews(mappingProfile, ruleSet, fieldRecorderCandidates);
-  const highlightedIssues = previewIssues
-    .filter((issue) => issue.requiresDecision || issue.severity !== "info")
-    .slice(0, 6);
 
   return (
     <div className="space-y-5">
       <SectionCard
+        eyebrow="Review state"
+        title="Persisted operator overlay"
+        description="Imported canonical data remains the base layer. Only operator deltas are persisted locally and reapplied after hydration."
+        aside={
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={hydrated ? "accent" : "neutral"}>{storageState}</Badge>
+            <Button size="sm" type="button" variant="subtle" onClick={() => clearStoredReviewState(defaultState.key)}>Reset to imported state</Button>
+          </div>
+        }
+      >
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-2xl border border-border/70 bg-panel p-3">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Open reviews</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{overlay.reviewCounts.totalOpenCount}</p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-panel p-3">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Mapping</p>
+            <p className="mt-2 text-sm text-foreground">{overlay.reviewCounts.mappingOpenCount} open</p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-panel p-3">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Validation</p>
+            <p className="mt-2 text-sm text-foreground">{overlay.reviewCounts.validationOpenCount} open / {overlay.reviewCounts.validationAcknowledgedCount} acknowledged</p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-panel p-3">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">ReConform</p>
+            <p className="mt-2 text-sm text-foreground">{overlay.reviewCounts.reconformOpenCount} open / {overlay.reviewCounts.reconformAcknowledgedCount} acknowledged</p>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard
         eyebrow="Timecode policy"
         title="Timeline and event timing"
-        description="The editor preview keeps the imported timeline stable while mapping and delivery decisions update locally."
-        aside={<Badge variant="neutral">{mappingProfile.timecodePolicy.eventStartMode.replaceAll("_", " ")}</Badge>}
+        description="The editor preview keeps the imported timeline stable while mapping, validation, and delivery decisions update from saved operator deltas."
+        aside={<Badge variant="neutral">{overlay.effectiveMappingProfile.timecodePolicy.eventStartMode.replaceAll("_", " ")}</Badge>}
       >
         <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Timeline start</p>
-            <p className="mt-2 font-mono text-sm text-foreground">{mappingProfile.timecodePolicy.timelineStart}</p>
+            <p className="mt-2 font-mono text-sm text-foreground">{overlay.effectiveMappingProfile.timecodePolicy.timelineStart}</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Timeline</p>
-            <p className="mt-2 text-sm text-foreground">{timeline.name}</p>
+            <p className="mt-2 text-sm text-foreground">{context.timeline.name}</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Drop frame</p>
-            <p className="mt-2 text-sm text-foreground">{mappingProfile.timecodePolicy.dropFrame ? "Yes" : "No"}</p>
+            <p className="mt-2 text-sm text-foreground">{overlay.effectiveMappingProfile.timecodePolicy.dropFrame ? "Yes" : "No"}</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Open reviews</p>
-            <p className="mt-2 text-sm text-foreground">{reviewSummary.total}</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Source signature</p>
+            <p className="mt-2 font-mono text-xs text-foreground">{sourceSignature}</p>
           </div>
         </div>
       </SectionCard>
@@ -178,28 +210,28 @@ export function MappingView({
       <SectionCard
         eyebrow="Operator summary"
         title="Validation and delivery preview"
-        description="The exporter stays planning-only. This summary recalculates locally from current mapping choices without writing anything."
+        description="The exporter stays planning-only. This summary recalculates from current saved review state without writing any Nuendo project files."
       >
         <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Validation findings</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{previewReport.summary.totalFindings}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{overlay.previewReport.summary.totalFindings}</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Blocked artifacts</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{previewPlan.exportArtifacts.filter((artifact) => artifact.status === "blocked").length}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{overlay.previewPlan.exportArtifacts.filter((artifact) => artifact.status === "blocked").length}</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Marker exports</p>
-            <p className="mt-2 text-sm text-foreground">{visibleMarkers.length} active / {markers.length} imported</p>
+            <p className="mt-2 text-sm text-foreground">{overlay.effectiveMarkers.length} active / {context.markers.length} imported</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Delivery summary</p>
-            <p className="mt-2 text-sm text-foreground">{previewPlan.deliveryPackage.deliverySummary}</p>
+            <p className="mt-2 text-sm text-foreground">{overlay.previewPlan.deliveryPackage.deliverySummary}</p>
           </div>
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {previewPlan.exportArtifacts.map((artifact) => (
+          {overlay.previewPlan.exportArtifacts.map((artifact) => (
             <div key={artifact.id} className="rounded-2xl border border-border/70 bg-panel p-3">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-mono text-xs text-muted">{artifact.fileName}</p>
@@ -214,12 +246,12 @@ export function MappingView({
       <SectionCard
         eyebrow="Track mapping"
         title="Resolve lanes to Nuendo targets"
-        description="Track actions update the local delivery preview immediately. Bulk actions apply to the visible track table only."
+        description="Track actions update the saved delivery preview immediately. Bulk actions only change operator deltas, not the imported base model."
         aside={
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetTrackAction(profile, "preserve"))}>Bulk preserve</Button>
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetTrackAction(profile, "remap"))}>Bulk remap</Button>
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetTrackAction(profile, "ignore"))}>Bulk ignore</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkTrackAction(current, context, "preserve"))}>Bulk preserve</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkTrackAction(current, context, "remap"))}>Bulk remap</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkTrackAction(current, context, "ignore"))}>Bulk ignore</Button>
           </div>
         }
       >
@@ -235,33 +267,52 @@ export function MappingView({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mappingProfile.trackMappings.map((track) => (
-                <TableRow key={track.id}>
-                  <TableCell className="font-medium">{track.sourceTrack}</TableCell>
-                  <TableCell>{track.sourceRole.toUpperCase()}</TableCell>
-                  <TableCell>{track.channelLayout}</TableCell>
-                  <TableCell>
-                    <Input
-                      value={track.targetLane}
-                      onChange={(event) => setMappingProfile((profile) => updateTrackMapping(profile, track.id, { targetLane: event.target.value }))}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      {(["preserve", "remap", "merge", "ignore"] as const).map((action) => (
-                        <Button
-                          key={action}
-                          size="sm"
-                          variant={actionButtonVariant(track.action === action)}
-                          onClick={() => setMappingProfile((profile) => updateTrackMapping(profile, track.id, { action }))}
-                        >
-                          {action}
-                        </Button>
-                      ))}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {overlay.effectiveMappingProfile.trackMappings.map((track) => {
+                const isEdited = hasTrackOverride(reviewState, track.id);
+
+                return (
+                  <TableRow key={track.id}>
+                    <TableCell className="font-medium">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span>{track.sourceTrack}</span>
+                          <Badge variant={reviewBadgeVariant(isEdited)}>{isEdited ? "Operator-edited" : "Imported base"}</Badge>
+                        </div>
+                        {isEdited ? (
+                          <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => clearTrackOverride(current, track.id))}>Revert</Button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>{track.sourceRole.toUpperCase()}</TableCell>
+                    <TableCell>{track.channelLayout}</TableCell>
+                    <TableCell>
+                      <Input
+                        onChange={(event) => updateReviewState((current) =>
+                          applyTrackOverride(current, context.mappingProfile, track.id, { targetLane: event.target.value })
+                        )}
+                        value={track.targetLane}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        {(["preserve", "remap", "merge", "ignore"] as const).map((action) => (
+                          <Button
+                            key={action}
+                            size="sm"
+                            type="button"
+                            variant={actionButtonVariant(track.action === action)}
+                            onClick={() => updateReviewState((current) =>
+                              applyTrackOverride(current, context.mappingProfile, track.id, { action })
+                            )}
+                          >
+                            {action}
+                          </Button>
+                        ))}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -273,21 +324,26 @@ export function MappingView({
         description="Suppress or remap imported markers before marker EDL and marker CSV planning."
         aside={
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="subtle" onClick={() => setRuleSet((rules) => bulkSetMarkerAction(rules, job.id, markers, "preserve"))}>Bulk preserve</Button>
-            <Button size="sm" variant="subtle" onClick={() => setRuleSet((rules) => bulkSetMarkerAction(rules, job.id, markers, "remap"))}>Bulk review</Button>
-            <Button size="sm" variant="subtle" onClick={() => setRuleSet((rules) => bulkSetMarkerAction(rules, job.id, markers, "ignore"))}>Bulk suppress</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkMarkerAction(current, context, "preserve"))}>Bulk preserve</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkMarkerAction(current, context, "remap"))}>Bulk review</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkMarkerAction(current, context, "ignore"))}>Bulk suppress</Button>
           </div>
         }
       >
         <div className="space-y-3">
-          {markers.map((marker) => {
-            const action = getMarkerAction(ruleSet, marker);
+          {context.markers.map((marker) => {
+            const action = getMarkerAction(overlay.effectiveMappingRules, marker);
+            const decision = getMarkerReviewDecision(reviewState, marker.id);
+            const isEdited = Boolean(decision);
 
             return (
               <div key={marker.id} className="rounded-2xl border border-border/70 bg-panel p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-foreground">{marker.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">{marker.name}</p>
+                      <Badge variant={reviewBadgeVariant(isEdited)}>{isEdited ? "Operator-edited" : "Imported base"}</Badge>
+                    </div>
                     <p className="mt-1 font-mono text-xs text-muted">{marker.timecode} / {marker.color}</p>
                     <p className="mt-2 text-sm text-muted">{marker.note || "No marker note supplied."}</p>
                   </div>
@@ -296,13 +352,30 @@ export function MappingView({
                       <Button
                         key={candidateAction}
                         size="sm"
+                        type="button"
                         variant={actionButtonVariant(action === candidateAction)}
-                        onClick={() => setRuleSet((rules) => setMarkerAction(rules, job.id, marker, candidateAction))}
+                        onClick={() => updateReviewState((current) =>
+                          applyMarkerReviewDecision(current, context.mappingRules, context.markers, marker.id, { action: candidateAction })
+                        )}
                       >
                         {candidateAction}
                       </Button>
                     ))}
+                    {isEdited ? (
+                      <Button size="sm" type="button" variant="secondary" onClick={() => updateReviewState((current) => clearMarkerReviewDecision(current, marker.id))}>Revert</Button>
+                    ) : null}
                   </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Operator note</p>
+                  <Textarea
+                    className="mt-2 min-h-20"
+                    onChange={(event) => updateReviewState((current) =>
+                      applyMarkerReviewDecision(current, context.mappingRules, context.markers, marker.id, { note: event.target.value })
+                    )}
+                    placeholder="Capture marker carryover notes or suppression rationale."
+                    value={decision?.note ?? ""}
+                  />
                 </div>
               </div>
             );
@@ -316,9 +389,9 @@ export function MappingView({
         description="Review how canonical metadata will appear in planned delivery exports."
         aside={
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetMetadataStatus(profile, "mapped"))}>Bulk map</Button>
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetMetadataStatus(profile, "transformed"))}>Bulk transform</Button>
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetMetadataStatus(profile, "dropped"))}>Bulk drop</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkMetadataStatus(current, context, "mapped"))}>Bulk map</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkMetadataStatus(current, context, "transformed"))}>Bulk transform</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkMetadataStatus(current, context, "dropped"))}>Bulk drop</Button>
           </div>
         }
       >
@@ -333,32 +406,49 @@ export function MappingView({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mappingProfile.metadataMappings.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="uppercase tracking-[0.12em] text-muted">{item.field.replaceAll("_", " ")}</TableCell>
-                  <TableCell className="font-mono text-xs">{item.sourceValue}</TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.targetValue}
-                      onChange={(event) => setMappingProfile((profile) => updateMetadataMapping(profile, item.id, { targetValue: event.target.value }))}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      {(["mapped", "transformed", "dropped"] as const).map((status) => (
-                        <Button
-                          key={status}
-                          size="sm"
-                          variant={actionButtonVariant(item.status === status)}
-                          onClick={() => setMappingProfile((profile) => updateMetadataMapping(profile, item.id, { status }))}
-                        >
-                          {status}
-                        </Button>
-                      ))}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {overlay.effectiveMappingProfile.metadataMappings.map((item) => {
+                const isEdited = hasMetadataOverride(reviewState, item.id);
+
+                return (
+                  <TableRow key={item.id}>
+                    <TableCell className="uppercase tracking-[0.12em] text-muted">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{item.field.replaceAll("_", " ")}</span>
+                        <Badge variant={reviewBadgeVariant(isEdited)}>{isEdited ? "Operator-edited" : "Imported base"}</Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{item.sourceValue}</TableCell>
+                    <TableCell>
+                      <Input
+                        onChange={(event) => updateReviewState((current) =>
+                          applyMetadataOverride(current, context.mappingProfile, item.id, { targetValue: event.target.value })
+                        )}
+                        value={item.targetValue}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-2">
+                        {(["mapped", "transformed", "dropped"] as const).map((status) => (
+                          <Button
+                            key={status}
+                            size="sm"
+                            type="button"
+                            variant={actionButtonVariant(item.status === status)}
+                            onClick={() => updateReviewState((current) =>
+                              applyMetadataOverride(current, context.mappingProfile, item.id, { status })
+                            )}
+                          >
+                            {status}
+                          </Button>
+                        ))}
+                        {isEdited ? (
+                          <Button size="sm" type="button" variant="secondary" onClick={() => updateReviewState((current) => clearMetadataOverride(current, item.id))}>Revert</Button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -367,27 +457,30 @@ export function MappingView({
       <SectionCard
         eyebrow="Field recorder"
         title="Candidate review and overrides"
-        description="Link, leave unresolved, or explicitly ignore production-audio candidates. Bulk actions update the exporter preview."
+        description="Link, leave unresolved, or explicitly ignore production-audio candidates. Saved decisions update exporter planning after hydration."
         aside={
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetFieldRecorderDecision(profile, fieldRecorderCandidates, "linked"))}>Bulk link</Button>
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetFieldRecorderDecision(profile, fieldRecorderCandidates, "unresolved"))}>Bulk unresolved</Button>
-            <Button size="sm" variant="subtle" onClick={() => setMappingProfile((profile) => bulkSetFieldRecorderDecision(profile, fieldRecorderCandidates, "ignored"))}>Bulk ignore</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkFieldRecorderDecision(current, context, "linked"))}>Bulk link</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkFieldRecorderDecision(current, context, "unresolved"))}>Bulk unresolved</Button>
+            <Button size="sm" type="button" variant="subtle" onClick={() => updateReviewState((current) => applyBulkFieldRecorderDecision(current, context, "ignored"))}>Bulk ignore</Button>
           </div>
         }
       >
         <div className="space-y-3">
-          {fieldRecorderCandidates.map((candidate) => {
-            const decision = getFieldRecorderDecision(mappingProfile, candidate);
-            const clip = clipEvents.find((clipEvent) => clipEvent.id === candidate.clipEventId);
+          {context.fieldRecorderCandidates.map((candidate) => {
+            const decision = getFieldRecorderDecision(overlay.effectiveMappingProfile, candidate);
+            const reviewDecision = getFieldRecorderReviewDecision(reviewState, candidate.id);
+            const clip = context.clipEvents.find((clipEvent) => clipEvent.id === candidate.clipEventId);
+            const isEdited = Boolean(reviewDecision);
 
             return (
               <div key={candidate.id} className="rounded-2xl border border-border/70 bg-panel p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-foreground">{clip?.clipName ?? candidate.clipEventId}</p>
                       <Badge variant={overrideVariant(decision)}>{decision}</Badge>
+                      <Badge variant={reviewBadgeVariant(isEdited)}>{isEdited ? "Operator-edited" : "Imported base"}</Badge>
                     </div>
                     <p className="mt-1 font-mono text-xs text-muted">{candidate.candidateAssetName}</p>
                     <p className="mt-2 text-sm text-muted">{candidate.note}</p>
@@ -400,13 +493,30 @@ export function MappingView({
                       <Button
                         key={status}
                         size="sm"
+                        type="button"
                         variant={actionButtonVariant(decision === status)}
-                        onClick={() => setMappingProfile((profile) => setFieldRecorderDecision(profile, candidate, status))}
+                        onClick={() => updateReviewState((current) =>
+                          applyFieldRecorderReviewDecision(current, context.mappingProfile, context.fieldRecorderCandidates, candidate.id, { status })
+                        )}
                       >
                         {status}
                       </Button>
                     ))}
+                    {isEdited ? (
+                      <Button size="sm" type="button" variant="secondary" onClick={() => updateReviewState((current) => clearFieldRecorderReviewDecision(current, candidate.id))}>Revert</Button>
+                    ) : null}
                   </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Operator note</p>
+                  <Textarea
+                    className="mt-2 min-h-20"
+                    onChange={(event) => updateReviewState((current) =>
+                      applyFieldRecorderReviewDecision(current, context.mappingProfile, context.fieldRecorderCandidates, candidate.id, { note: event.target.value })
+                    )}
+                    placeholder="Capture relink rationale, offline decisions, or production audio follow-up."
+                    value={reviewDecision?.note ?? ""}
+                  />
                 </div>
               </div>
             );
@@ -416,41 +526,68 @@ export function MappingView({
 
       <SectionCard
         eyebrow="Validation queue"
-        title="Preservation issues from current mapping state"
-        description={`${previewReport.intakeCompletenessSummary} ${previewReport.deliveryReadinessSummary}`}
-        aside={<Badge variant={previewReport.highRiskCount > 0 ? "danger" : "accent"}>{previewReport.summary.totalFindings} findings</Badge>}
+        title="Preservation issues from current saved review state"
+        description={`${overlay.previewReport.intakeCompletenessSummary} ${overlay.previewReport.deliveryReadinessSummary}`}
+        aside={<Badge variant={overlay.reviewCounts.validationOpenCount > 0 ? "danger" : "accent"}>{overlay.reviewCounts.validationOpenCount} open</Badge>}
       >
         <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">High risk</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{previewReport.highRiskCount}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{overlay.previewReport.highRiskCount}</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Warnings</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{previewReport.warningCount}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{overlay.previewReport.warningCount}</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Blocked</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{previewReport.blockedCount}</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Acknowledged</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{overlay.reviewCounts.validationAcknowledgedCount}</p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-panel p-3">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Operator decisions</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{previewReport.summary.operatorDecisionCount}</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Dismissed</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{overlay.reviewCounts.validationDismissedCount}</p>
           </div>
         </div>
         <div className="mt-4 space-y-3">
-          {highlightedIssues.map((issue) => (
-            <div key={issue.id} className="rounded-2xl border border-border/70 bg-panel p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-foreground">{issue.title}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">{issue.code} / {issue.scope.replaceAll("_", " ")}</p>
+          {actionableValidationItems.map((item) => {
+            const isEdited = item.status !== "unreviewed" || item.note.trim().length > 0;
+
+            return (
+              <div key={item.issueKey} className="rounded-2xl border border-border/70 bg-panel p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-foreground">{item.issue.title}</p>
+                      <Badge variant={issueVariant(item.issue)}>{item.issue.severity}</Badge>
+                      <Badge variant={item.status === "acknowledged" ? "accent" : item.status === "dismissed" ? "warning" : "danger"}>{item.status}</Badge>
+                      <Badge variant={reviewBadgeVariant(isEdited)}>{isEdited ? "Operator-reviewed" : "Imported base"}</Badge>
+                    </div>
+                    <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted">{item.issue.code} / {item.issue.scope.replaceAll("_", " ")}</p>
+                    <p className="mt-3 text-sm text-muted">{item.issue.description}</p>
+                    <p className="mt-2 text-sm text-muted">{item.issue.recommendedAction}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" type="button" variant={actionButtonVariant(item.status === "acknowledged")} onClick={() => updateReviewState((current) => applyValidationReviewDecision(current, item.issue, { status: "acknowledged" }))}>Acknowledge</Button>
+                    <Button size="sm" type="button" variant={actionButtonVariant(item.status === "dismissed")} onClick={() => updateReviewState((current) => applyValidationReviewDecision(current, item.issue, { status: "dismissed" }))}>Dismiss</Button>
+                    {isEdited ? (
+                      <Button size="sm" type="button" variant="secondary" onClick={() => updateReviewState((current) => clearValidationReviewDecision(current, item.issue))}>Clear</Button>
+                    ) : null}
+                  </div>
                 </div>
-                <Badge variant={issueVariant(issue)}>{issue.severity}</Badge>
+                <div className="mt-3">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Operator note</p>
+                  <Textarea
+                    className="mt-2 min-h-20"
+                    onChange={(event) => updateReviewState((current) =>
+                      applyValidationReviewDecision(current, item.issue, { note: event.target.value })
+                    )}
+                    placeholder="Capture sign-off notes, reasons for dismissal, or follow-up actions."
+                    value={item.note}
+                  />
+                </div>
               </div>
-              <p className="mt-3 text-sm text-muted">{issue.recommendedAction}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </SectionCard>
     </div>

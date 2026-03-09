@@ -1,9 +1,9 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 2I` complete.
-- Next phase: `Phase 2J` persist operator review state and deepen reconform-ready review tools.
-- Following phase: `Phase 2K` continue reducing AAF compatibility fallback dependence.
+- Current phase: `Phase 2J` complete.
+- Next phase: `Phase 2K` reduce remaining AAF compatibility fallback dependence.
+- Following phase: `Phase 3` delivery execution once planning and review state stay stable.
 
 ## Phase 1 Scaffold
 - [x] Write product, schema, bundle, agent, and task specs.
@@ -24,6 +24,8 @@
 - [x] Expand direct AAF container parsing into broader composition mob, slot, source mob, locator, descriptor, and transition traversal while reducing adapter fallback dependence.
 - [x] Add richer mapping editors for tracks, markers, metadata, and field recorder candidates.
 - [x] Add validation rules that inspect real turnover completeness and delivery blockers.
-- [ ] Persist operator mapping edits and validation acknowledgements beyond the current in-memory review session.
+- [x] Persist operator review deltas locally in the browser without duplicating the imported canonical model.
+- [x] Add saved validation acknowledgements and reconform-ready review decisions on top of imported analysis.
 - [ ] Broaden direct AAF parsing beyond current in-repo graph payload coverage toward more arbitrary real-world OLE/AAF layouts.
-- [ ] Deepen reconform-ready review once saved mapping state exists.
+- [ ] Reduce `.adapter` compatibility fallback dependence for more real-world AAF layouts.
+- [ ] Prepare delivery execution only after saved review state and exporter planning remain stable.

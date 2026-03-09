@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { jobs, sourceBundles } from "@/lib/data-source";
+import { reviewJobContexts, sourceBundles } from "@/lib/data-source";
 
 export default function JobsPage() {
   return (
@@ -13,7 +13,7 @@ export default function JobsPage() {
       <PageHeader
         eyebrow="Jobs"
         title="Translation job register"
-        description="Current Resolve to Nuendo turnovers with separate intake, canonical, and delivery layers visible from the operator shell."
+        description="Current Resolve to Nuendo turnovers with separate intake, canonical, and delivery layers visible from the operator shell, plus saved operator review progress after hydration."
         actions={
           <Button asChild>
             <Link href="/jobs/new">Create draft job</Link>
@@ -23,7 +23,7 @@ export default function JobsPage() {
 
       <div className="grid gap-5 xl:grid-cols-[1.45fr_0.9fr]">
         <SectionCard eyebrow="Job list" title="Active turnovers" description="Operator-facing list view with direct access to preservation and mapping detail.">
-          <JobsTable jobs={jobs} />
+          <JobsTable contexts={reviewJobContexts} />
         </SectionCard>
 
         <div className="space-y-5">

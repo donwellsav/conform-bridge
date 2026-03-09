@@ -28,6 +28,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - AAF is a structured intake source with direct in-repo container parsing: real `.aaf` files can now hydrate the canonical model directly or enrich and reconcile against FCPXML/XML, while adapter fallback remains available for compatibility.
 - CSV, manifest, marker CSV, and simple EDL parsing remain active enrichment and fallback inputs.
 - Operator-facing mapping editors and validation rules sit on top of the imported canonical model without changing the intake -> canonical -> delivery split.
+- Saved operator review state is layered as local browser deltas keyed by job plus source signature. The imported canonical model itself is not duplicated into browser storage.
 
 ## Current Non-Goals
 - No real Nuendo export writing.
@@ -59,6 +60,8 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Delivery artifact planning through `src/lib/services/exporter.ts`.
 - Operator mapping editors for track, marker, metadata, and field recorder review.
 - Validation rules that merge intake completeness, reconciliation, and delivery-blocker findings into `PreservationIssue` records.
+- Browser-local persistence for operator review deltas, validation acknowledgements, and reconform review decisions.
+- Reconform-ready review with saved per-change acknowledgement state, notes, filters, and summary counts.
 - Imported-data-first routes with deterministic mock fallback only when no fixture library exists.
 
 ## Current AAF State
@@ -69,22 +72,22 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Nuendo project writing still does not exist.
 
 ## Current Status
-- `Phase 2I` is complete.
+- `Phase 2J` is complete.
 - Intake, canonical, and delivery layers are explicit in docs, types, routes, and tests.
 - Operator-facing mapping and validation review is available on the Job Detail route.
+- Operator review progress now persists locally in the browser as deltas over imported data.
 - Delivery planning remains planning-only and does not write files.
 
 ## Known Limitations
 - No Nuendo writer exists yet.
-- Operator review state is still in-memory only and is not persisted beyond the current session.
+- Operator review persistence is browser-local only; no backend or shared multi-user state exists.
 - Some AAF layouts still require compatibility fallback payloads.
 - BWF/WAV and MOV/MP4 assets are classified, but not deeply parsed.
 
 ## Next Recommended Work
-- `Phase 2J`: persist operator mapping decisions and validation acknowledgements without introducing a backend.
-- Keep exporter planning derived from saved operator decisions.
-- Deepen reconform-ready review after mapping persistence is stable.
-- Continue reducing AAF compatibility fallback dependence in parallel.
+- `Phase 2K`: keep reducing AAF compatibility fallback dependence and broaden direct parsing coverage.
+- Continue preparing delivery execution only after saved review state and delivery planning remain stable.
+- Keep exporter planning and any future writer boundary strictly separate.
 
 ## Rendering Rules
 - Initial render must be deterministic and SSR-safe.

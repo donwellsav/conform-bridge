@@ -1,5 +1,6 @@
 import * as fallback from "./mock-data";
 import { countMappingReviews, getFieldRecorderDecision } from "./mapping-workflow";
+import type { ReviewJobContext } from "./review-state";
 import { planNuendoDeliverySync } from "./services/exporter";
 import { importFixtureLibrarySync, type ImportedIntakeData } from "./services/importer";
 import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
@@ -7,6 +8,7 @@ import type {
   ActivityItem,
   AnalysisReport,
   ClipEvent,
+  ConformChangeEvent,
   DashboardMetric,
   DeliveryArtifact,
   DeliveryPackage,
@@ -14,6 +16,7 @@ import type {
   MappingProfile,
   MappingRule,
   Marker,
+  OutputPreset,
   SourceBundle,
   Timeline,
   TranslationJob,
@@ -382,3 +385,42 @@ export function getClipEventsForJob(jobId: string): ClipEvent[] {
 export function getPreservationIssues(jobId: string) {
   return preservationIssues.filter((issue) => issue.jobId === jobId);
 }
+
+export function getConformChangeEvents(jobId: string): ConformChangeEvent[] {
+  return conformChangeEvents.filter((event) => event.jobId === jobId);
+}
+
+export function getJobReviewContext(jobId: string): ReviewJobContext | undefined {
+  const job = getJob(jobId);
+  const bundle = job ? getBundle(job.sourceBundleId) : undefined;
+  const translationModel = job ? getTranslationModel(job.translationModelId) : undefined;
+  const timeline = job ? getTimelineForJob(job.id) : undefined;
+  const report = job ? getAnalysisReportForJob(job.id) : undefined;
+  const mappingProfile = job ? getMappingProfile(job.id) : undefined;
+  const outputPreset = job ? getOutputPreset(job.outputPresetId ?? job.templateId) : undefined;
+
+  if (!job || !bundle || !translationModel || !timeline || !report || !mappingProfile || !outputPreset) {
+    return undefined;
+  }
+
+  return {
+    job,
+    bundle,
+    translationModel,
+    timeline,
+    report,
+    mappingProfile,
+    mappingRules: getMappingRules(job.id),
+    markers: getMarkersForJob(job.id),
+    clipEvents: getClipEventsForJob(job.id),
+    fieldRecorderCandidates: getFieldRecorderCandidates(job.id),
+    outputPreset: outputPreset as OutputPreset,
+    preservationIssues: getPreservationIssues(job.id),
+    conformChangeEvents: getConformChangeEvents(job.id),
+  };
+}
+
+export const reviewJobContexts = jobs.flatMap((job) => {
+  const context = getJobReviewContext(job.id);
+  return context ? [context] : [];
+});

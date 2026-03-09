@@ -1,14 +1,21 @@
 import { PageHeader } from "@/components/page-header";
+import { ReconformReview } from "@/components/reconform-review";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
-import { conformChangeEvents, jobs, templates } from "@/lib/data-source";
+import { getJobReviewContext, jobs, templates } from "@/lib/data-source";
 
 export default function ReconformPage() {
   const reconformTemplate = templates.find((template) => template.category === "reconform") ?? templates[0];
   const job = jobs[0];
-  const changeCount = conformChangeEvents.length;
-  const movedCount = conformChangeEvents.filter((event) => event.changeType === "move").length;
-  const deletedCount = conformChangeEvents.filter((event) => event.changeType === "delete").length;
+  const reviewContext = getJobReviewContext(job.id);
+
+  if (!reviewContext) {
+    return null;
+  }
+
+  const changeCount = reviewContext.conformChangeEvents.length;
+  const movedCount = reviewContext.conformChangeEvents.filter((event) => event.changeType === "move").length;
+  const deletedCount = reviewContext.conformChangeEvents.filter((event) => event.changeType === "delete").length;
 
   return (
     <div className="space-y-6">
@@ -19,7 +26,9 @@ export default function ReconformPage() {
       />
 
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <SectionCard eyebrow="Change list" title="Revision events" description="This compare surface previews the work an operator would do before reconforming Nuendo sessions.">
+        <ReconformReview context={reviewContext} />
+
+        <SectionCard eyebrow="Template support" title="Revision policy" description="Saved reconform review stays local to the browser. The reconform template still drives delivery-planning assumptions without introducing a writer.">
           <div className="rounded-2xl border border-border/70 bg-panel p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -43,22 +52,6 @@ export default function ReconformPage() {
               </div>
             </div>
           </div>
-
-          <div className="mt-4 space-y-3">
-            {conformChangeEvents.map((event) => (
-              <div key={event.id} className="rounded-2xl border border-border/70 bg-panel p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-semibold text-foreground">{event.changeType}</p>
-                  <Badge variant={event.changeType === "replace" ? "neutral" : event.changeType === "move" ? "warning" : "accent"}>{event.changeType}</Badge>
-                </div>
-                <p className="mt-2 font-mono text-xs text-muted">{event.oldTimecode} ({event.oldFrame}) {" -> "} {event.newTimecode} ({event.newFrame})</p>
-                <p className="mt-3 text-sm leading-6 text-muted">{event.note}</p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard eyebrow="Template support" title="Revision policy" description="The reconform template is available now, even though persistent reconform-ready review tooling is still the next roadmap step.">
           <div className="space-y-3 text-sm leading-6 text-muted">
             <div className="rounded-2xl border border-border/70 bg-panel p-4">Template: <span className="font-semibold text-foreground">{reconformTemplate.name}</span></div>
             <div className="rounded-2xl border border-border/70 bg-panel p-4">Track grouping: {reconformTemplate.trackPolicy.trackGrouping.replaceAll("_", " ")}</div>

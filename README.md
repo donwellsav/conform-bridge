@@ -9,10 +9,10 @@ Current workflow model:
 This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF container parsing with adapter fallback, and real delivery planning, but it does not write Nuendo files yet.
 
 Current phase:
-- `Phase 2I` completed: richer mapping editors and validation workflow are in place.
+- `Phase 2J` completed: operator review-state persistence and reconform-ready saved review tooling are in place.
 
 Next planned phase:
-- `Phase 2J`: persist operator review state and deepen reconform-ready review tools.
+- `Phase 2K`: reduce remaining AAF compatibility fallback dependence.
 
 ## Phase History
 
@@ -116,6 +116,19 @@ Implemented:
 - exporter-driven local delivery preview updates from edited mapping decisions without adding a writer
 - mapping, validation, and imported-fixture integration tests
 
+### Phase 2J
+Persisted operator review state and reconform-ready saved review.
+
+Implemented:
+- browser-local persisted review-state storage keyed by `jobId` plus a stable intake/source signature
+- versioned localStorage envelope with corrupt-data fallback and migration-safe defaults
+- persisted operator deltas for track, marker, metadata, and field recorder review decisions
+- persisted validation acknowledgements, dismissals, and notes layered on top of imported `PreservationIssue` records
+- persisted reconform review decisions, per-change notes, and unresolved/acknowledged/risky filters
+- dashboard, jobs, and job-detail summaries that now reflect saved operator review progress after hydration
+- reset-to-imported-state controls without persisting the imported canonical model itself
+- SSR-safe persistence tests, overlay tests, and exporter-preview regression coverage
+
 ## Current Status
 
 Implemented now:
@@ -128,12 +141,14 @@ Implemented now:
 - Deterministic delivery planning in `exporter.ts`
 - operator mapping editors for track, marker, metadata, and field recorder review
 - shared validation rules that surface unresolved intake, metadata, production-audio, and delivery-blocker conditions
+- browser-local persisted review deltas for mappings, validation acknowledgements, and reconform review decisions
+- reconform review with saved per-change status, notes, filters, and summary counts
 - Fixture-backed tests for importer, exporter, and data flow
 
 ## Known Limitations
 
 - No Nuendo writer exists yet.
-- Operator review state is still in-memory only and is not persisted beyond the current session.
+- Operator review persistence is browser-local only; no backend or shared multi-user state exists.
 - Full arbitrary-production AAF graph traversal without compatibility fallback is not complete yet.
 - BWF/WAV and MOV/MP4 assets are classified but not deeply parsed.
 - Auth, billing, database, backend, and marketing site remain out of scope.
@@ -183,9 +198,12 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/lib/services/importer.ts](./src/lib/services/importer.ts): intake scanning, source preference, parsing, reconciliation, hydration, analysis
 - [src/lib/services/exporter.ts](./src/lib/services/exporter.ts): delivery planning only
 - [src/lib/mapping-workflow.ts](./src/lib/mapping-workflow.ts): pure mapping editor state helpers and review counters
+- [src/lib/review-state.ts](./src/lib/review-state.ts): pure review overlay, delta application, and review-summary helpers
+- [src/lib/local-review-state.ts](./src/lib/local-review-state.ts): SSR-safe browser-local persisted review-state store with versioning
 - [src/lib/validation.ts](./src/lib/validation.ts): shared validation-rule generation and analysis report rebuilding
 - [src/lib/data-source.ts](./src/lib/data-source.ts): composes imported fixture data with exporter planning, or falls back to mock data
 - [src/components/mapping-view.tsx](./src/components/mapping-view.tsx): operator-facing mapping editor and delivery preview
+- [src/components/reconform-review.tsx](./src/components/reconform-review.tsx): saved reconform review workflow with notes and filters
 
 ## Fixture Intake Folder
 
@@ -338,6 +356,9 @@ Current operator tooling includes:
 - metadata mapping review
 - field recorder candidate review and overrides
 - validation summaries rebuilt from current mapping and delivery-planning state
+- saved validation acknowledgements and dismissals layered over imported findings
+- saved reconform review state with per-change acknowledgement and follow-up notes
+- dashboard and jobs summaries rebuilt from imported data plus saved operator deltas after hydration
 
 ## SSR / Rendering Rules
 
@@ -347,15 +368,6 @@ Current operator tooling includes:
 - client components only where interaction is required
 
 ## Planned Next Phases
-
-### Phase 2J
-Persist operator review state and deepen reconform-ready review tools.
-
-Targets:
-- persist mapping edits and validation acknowledgements without introducing a backend
-- keep exporter planning derived from saved operator decisions
-- deepen reconform change inspection and review workflows
-- tighten validation around resolved vs acknowledged issues
 
 ### Phase 2K
 Reduce remaining AAF compatibility fallback dependence.
@@ -376,7 +388,7 @@ Targets:
 
 ## Next Recommended Work
 
-- persist operator mapping decisions and validation acknowledgements so the richer mapping editor survives beyond the current in-memory review session
-- keep exporter planning derived from saved mapping state without introducing a backend or file writer yet
-- deepen reconform review once saved mapping state exists
-- continue reducing AAF adapter fallback coverage in parallel, but keep importer precedence at `fcpxml/xml -> aaf -> edl -> metadata`
+- reduce remaining AAF adapter and compatibility fallback dependence while keeping importer precedence at `fcpxml/xml -> aaf -> edl -> metadata`
+- broaden direct AAF coverage toward more arbitrary production OLE/AAF layouts before adding any write path
+- prepare Phase 3 delivery execution only after AAF coverage and saved operator review state feel stable
+- keep delivery execution strictly separate from exporter planning until a real writer boundary is ready
