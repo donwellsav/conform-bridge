@@ -28,6 +28,7 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.equal(baseOverlay.previewExecution.preparedArtifacts.find((artifact) => artifact.fileRole === "field_recorder_report")?.executionStatus, "generated");
   assert.equal(baseOverlay.previewStaging.unavailableArtifacts.length, 0);
   assert.equal(baseOverlay.previewHandoff.summaryJson.readinessStatus, "ready-for-writer");
+  assert.equal(baseOverlay.previewWriterAdapters.readiness, "ready");
 
   const editedState = applyFieldRecorderReviewDecision(
     applyTrackOverride(baseState, context.mappingProfile, track.id, {
@@ -53,6 +54,8 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.equal(editedOverlay.previewHandoff.summaryJson.readinessStatus, "blocked");
   assert.ok(editedOverlay.previewHandoff.deferredWriterInput.artifacts.every((artifact) => artifact.readinessStatus === "blocked"));
   assert.equal(editedOverlay.previewExternalPackage.status, "blocked");
+  assert.equal(editedOverlay.previewWriterAdapters.readiness, "blocked");
+  assert.ok(editedOverlay.previewWriterAdapters.artifactMatches.every((match) => match.status === "blocked"));
   assert.match(
     editedOverlay.previewExecution.preparedArtifacts.find((artifact) => artifact.payloadKind === "metadata_csv" && artifact.executionStatus === "generated")?.content ?? "",
     /DX REVIEW A/,

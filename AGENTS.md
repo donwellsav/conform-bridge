@@ -27,6 +27,7 @@ This repository is a frontend-only internal operator application for Resolve to 
 - Delivery staging exists in `delivery-staging.ts`.
 - Deferred writer-input contracts and handoff manifests exist in `delivery-handoff.ts`.
 - External execution packaging exists in `external-execution-package.ts`.
+- Writer-adapter validation, capability matching, and dry-run planning exist in `writer-adapters.ts` and `writer-adapter-registry.ts`.
 - Operator review persistence exists as browser-local review deltas keyed by job plus source signature.
 
 ## Ongoing Scope Rules
@@ -53,4 +54,4 @@ The scaffold must include:
 ## Review Standard
 Reject work that hides hydration problems with client-only wrappers, uses browser APIs on first render, or introduces backend-looking abstractions for features that do not exist yet.
 Reject wording that implies the repo is still scaffold-only or mock-only when describing the current implementation state.
-Reject wording that implies browser-local review persistence, staged bundle output, deferred writer contracts, or external execution packaging do not exist.
+Reject wording that implies browser-local review persistence, staged bundle output, deferred writer contracts, external execution packaging, or writer-adapter dry runs do not exist.

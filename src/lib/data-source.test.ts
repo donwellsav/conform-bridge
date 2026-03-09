@@ -15,6 +15,7 @@ test("imported fixture data flows through exporter planning into dashboard and j
   const deliveryPackage = dataSource.getDeliveryPackage(job.deliveryPackageId);
   const executionPlan = dataSource.getDeliveryExecutionPlan(job.id);
   const externalExecutionPackage = dataSource.getExternalExecutionPackage(job.id);
+  const writerAdapterBundle = dataSource.getWriterAdapterBundle(job.id);
   const handoffBundle = dataSource.getDeliveryHandoffBundle(job.id);
   const stagingBundle = dataSource.getDeliveryStagingBundle(job.id);
   const exportArtifacts = dataSource.getExportArtifacts(job.id);
@@ -24,6 +25,7 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(deliveryPackage);
   assert.ok(executionPlan);
   assert.ok(externalExecutionPackage);
+  assert.ok(writerAdapterBundle);
   assert.ok(handoffBundle);
   assert.ok(stagingBundle);
   assert.equal(exportArtifacts.length, 8);
@@ -34,6 +36,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(stagingBundle?.entries.some((entry) => entry.kind === "deferred_descriptor"));
   assert.ok(handoffBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/deferred-writer-inputs.json")));
   assert.ok(externalExecutionPackage?.entries.some((entry) => entry.relativePath.endsWith("/package/external-execution-manifest.json")));
+  assert.ok(writerAdapterBundle?.artifactMatches.length);
+  assert.ok(writerAdapterBundle?.adapters.some((adapter) => adapter.id === "reference-noop-writer-adapter"));
   assert.equal(externalExecutionPackage?.status === "ready" || externalExecutionPackage?.status === "partial" || externalExecutionPackage?.status === "blocked", true);
   assert.ok(handoffBundle?.deferredWriterInput.artifacts.length);
   assert.ok(exportArtifacts.some((artifact) => artifact.status === "blocked"));

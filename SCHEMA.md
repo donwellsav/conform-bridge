@@ -412,6 +412,92 @@ Package-level readiness summary for downstream external execution.
 - `note`
 - `reasons`
 
+## Layer 6: Writer Adapter Contracts
+
+### WriterAdapterInput
+Normalized adapter-facing contract derived only from the packaged external execution bundle.
+- `version`
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `packageStatus`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `packageRoot`
+- `stagedRoot`
+- `handoffRoot`
+- `artifactInputs`
+
+### WriterAdapterArtifactInput
+Deferred artifact contract normalized for adapter capability matching and dry runs.
+- `artifactId`
+- `artifactKind`
+- `fileName`
+- `relativePath`
+- `deferredDescriptorPath`
+- `plannedOutputPath`
+- `requiredWriterCapability`
+- `packageStatus`
+- `writerReadinessStatus`
+- `blockers`
+- `dependencyIds`
+- `payload`
+
+### WriterAdapter
+Capability-based boundary that validates packaged deferred contracts and produces dry-run plans.
+- `id`
+- `version`
+- `label`
+- `capabilities`
+- `validate(input)`
+- `dryRun(input)`
+
+### WriterAdapterValidationResult
+Machine-readable readiness and unsupported-reason summary for one adapter against one packaged contract input.
+- `adapterId`
+- `readiness`
+- `diagnostics`
+- `supportedArtifactIds`
+- `unsupportedReasons`
+
+### WriterAdapterExecutionPlan
+Deterministic dry-run plan for a matched adapter without performing binary generation.
+- `adapterId`
+- `readiness`
+- `steps`
+- `dependencySummary`
+- `note`
+
+### WriterAdapterDryRunResult
+Combined validation and dry-run result for one adapter.
+- `adapterId`
+- `adapterLabel`
+- `validation`
+- `executionPlan`
+
+### WriterAdapterArtifactMatch
+Per-deferred-artifact adapter match summary.
+- `artifactId`
+- `fileName`
+- `artifactKind`
+- `requiredCapability`
+- `matchedAdapterIds`
+- `status`
+- `reason`
+
+### WriterAdapterBundle
+Aggregate adapter view for one packaged delivery handoff.
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `packageStatus`
+- `input`
+- `adapters`
+- `artifactMatches`
+- `readiness`
+- `summary`
+
 ## Orchestration Entity
 
 ### TranslationJob
@@ -450,6 +536,8 @@ Operator-facing record that ties the three layers together.
 - One `DeliveryPackage` may produce one `DeliveryExecutionPlan`, one `DeliveryStagingBundle`, and one `DeliveryHandoffManifest` in downstream non-writer layers.
 - One `DeliveryHandoffManifest` references one `DeferredWriterInput` document containing many `DeferredWriterArtifact` contracts.
 - One `DeliveryHandoffManifest` may be packaged into one `ExternalExecutionPackage` together with staged outputs and package metadata.
+- One `ExternalExecutionPackage` may produce one `WriterAdapterInput` document and one `WriterAdapterBundle` for adapter matching and dry-run validation.
+- One `WriterAdapterBundle` contains many `WriterAdapterResult` records and many `WriterAdapterArtifactMatch` records.
 - One `TranslationJob` may contain many `ConformChangeEvent` records.
 
 ## Current Repo Rules
@@ -458,4 +546,4 @@ Operator-facing record that ties the three layers together.
 - The repo prefers real fixture imports and falls back to deterministic mock data only when the fixture library is absent.
 - Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
 - Operator mapping editors persist browser-local review deltas keyed by job plus source signature.
-- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, and external execution packaging without implying that a Nuendo writer already exists.
+- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, external execution packaging, and writer-adapter dry runs without implying that a Nuendo writer already exists.

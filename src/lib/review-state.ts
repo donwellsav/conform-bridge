@@ -10,6 +10,7 @@ import { prepareExternalExecutionPackageSync } from "./services/external-executi
 import { prepareDeliveryHandoffSync } from "./services/delivery-handoff";
 import { createOverlayReviewInfluence, prepareDeliveryStagingSync } from "./services/delivery-staging";
 import { planNuendoDeliverySync } from "./services/exporter";
+import { prepareWriterAdapterBundleSync } from "./services/writer-adapters";
 import type {
   AnalysisReport,
   ClipEvent,
@@ -39,6 +40,7 @@ import type {
   TranslationModel,
   ValidationAcknowledgement,
   ValidationReviewStatus,
+  WriterAdapterBundle,
 } from "./types";
 import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
 
@@ -91,6 +93,7 @@ export interface ReviewOverlayResult {
   previewStaging: DeliveryStagingBundle;
   previewHandoff: DeliveryHandoffBundle;
   previewExternalPackage: ExternalExecutionPackage;
+  previewWriterAdapters: WriterAdapterBundle;
   reconformItems: ReconformReviewItem[];
   reviewCounts: {
     mappingOpenCount: number;
@@ -791,6 +794,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     stagingBundle: previewStaging,
     handoffBundle: previewHandoff,
   });
+  const previewWriterAdapters = prepareWriterAdapterBundleSync(previewExternalPackage);
 
   return {
     reviewState,
@@ -805,6 +809,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewStaging,
     previewHandoff,
     previewExternalPackage,
+    previewWriterAdapters,
     reconformItems,
     reviewCounts: {
       mappingOpenCount: mappingReviewSummary.total,

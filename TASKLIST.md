@@ -1,8 +1,8 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 3D` complete.
-- Next phase: `Phase 3E` writer-adapter prep on top of packaged external execution output.
+- Current phase: `Phase 3E` complete.
+- Next phase: `Phase 3F` writer-runner requests, responses, and receipts on top of packaged external execution output plus adapter dry runs.
 - Ongoing compatibility work: keep shrinking remaining AAF fallback cases when new production samples justify it.
 
 ## Phase 1 Scaffold
@@ -38,5 +38,6 @@
 - [x] Define stable writer inputs for deferred binary artifacts without implementing native Nuendo session writing yet.
 - [x] Define delivery handoff/export contracts for staged bundle output without collapsing planning, execution prep, and writing.
 - [x] Package staged output plus handoff contracts for external execution without implementing native Nuendo/session writing.
-- [ ] Formalize writer adapter interfaces that consume the current external execution package and deferred writer-input contracts.
+- [x] Formalize writer adapter interfaces that consume the current external execution package and deferred writer-input contracts.
+- [ ] Define writer-runner request/response and receipt contracts on top of writer-adapter dry runs.
 - [ ] Implement real Nuendo/session writing only after staged delivery execution is proven stable.

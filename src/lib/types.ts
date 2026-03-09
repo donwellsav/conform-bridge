@@ -67,6 +67,18 @@ export type ExternalExecutionStatus = "ready" | "partial" | "blocked";
 export type ExternalExecutionEntryLayer = "staged" | "handoff" | "package";
 export type ExternalExecutionClassification = "generated" | "deferred-contract" | "package-metadata";
 export type ExternalExecutionChecksumAlgorithm = "fnv1a-32";
+export type WriterAdapterId = "reference-noop-writer-adapter" | "future-nuendo-aaf-writer" | "future-reference-video-handoff";
+export type WriterAdapterVersion = 1;
+export type WriterAdapterInputVersion = 1;
+export type WriterAdapterCapability = WriterCapability;
+export type WriterAdapterReadiness = "ready" | "partial" | "blocked" | "unsupported";
+export type WriterAdapterUnsupportedCode =
+  | "no_matching_adapter"
+  | "capability_not_supported"
+  | "adapter_not_implemented"
+  | "package_blocked"
+  | "artifact_blocked"
+  | "dependency_gap";
 
 export interface SourceSnapshot {
   sequenceName: string;
@@ -883,6 +895,122 @@ export interface ExternalExecutionPackage {
   checksumsJson: ExternalExecutionChecksums;
   deferredInputsJson: ExternalExecutionDeferredInputsDocument;
   generatedArtifactIndexJson: ExternalExecutionGeneratedArtifactIndex;
+  summary: string;
+}
+
+export interface WriterAdapterArtifactInput {
+  artifactId: string;
+  artifactKind: DeferredWriterArtifactKind;
+  fileName: string;
+  relativePath: string;
+  deferredDescriptorPath: string;
+  plannedOutputPath: string;
+  requiredWriterCapability: WriterCapability;
+  packageStatus: ExternalExecutionStatus;
+  writerReadinessStatus: WriterReadinessStatus;
+  blockers: string[];
+  dependencyIds: string[];
+  payload: Record<string, unknown>;
+}
+
+export interface WriterAdapterInput {
+  version: WriterAdapterInputVersion;
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  packageStatus: ExternalExecutionStatus;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  packageRoot: string;
+  stagedRoot: string;
+  handoffRoot: string;
+  artifactInputs: WriterAdapterArtifactInput[];
+}
+
+export interface WriterAdapterUnsupportedReason {
+  code: WriterAdapterUnsupportedCode;
+  artifactId?: string;
+  capability?: WriterCapability;
+  message: string;
+}
+
+export interface WriterAdapterValidationResult {
+  adapterId: WriterAdapterId;
+  readiness: WriterAdapterReadiness;
+  diagnostics: string[];
+  supportedArtifactIds: string[];
+  unsupportedReasons: WriterAdapterUnsupportedReason[];
+}
+
+export interface WriterAdapterExecutionStep {
+  artifactId: string;
+  fileName: string;
+  plannedOutputPath: string;
+  requiredCapability: WriterCapability;
+  readiness: WriterAdapterReadiness;
+  summary: string;
+  blockers: string[];
+}
+
+export interface WriterAdapterExecutionPlan {
+  adapterId: WriterAdapterId;
+  readiness: WriterAdapterReadiness;
+  steps: WriterAdapterExecutionStep[];
+  dependencySummary: {
+    totalArtifacts: number;
+    readyCount: number;
+    partialCount: number;
+    blockedCount: number;
+    unsupportedCount: number;
+  };
+  note: string;
+}
+
+export interface WriterAdapterDryRunResult {
+  adapterId: WriterAdapterId;
+  adapterLabel: string;
+  validation: WriterAdapterValidationResult;
+  executionPlan: WriterAdapterExecutionPlan;
+}
+
+export interface WriterAdapter {
+  id: WriterAdapterId;
+  version: WriterAdapterVersion;
+  label: string;
+  capabilities: WriterAdapterCapability[];
+  validate(input: WriterAdapterInput): WriterAdapterValidationResult;
+  dryRun(input: WriterAdapterInput): WriterAdapterDryRunResult;
+}
+
+export interface WriterAdapterArtifactMatch {
+  artifactId: string;
+  fileName: string;
+  artifactKind: DeferredWriterArtifactKind;
+  requiredCapability: WriterCapability;
+  matchedAdapterIds: WriterAdapterId[];
+  status: WriterAdapterReadiness;
+  reason: string;
+}
+
+export interface WriterAdapterResult {
+  id: WriterAdapterId;
+  version: WriterAdapterVersion;
+  label: string;
+  capabilities: WriterAdapterCapability[];
+  validation: WriterAdapterValidationResult;
+  dryRun: WriterAdapterDryRunResult;
+}
+
+export interface WriterAdapterBundle {
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  packageStatus: ExternalExecutionStatus;
+  input: WriterAdapterInput;
+  adapters: WriterAdapterResult[];
+  artifactMatches: WriterAdapterArtifactMatch[];
+  readiness: WriterAdapterReadiness;
   summary: string;
 }
 
