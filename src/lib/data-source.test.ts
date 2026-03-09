@@ -5,7 +5,7 @@ import * as dataSource from "./data-source";
 
 test("imported fixture data flows through exporter planning into dashboard and job selectors", () => {
   assert.equal(dataSource.dataMode, "imported");
-  assert.equal(dataSource.jobs.length, 5);
+  assert.equal(dataSource.jobs.length, 6);
 
   const job = dataSource.jobs[0];
   assert.ok(job);
@@ -25,4 +25,6 @@ test("imported fixture data flows through exporter planning into dashboard and j
 
   const missingMediaJob = dataSource.jobs.find((candidate) => candidate.id === "job-rvr-207-aaf-missing-media");
   assert.ok(missingMediaJob);
+  const broaderDirectAafJob = dataSource.jobs.find((candidate) => candidate.id === "job-rvr-208-aaf-mob-graph");
+  assert.ok(broaderDirectAafJob);
 });

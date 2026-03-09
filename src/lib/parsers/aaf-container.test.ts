@@ -7,6 +7,7 @@ import { createEmbeddedAafContainerBuffer, parseAafContainerBuffer } from "./aaf
 import type { IntakeAsset } from "../types";
 
 const directAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only", "resolve", "RVR_205_R1_LOCK.aaf");
+const broaderDirectAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-208-aaf-mob-graph", "resolve", "RVR_208_R4_LOCK.aaf");
 
 const assets: IntakeAsset[] = [
   {
@@ -54,6 +55,57 @@ function createContext() {
     timelineId: "timeline-rvr-205-aaf-only",
     assets,
     fallbackName: "RVR_205_R1",
+    fallbackFps: "23.976" as const,
+    fallbackSampleRate: 48000 as const,
+    fallbackStartTimecode: "01:00:00:00",
+    fallbackDropFrame: false,
+  };
+}
+
+function createBroaderGraphContext() {
+  return {
+    bundleId: "bundle-rvr-208-aaf-mob-graph",
+    translationModelId: "model-rvr-208-aaf-mob-graph",
+    timelineId: "timeline-rvr-208-aaf-mob-graph",
+    assets: [
+      {
+        id: "asset-roll-110a-01",
+        bundleId: "bundle-rvr-208-aaf-mob-graph",
+        stage: "intake",
+        origin: "production-audio",
+        fileKind: "bwf",
+        fileRole: "production_audio",
+        name: "ROLL_110A_01.BWF",
+        sizeLabel: "64 B",
+        status: "present",
+        note: "Fixture roll.",
+        channelCount: 8,
+        channelLayout: "poly_8",
+        sampleRate: 48000,
+        isPolyWav: true,
+        hasBwf: true,
+        hasIXml: true,
+      },
+      {
+        id: "asset-roll-110a-02",
+        bundleId: "bundle-rvr-208-aaf-mob-graph",
+        stage: "intake",
+        origin: "production-audio",
+        fileKind: "bwf",
+        fileRole: "production_audio",
+        name: "ROLL_110A_02.BWF",
+        sizeLabel: "64 B",
+        status: "present",
+        note: "Fixture roll.",
+        channelCount: 8,
+        channelLayout: "poly_8",
+        sampleRate: 48000,
+        isPolyWav: true,
+        hasBwf: true,
+        hasIXml: true,
+      },
+    ],
+    fallbackName: "RVR_208_R4",
     fallbackFps: "23.976" as const,
     fallbackSampleRate: 48000 as const,
     fallbackStartTimecode: "01:00:00:00",
@@ -142,4 +194,28 @@ test("createEmbeddedAafContainerBuffer writes a directly parseable in-repo AAF p
   assert.ok(parsed);
   assert.equal(parsed?.timeline.name, "INLINE_AAF_TEST");
   assert.equal(parsed?.clipEvents[0]?.hasFadeIn, true);
+});
+
+test("parseAafContainerBuffer traverses broader graph payloads including locators and media descriptors", () => {
+  const parsed = parseAafContainerBuffer(readFileSync(broaderDirectAafFixturePath), createBroaderGraphContext());
+
+  assert.ok(parsed);
+  assert.equal(parsed?.timeline.name, "RVR_208_R4_AAF_GRAPH");
+  assert.equal(parsed?.tracks.length, 2);
+  assert.equal(parsed?.clipEvents.length, 3);
+  assert.equal(parsed?.markers.length, 3);
+
+  const firstClip = parsed?.clipEvents.find((clipEvent) => clipEvent.clipName === "BOOM_110A_01_A");
+  const transitionClip = parsed?.clipEvents.find((clipEvent) => clipEvent.clipName === "BOOM_110A_02_B");
+  const locatorMarker = parsed?.markers.find((marker) => marker.name === "ADR check");
+
+  assert.equal(firstClip?.sourceFileName, "ROLL_110A_01.BWF");
+  assert.equal(firstClip?.channelLayout, "poly_8");
+  assert.equal(firstClip?.hasIXml, true);
+  assert.match(firstClip?.clipNotes ?? "", /Source clip: SC_110A_A/);
+  assert.match(firstClip?.clipNotes ?? "", /Media locator: AUDIO\/ROLL_110A_01\.BWF/);
+  assert.equal(firstClip?.hasFadeOut, true);
+  assert.equal(transitionClip?.hasSpeedEffect, true);
+  assert.match(transitionClip?.clipNotes ?? "", /Resolve crossfade/);
+  assert.match(locatorMarker?.note ?? "", /Check lav rustle/);
 });

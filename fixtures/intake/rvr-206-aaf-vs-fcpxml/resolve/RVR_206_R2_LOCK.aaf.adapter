@@ -38,7 +38,7 @@
   "mediaRefs": [
     {
       "id": "mr-1",
-      "fileName": "ROLL_080A_01_ALT.BWF",
+      "fileName": "ROLL_080A_01.BWF",
       "mobName": "ROLL_080A_01_ALT",
       "reel": "080A",
       "tape": "R080A",
@@ -78,7 +78,7 @@
       "id": "evt-1",
       "trackSlotId": "1",
       "trackIndex": 1,
-      "clipName": "BOOM_080A_01_A",
+      "clipName": "BOOM_080A_01_ALT",
       "mediaRefId": "mr-1",
       "timing": {
         "recordIn": "01:00:10:04",

@@ -1,0 +1,24 @@
+{
+  "bundleName": "RVR_208_R4_TURNOVER",
+  "jobCode": "RVR208R4",
+  "title": "River Run Episode 208 Revision 4",
+  "sequenceName": "RVR_208_R4",
+  "pictureLock": true,
+  "fps": "23.976",
+  "startTimecode": "01:00:00:00",
+  "durationTimecode": "00:09:00:00",
+  "sampleRate": 48000,
+  "handlesFrames": 12,
+  "dropFrame": false,
+  "templateId": "tpl-dialogue-premix",
+  "outputPresetId": "tpl-dialogue-premix",
+  "expectedFiles": [
+    "RVR_208_R4_LOCK.aaf",
+    "RVR_208_METADATA.csv",
+    "RVR_208_REF.mov"
+  ],
+  "expectedProductionRolls": [
+    "ROLL_110A_01.BWF",
+    "ROLL_110A_02.BWF"
+  ]
+}

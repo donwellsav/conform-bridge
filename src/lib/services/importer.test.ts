@@ -10,6 +10,7 @@ const edlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-204-edl
 const aafOnlyFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only");
 const aafVsFcpxmlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-206-aaf-vs-fcpxml");
 const aafMissingMediaFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-207-aaf-missing-media");
+const broaderAafGraphFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-208-aaf-mob-graph");
 const manifestPath = resolve(fcpxmlFixtureRoot, "editorial", "manifest.json");
 const metadataPath = resolve(fcpxmlFixtureRoot, "editorial", "RVR_203_METADATA.csv");
 const importer = ("default" in importerModule ? importerModule.default : importerModule) as typeof importerModule;
@@ -142,6 +143,7 @@ test("importTurnoverFolderSync keeps FCPXML primary, enriches from AAF, and reco
   assert.ok(issueCodes.includes("AAF_TRACK_COUNT_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_CLIP_COUNT_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_CLIP_TIMING_MISMATCH"));
+  assert.ok(issueCodes.includes("AAF_SOURCE_CLIP_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_SOURCE_FILE_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_REEL_TAPE_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_MARKER_COVERAGE_MISMATCH"));
@@ -166,4 +168,29 @@ test("importTurnoverFolderSync preserves explicit missing-media issues for AAF-p
   assert.ok(issueCodes.includes("MISSING_PRODUCTION_ROLL"));
   assert.ok(issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
   assert.ok(issueCodes.includes("AAF_ADAPTER_FALLBACK"));
+});
+
+test("importTurnoverFolderSync directly traverses broader AAF mob graphs and preserves locator and descriptor detail", () => {
+  const result = importer.importTurnoverFolderSync(broaderAafGraphFixtureRoot);
+
+  assert.equal(result.timeline.name, "RVR_208_R4_AAF_GRAPH");
+  assert.equal(result.timeline.trackIds.length, 2);
+  assert.equal(result.clipEvents.length, 3);
+  assert.equal(result.markers.length, 3);
+
+  const firstClip = result.clipEvents.find((clipEvent) => clipEvent.clipName === "BOOM_110A_01_A");
+  const speedClip = result.clipEvents.find((clipEvent) => clipEvent.clipName === "BOOM_110A_02_B");
+  const locatorMarker = result.markers.find((marker) => marker.name === "ADR check");
+  const issueCodes = result.analysisReport.groups.flatMap((group) => group.findings.map((finding) => finding.code));
+
+  assert.equal(firstClip?.sourceFileName, "ROLL_110A_01.BWF");
+  assert.equal(firstClip?.channelCount, 8);
+  assert.equal(firstClip?.hasIXml, true);
+  assert.match(firstClip?.clipNotes ?? "", /Source clip: SC_110A_A/);
+  assert.match(firstClip?.clipNotes ?? "", /Media locator: AUDIO\/ROLL_110A_01\.BWF/);
+  assert.equal(speedClip?.hasSpeedEffect, true);
+  assert.equal(speedClip?.hasFadeIn, true);
+  assert.equal(locatorMarker?.timecode, "01:00:32:00");
+  assert.match(locatorMarker?.note ?? "", /Check lav rustle/);
+  assert.ok(!issueCodes.includes("AAF_ADAPTER_FALLBACK"));
 });

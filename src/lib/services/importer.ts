@@ -1485,6 +1485,7 @@ function createAafReconciliationIssues(
     }
 
     const timingMismatches: string[] = [];
+    const sourceClipMismatches: string[] = [];
     const sourceFileMismatches: string[] = [];
     const reelTapeMismatches: string[] = [];
 
@@ -1496,6 +1497,10 @@ function createAafReconciliationIssues(
 
       if (aafClipEvent.recordIn !== clipEvent.recordIn || aafClipEvent.recordOut !== clipEvent.recordOut) {
         timingMismatches.push(`${clipEvent.clipName}: primary ${clipEvent.recordIn}-${clipEvent.recordOut} vs aaf ${aafClipEvent.recordIn}-${aafClipEvent.recordOut}`);
+      }
+
+      if (clipEvent.clipName && aafClipEvent.clipName && clipEvent.clipName !== aafClipEvent.clipName) {
+        sourceClipMismatches.push(`${clipEvent.recordIn}: primary ${clipEvent.clipName} vs aaf ${aafClipEvent.clipName}`);
       }
 
       if (
@@ -1531,6 +1536,24 @@ function createAafReconciliationIssues(
         recommendedAction: "Review the mismatched clips against the Resolve export that should remain authoritative.",
         requiresDecision: false,
         affectedItems: timingMismatches,
+      });
+    }
+
+    if (sourceClipMismatches.length > 0) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-aaf-source-clips`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "clips",
+        code: "AAF_SOURCE_CLIP_MISMATCH",
+        title: "AAF source clip identity does not match the primary timeline source",
+        description: "AAF source clip identity disagrees with the FCPXML/XML primary source for one or more events.",
+        sourceLocation: "AAF vs FCPXML/XML",
+        impact: "Source clip naming and reconform assumptions may require manual review.",
+        recommendedAction: "Confirm which turnover source carries the authoritative source clip identity before downstream relink or conform decisions.",
+        requiresDecision: false,
+        affectedItems: sourceClipMismatches,
       });
     }
 
@@ -1570,7 +1593,18 @@ function createAafReconciliationIssues(
       });
     }
 
-    if (aafTimeline.markers.length !== markers.length) {
+    const primaryMarkerKeys = new Set(markers.map((marker) => `${marker.timecode}|${marker.name.toLowerCase()}`));
+    const aafMarkerKeys = new Set(aafTimeline.markers.map((marker) => `${marker.timecode}|${marker.name.toLowerCase()}`));
+    const markerCoverageMismatches = [
+      ...markers
+        .filter((marker) => !aafMarkerKeys.has(`${marker.timecode}|${marker.name.toLowerCase()}`))
+        .map((marker) => `primary only ${marker.timecode} ${marker.name}`),
+      ...aafTimeline.markers
+        .filter((marker) => !primaryMarkerKeys.has(`${marker.timecode}|${marker.name.toLowerCase()}`))
+        .map((marker) => `aaf only ${marker.timecode} ${marker.name}`),
+    ];
+
+    if (aafTimeline.markers.length !== markers.length || markerCoverageMismatches.length > 0) {
       issues.push({
         id: `issue-${slugify(jobId)}-aaf-markers`,
         jobId,
@@ -1578,13 +1612,15 @@ function createAafReconciliationIssues(
         severity: "warning",
         scope: "markers",
         code: "AAF_MARKER_COVERAGE_MISMATCH",
-        title: "AAF marker coverage does not match the primary timeline source",
-        description: "AAF marker parsing found a different marker count than the primary timeline source.",
+        title: "AAF marker or locator coverage does not match the primary timeline source",
+        description: "AAF marker or locator parsing found coverage differences from the primary timeline source.",
         sourceLocation: "AAF vs FCPXML/XML",
         impact: "Marker exports may need manual review before delivery.",
-        recommendedAction: "Keep the FCPXML/XML marker set primary and review extra or missing AAF markers manually.",
+        recommendedAction: "Keep the FCPXML/XML marker set primary and review extra or missing AAF markers or locators manually.",
         requiresDecision: false,
-        affectedItems: [`primary markers=${markers.length}`, `aaf markers=${aafTimeline.markers.length}`],
+        affectedItems: markerCoverageMismatches.length > 0
+          ? markerCoverageMismatches
+          : [`primary markers=${markers.length}`, `aaf markers=${aafTimeline.markers.length}`],
       });
     }
   }
