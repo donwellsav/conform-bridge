@@ -47,7 +47,7 @@ export function NewJobWizard({
   return (
     <div className="grid gap-5 xl:grid-cols-[1.6fr_0.9fr]">
       <div className="space-y-5">
-        <SectionCard eyebrow="Wizard status" title="New translation job" description="Front-end only flow for intake selection, template selection, mapping assumptions, and validation.">
+        <SectionCard eyebrow="Wizard status" title="New translation job" description="Browser-local operator flow for intake selection, template selection, mapping assumptions, and validation.">
           <div className="grid gap-3 md:grid-cols-4">
             {steps.map((step, index) => (
               <button
@@ -187,7 +187,7 @@ export function NewJobWizard({
           </div>
           <div className="rounded-2xl border border-accent/30 bg-accent/10 p-4 text-sm leading-6 text-accent-strong">
             {hydrated
-              ? "Draft selection is now persisted locally without changing the deterministic server render."
+              ? "Draft selection is now persisted in browser-local storage without changing the deterministic server render."
               : "Initial render uses only fixed props. Local draft persistence activates after hydration."}
           </div>
         </div>

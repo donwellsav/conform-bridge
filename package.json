@@ -1,6 +1,6 @@
 {
   "name": "conform-bridge",
-  "description": "Internal Resolve-to-Nuendo translation operator shell with real intake analysis and delivery planning.",
+  "description": "Internal Resolve-to-Nuendo operator app with real intake analysis, deterministic delivery preparation, and external execution contracts.",
   "version": "0.1.0",
   "private": true,
   "scripts": {

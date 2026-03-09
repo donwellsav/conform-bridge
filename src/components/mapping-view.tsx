@@ -147,7 +147,7 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
   const storageState = !hydrated
     ? "Server defaults"
     : stored
-      ? "Loaded from and persisted to local storage"
+      ? "Loaded from and persisted to browser-local storage"
       : "Ready to persist on the next operator edit";
 
   const updateReviewState = (updater: (current: typeof reviewState) => typeof reviewState) => {
@@ -160,7 +160,7 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
       <SectionCard
         eyebrow="Review state"
         title="Persisted operator overlay"
-        description="Imported canonical data remains the base layer. Only operator deltas are persisted locally and reapplied after hydration."
+        description="Imported canonical data remains the base layer. Only operator deltas are persisted in browser-local storage and reapplied after hydration."
         aside={
           <div className="flex flex-wrap gap-2">
             <Badge variant={hydrated ? "accent" : "neutral"}>{storageState}</Badge>

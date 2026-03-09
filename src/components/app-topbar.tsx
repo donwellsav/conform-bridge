@@ -13,7 +13,7 @@ export function AppTopbar() {
 
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
         <div className="flex min-w-[260px] items-center justify-between rounded-2xl border border-border/70 bg-panel-strong px-4 py-3 text-sm text-muted">
-          <span>Phase 2I mapping review</span>
+          <span>Phase 3J executor compatibility</span>
           <Badge variant="accent">SSR safe</Badge>
         </div>
         <div className="flex items-center gap-2">

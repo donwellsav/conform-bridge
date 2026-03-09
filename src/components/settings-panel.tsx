@@ -32,7 +32,7 @@ export function SettingsPanel({ defaults, templates }: { defaults: AppSettings; 
     : !settings.localPersistenceEnabled
       ? "Persistence disabled for this browser"
       : stored
-        ? "Loaded from or persisted to local storage"
+        ? "Loaded from or persisted to browser-local storage"
         : "Ready to persist after the next change";
 
   return (

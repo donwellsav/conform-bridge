@@ -119,7 +119,7 @@ export function planNuendoDeliverySync(
       `${sequenceLabel}_NUENDO_READY.aaf`,
       analysisReport.totals.clipCount > 0 && activeTrackCount > 0 ? "planned" : "placeholder",
       analysisReport.totals.clipCount > 0 && activeTrackCount > 0
-        ? "Exporter-generated Nuendo-ready AAF plan from the canonical translation model and current track mapping decisions. No writer is implemented yet."
+        ? "Exporter-generated Nuendo-ready AAF plan from the canonical translation model and current track mapping decisions. No native Nuendo writer is implemented yet."
         : "Exporter keeps the AAF artifact as a placeholder until canonical clip data exists and at least one track remains mapped for delivery.",
     ),
     createArtifact(
@@ -176,7 +176,7 @@ export function planNuendoDeliverySync(
       "delivery_readme",
       "README_NUENDO_IMPORT.txt",
       "planned",
-      "Exporter-generated README plan for operator import instructions. No writer is implemented yet.",
+      "Exporter-generated README plan for operator import instructions. No native Nuendo writer is implemented yet.",
     ),
     createArtifact(
       job.id,

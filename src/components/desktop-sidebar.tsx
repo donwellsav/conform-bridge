@@ -67,7 +67,7 @@ export function DesktopSidebar() {
       <div className="space-y-3 border-t border-border/80 pt-5">
         <div className="flex items-center justify-between gap-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Mode</p>
-          <Badge variant="accent">Frontend only</Badge>
+          <Badge variant="accent">No backend</Badge>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4 text-sm leading-6 text-muted">
           <p className="font-semibold text-foreground">Real intake parsing. Planned delivery only. No backend.</p>
