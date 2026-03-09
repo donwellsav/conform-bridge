@@ -5,7 +5,7 @@ import * as dataSource from "./data-source";
 
 test("imported fixture data flows through exporter planning into dashboard and job selectors", () => {
   assert.equal(dataSource.dataMode, "imported");
-  assert.equal(dataSource.jobs.length, 4);
+  assert.equal(dataSource.jobs.length, 5);
 
   const job = dataSource.jobs[0];
   assert.ok(job);
@@ -22,4 +22,7 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.equal(dashboardMetric?.value, String(dataSource.jobs.length * 8).padStart(2, "0"));
   assert.match(dashboardMetric?.note ?? "", /exporter\.ts/);
   assert.match(deliveryActivity?.title ?? "", /exporter plan refreshed/i);
+
+  const missingMediaJob = dataSource.jobs.find((candidate) => candidate.id === "job-rvr-207-aaf-missing-media");
+  assert.ok(missingMediaJob);
 });

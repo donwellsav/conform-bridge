@@ -1,113 +1,179 @@
-# AAF text-dump fixture for Conform Bridge intake parsing.
-[Composition]
-Name: RVR_206_R2_AAF_SECONDARY
-EditRate: 24000/1001
-SampleRate: 48000
-StartTimecode: 01:00:00:00
-DurationTimecode: 00:06:40:00
-DropFrame: false
-
-[Track]
-Index: 1
-Name: DX BOOM A
-Role: dx
-ChannelCount: 1
-ChannelLayout: mono
-
-[Track]
-Index: 2
-Name: DX LAV A
-Role: dx
-ChannelCount: 1
-ChannelLayout: mono
-
-[Track]
-Index: 3
-Name: DX ISO C
-Role: dx
-ChannelCount: 1
-ChannelLayout: mono
-
-[Clip]
-TrackIndex: 1
-TrackName: DX BOOM A
-Role: dx
-Name: BOOM_080A_01_A
-SourceFileName: ROLL_080A_01_ALT.BWF
-MobName: ROLL_080A_01_ALT
-Reel: 080A
-Tape: R080A
-Scene: 31B
-Take: 1
-RecordIn: 01:00:10:04
-RecordOut: 01:00:15:04
-SourceIn: 08:06:26:20
-SourceOut: 08:06:31:20
-ChannelCount: 8
-ChannelLayout: poly_8
-IsPolyWav: true
-HasBwf: true
-HasIXml: true
-FadeIn: true
-FadeOut: false
-Offline: false
-
-[Clip]
-TrackIndex: 2
-TrackName: DX LAV A
-Role: dx
-Name: LAV_080A_02_B
-SourceFileName: ROLL_080B_02.BWF
-MobName: ROLL_080B_02
-Reel: 080B
-Tape: R080B
-Scene: 31B
-Take: 2
-RecordIn: 01:00:30:00
-RecordOut: 01:00:34:00
-SourceIn: 08:06:46:16
-SourceOut: 08:06:50:16
-ChannelCount: 8
-ChannelLayout: poly_8
-IsPolyWav: true
-HasBwf: true
-HasIXml: true
-FadeIn: false
-FadeOut: true
-Offline: true
-
-[Clip]
-TrackIndex: 3
-TrackName: DX ISO C
-Role: dx
-Name: ISO_080C_03_C
-SourceFileName: ROLL_080C_03.BWF
-MobName: ROLL_080C_03
-Reel: 080C
-Tape: R080C
-Scene: 31B
-Take: 3
-RecordIn: 01:00:42:00
-RecordOut: 01:00:46:00
-SourceIn: 08:06:58:16
-SourceOut: 08:07:02:16
-ChannelCount: 8
-ChannelLayout: poly_8
-IsPolyWav: true
-HasBwf: true
-HasIXml: true
-FadeIn: false
-FadeOut: false
-Offline: true
-
-[Marker]
-Timecode: 01:00:40:00
-Name: Phone ring alt
-Color: yellow
-Note: AAF marker aligned with the primary timeline.
-
-[Marker]
-Timecode: 01:00:44:00
-Name: Missing lav coverage
-Color: red
-Note: Extra AAF-only marker to force reconciliation review.
+{
+  "format": "conform-bridge-aaf-derived/v2",
+  "composition": {
+    "name": "RVR_206_R2_AAF_SECONDARY",
+    "mobName": "RVR_206_R2_AAF_COMPOSITION",
+    "editRate": "24000/1001",
+    "sampleRate": 48000,
+    "startTimecode": "01:00:00:00",
+    "durationTimecode": "00:06:40:00",
+    "dropFrame": false
+  },
+  "tracks": [
+    {
+      "slotId": "1",
+      "index": 1,
+      "name": "DX BOOM A",
+      "role": "dx",
+      "channelCount": 1,
+      "channelLayout": "mono"
+    },
+    {
+      "slotId": "2",
+      "index": 2,
+      "name": "DX LAV A",
+      "role": "dx",
+      "channelCount": 1,
+      "channelLayout": "mono"
+    },
+    {
+      "slotId": "3",
+      "index": 3,
+      "name": "DX ISO C",
+      "role": "dx",
+      "channelCount": 1,
+      "channelLayout": "mono"
+    }
+  ],
+  "mediaRefs": [
+    {
+      "id": "mr-1",
+      "fileName": "ROLL_080A_01_ALT.BWF",
+      "mobName": "ROLL_080A_01_ALT",
+      "reel": "080A",
+      "tape": "R080A",
+      "channelCount": 8,
+      "channelLayout": "poly_8",
+      "hasBwf": true,
+      "hasIXml": true,
+      "missing": false
+    },
+    {
+      "id": "mr-2",
+      "fileName": "ROLL_080B_02.BWF",
+      "mobName": "ROLL_080B_02",
+      "reel": "080B",
+      "tape": "R080B",
+      "channelCount": 8,
+      "channelLayout": "poly_8",
+      "hasBwf": true,
+      "hasIXml": true,
+      "missing": true
+    },
+    {
+      "id": "mr-3",
+      "fileName": "ROLL_080C_03.BWF",
+      "mobName": "ROLL_080C_03",
+      "reel": "080C",
+      "tape": "R080C",
+      "channelCount": 8,
+      "channelLayout": "poly_8",
+      "hasBwf": true,
+      "hasIXml": true,
+      "missing": true
+    }
+  ],
+  "events": [
+    {
+      "id": "evt-1",
+      "trackSlotId": "1",
+      "trackIndex": 1,
+      "clipName": "BOOM_080A_01_A",
+      "mediaRefId": "mr-1",
+      "timing": {
+        "recordIn": "01:00:10:04",
+        "recordOut": "01:00:15:04",
+        "sourceIn": "08:06:26:20",
+        "sourceOut": "08:06:31:20"
+      },
+      "metadata": {
+        "reel": "080A",
+        "tape": "R080A",
+        "scene": "31B",
+        "take": "1"
+      },
+      "effects": {
+        "fadeIn": true,
+        "fadeOut": false,
+        "speedRatio": "1/1"
+      },
+      "flags": {
+        "offline": false,
+        "nested": false,
+        "flattened": true
+      }
+    },
+    {
+      "id": "evt-2",
+      "trackSlotId": "2",
+      "trackIndex": 2,
+      "clipName": "LAV_080A_02_B",
+      "mediaRefId": "mr-2",
+      "timing": {
+        "recordIn": "01:00:30:00",
+        "recordOut": "01:00:34:00",
+        "sourceIn": "08:06:46:16",
+        "sourceOut": "08:06:50:16"
+      },
+      "metadata": {
+        "reel": "080B",
+        "tape": "R080B",
+        "scene": "31B",
+        "take": "2"
+      },
+      "effects": {
+        "fadeIn": false,
+        "fadeOut": true,
+        "speedRatio": "1/1"
+      },
+      "flags": {
+        "offline": true,
+        "nested": false,
+        "flattened": true
+      }
+    },
+    {
+      "id": "evt-3",
+      "trackSlotId": "3",
+      "trackIndex": 3,
+      "clipName": "ISO_080C_03_C",
+      "mediaRefId": "mr-3",
+      "timing": {
+        "recordIn": "01:00:42:00",
+        "recordOut": "01:00:46:00",
+        "sourceIn": "08:06:58:16",
+        "sourceOut": "08:07:02:16"
+      },
+      "metadata": {
+        "reel": "080C",
+        "tape": "R080C",
+        "scene": "31B",
+        "take": "3"
+      },
+      "effects": {
+        "fadeIn": false,
+        "fadeOut": false,
+        "speedRatio": "1/1"
+      },
+      "flags": {
+        "offline": true,
+        "nested": false,
+        "flattened": true
+      }
+    }
+  ],
+  "markers": [
+    {
+      "timecode": "01:00:40:00",
+      "name": "Phone ring alt",
+      "color": "yellow",
+      "note": "AAF marker aligned with the primary timeline."
+    },
+    {
+      "timecode": "01:00:44:00",
+      "name": "Missing lav coverage",
+      "color": "red",
+      "note": "Extra AAF-only marker to force reconciliation review."
+    }
+  ]
+}

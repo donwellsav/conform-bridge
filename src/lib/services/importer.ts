@@ -1441,150 +1441,152 @@ function createAafReconciliationIssues(
   aafTimeline: { tracks: Track[]; clipEvents: ClipEvent[]; markers: Marker[] } | null,
   assets: IntakeAsset[],
 ) {
-  if (!aafTimeline || primarySource === "aaf") {
+  if (!aafTimeline) {
     return [] as PreservationIssue[];
   }
 
   const issues: PreservationIssue[] = [];
 
-  if (aafTimeline.tracks.length !== tracks.length) {
-    issues.push({
-      id: `issue-${slugify(jobId)}-aaf-track-count`,
-      jobId,
-      category: "manual-review",
-      severity: "warning",
-      scope: "tracks",
-      code: "AAF_TRACK_COUNT_MISMATCH",
-      title: "AAF track count does not match the primary timeline source",
-      description: "Structured AAF parsing found a different track count than the FCPXML/XML primary source.",
-      sourceLocation: "AAF vs FCPXML/XML",
-      impact: "Track routing may need manual confirmation before delivery sign-off.",
-      recommendedAction: "Keep FCPXML/XML as primary and review the AAF track layout manually.",
-      requiresDecision: false,
-      affectedItems: [`primary tracks=${tracks.length}`, `aaf tracks=${aafTimeline.tracks.length}`],
-    });
-  }
-
-  if (aafTimeline.clipEvents.length !== clipEvents.length) {
-    issues.push({
-      id: `issue-${slugify(jobId)}-aaf-clip-count`,
-      jobId,
-      category: "manual-review",
-      severity: "warning",
-      scope: "clips",
-      code: "AAF_CLIP_COUNT_MISMATCH",
-      title: "AAF clip count does not match the primary timeline source",
-      description: "Structured AAF parsing found a different clip count than the FCPXML/XML primary source.",
-      sourceLocation: "AAF vs FCPXML/XML",
-      impact: "Canonical event coverage may require operator review.",
-      recommendedAction: "Review the AAF event list against the FCPXML/XML timeline before turnover sign-off.",
-      requiresDecision: false,
-      affectedItems: [`primary clips=${clipEvents.length}`, `aaf clips=${aafTimeline.clipEvents.length}`],
-    });
-  }
-
-  const timingMismatches: string[] = [];
-  const sourceFileMismatches: string[] = [];
-  const reelTapeMismatches: string[] = [];
-
-  clipEvents.forEach((clipEvent) => {
-    const aafClipEvent = findClipEventMatch(aafTimeline.clipEvents, clipEvent);
-    if (!aafClipEvent) {
-      return;
+  if (primarySource !== "aaf") {
+    if (aafTimeline.tracks.length !== tracks.length) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-aaf-track-count`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "tracks",
+        code: "AAF_TRACK_COUNT_MISMATCH",
+        title: "AAF track count does not match the primary timeline source",
+        description: "Structured AAF parsing found a different track count than the FCPXML/XML primary source.",
+        sourceLocation: "AAF vs FCPXML/XML",
+        impact: "Track routing may need manual confirmation before delivery sign-off.",
+        recommendedAction: "Keep FCPXML/XML as primary and review the AAF track layout manually.",
+        requiresDecision: false,
+        affectedItems: [`primary tracks=${tracks.length}`, `aaf tracks=${aafTimeline.tracks.length}`],
+      });
     }
 
-    if (aafClipEvent.recordIn !== clipEvent.recordIn || aafClipEvent.recordOut !== clipEvent.recordOut) {
-      timingMismatches.push(`${clipEvent.clipName}: primary ${clipEvent.recordIn}-${clipEvent.recordOut} vs aaf ${aafClipEvent.recordIn}-${aafClipEvent.recordOut}`);
+    if (aafTimeline.clipEvents.length !== clipEvents.length) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-aaf-clip-count`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "clips",
+        code: "AAF_CLIP_COUNT_MISMATCH",
+        title: "AAF clip count does not match the primary timeline source",
+        description: "Structured AAF parsing found a different clip count than the FCPXML/XML primary source.",
+        sourceLocation: "AAF vs FCPXML/XML",
+        impact: "Canonical event coverage may require operator review.",
+        recommendedAction: "Review the AAF event list against the FCPXML/XML timeline before turnover sign-off.",
+        requiresDecision: false,
+        affectedItems: [`primary clips=${clipEvents.length}`, `aaf clips=${aafTimeline.clipEvents.length}`],
+      });
     }
 
-    if (
-      clipEvent.sourceFileName !== "unknown"
-      && aafClipEvent.sourceFileName !== "unknown"
-      && clipEvent.sourceFileName !== aafClipEvent.sourceFileName
-    ) {
-      sourceFileMismatches.push(`${clipEvent.clipName}: primary ${clipEvent.sourceFileName} vs aaf ${aafClipEvent.sourceFileName}`);
+    const timingMismatches: string[] = [];
+    const sourceFileMismatches: string[] = [];
+    const reelTapeMismatches: string[] = [];
+
+    clipEvents.forEach((clipEvent) => {
+      const aafClipEvent = findClipEventMatch(aafTimeline.clipEvents, clipEvent);
+      if (!aafClipEvent) {
+        return;
+      }
+
+      if (aafClipEvent.recordIn !== clipEvent.recordIn || aafClipEvent.recordOut !== clipEvent.recordOut) {
+        timingMismatches.push(`${clipEvent.clipName}: primary ${clipEvent.recordIn}-${clipEvent.recordOut} vs aaf ${aafClipEvent.recordIn}-${aafClipEvent.recordOut}`);
+      }
+
+      if (
+        clipEvent.sourceFileName !== "unknown"
+        && aafClipEvent.sourceFileName !== "unknown"
+        && clipEvent.sourceFileName !== aafClipEvent.sourceFileName
+      ) {
+        sourceFileMismatches.push(`${clipEvent.clipName}: primary ${clipEvent.sourceFileName} vs aaf ${aafClipEvent.sourceFileName}`);
+      }
+
+      if (
+        (clipEvent.reel && aafClipEvent.reel && clipEvent.reel !== aafClipEvent.reel)
+        || (clipEvent.tape && aafClipEvent.tape && clipEvent.tape !== aafClipEvent.tape)
+      ) {
+        reelTapeMismatches.push(
+          `${clipEvent.clipName}: primary ${clipEvent.reel ?? "<missing>"}/${clipEvent.tape ?? "<missing>"} vs aaf ${aafClipEvent.reel ?? "<missing>"}/${aafClipEvent.tape ?? "<missing>"}`,
+        );
+      }
+    });
+
+    if (timingMismatches.length > 0) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-aaf-timing`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "clips",
+        code: "AAF_CLIP_TIMING_MISMATCH",
+        title: "AAF clip timing does not match the primary timeline source",
+        description: "AAF event timing disagrees with the FCPXML/XML primary clip placement, so AAF is being used only for enrichment.",
+        sourceLocation: "AAF vs FCPXML/XML",
+        impact: "Canonical timing remains stable, but the AAF needs manual review.",
+        recommendedAction: "Review the mismatched clips against the Resolve export that should remain authoritative.",
+        requiresDecision: false,
+        affectedItems: timingMismatches,
+      });
     }
 
-    if (
-      (clipEvent.reel && aafClipEvent.reel && clipEvent.reel !== aafClipEvent.reel)
-      || (clipEvent.tape && aafClipEvent.tape && clipEvent.tape !== aafClipEvent.tape)
-    ) {
-      reelTapeMismatches.push(
-        `${clipEvent.clipName}: primary ${clipEvent.reel ?? "<missing>"}/${clipEvent.tape ?? "<missing>"} vs aaf ${aafClipEvent.reel ?? "<missing>"}/${aafClipEvent.tape ?? "<missing>"}`,
-      );
+    if (sourceFileMismatches.length > 0) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-aaf-source-files`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "clips",
+        code: "AAF_SOURCE_FILE_MISMATCH",
+        title: "AAF source file names do not match the primary timeline source",
+        description: "AAF clip references point to different source file names than the FCPXML/XML primary source.",
+        sourceLocation: "AAF vs FCPXML/XML",
+        impact: "Media relink assumptions may not be stable until the disagreement is resolved.",
+        recommendedAction: "Confirm which turnover source carries the authoritative source file names.",
+        requiresDecision: false,
+        affectedItems: sourceFileMismatches,
+      });
     }
-  });
 
-  if (timingMismatches.length > 0) {
-    issues.push({
-      id: `issue-${slugify(jobId)}-aaf-timing`,
-      jobId,
-      category: "manual-review",
-      severity: "warning",
-      scope: "clips",
-      code: "AAF_CLIP_TIMING_MISMATCH",
-      title: "AAF clip timing does not match the primary timeline source",
-      description: "AAF event timing disagrees with the FCPXML/XML primary clip placement, so AAF is being used only for enrichment.",
-      sourceLocation: "AAF vs FCPXML/XML",
-      impact: "Canonical timing remains stable, but the AAF needs manual review.",
-      recommendedAction: "Review the mismatched clips against the Resolve export that should remain authoritative.",
-      requiresDecision: false,
-      affectedItems: timingMismatches,
-    });
-  }
+    if (reelTapeMismatches.length > 0) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-aaf-reel-tape`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "metadata",
+        code: "AAF_REEL_TAPE_MISMATCH",
+        title: "AAF reel or tape metadata does not match the primary timeline source",
+        description: "AAF clip metadata disagrees with the FCPXML/XML primary source for reel or tape identity.",
+        sourceLocation: "AAF vs FCPXML/XML",
+        impact: "Field recorder confidence may drop until the mismatch is resolved.",
+        recommendedAction: "Review reel and tape metadata upstream before relying on automated relink decisions.",
+        requiresDecision: false,
+        affectedItems: reelTapeMismatches,
+      });
+    }
 
-  if (sourceFileMismatches.length > 0) {
-    issues.push({
-      id: `issue-${slugify(jobId)}-aaf-source-files`,
-      jobId,
-      category: "manual-review",
-      severity: "warning",
-      scope: "clips",
-      code: "AAF_SOURCE_FILE_MISMATCH",
-      title: "AAF source file names do not match the primary timeline source",
-      description: "AAF clip references point to different source file names than the FCPXML/XML primary source.",
-      sourceLocation: "AAF vs FCPXML/XML",
-      impact: "Media relink assumptions may not be stable until the disagreement is resolved.",
-      recommendedAction: "Confirm which turnover source carries the authoritative source file names.",
-      requiresDecision: false,
-      affectedItems: sourceFileMismatches,
-    });
-  }
-
-  if (reelTapeMismatches.length > 0) {
-    issues.push({
-      id: `issue-${slugify(jobId)}-aaf-reel-tape`,
-      jobId,
-      category: "manual-review",
-      severity: "warning",
-      scope: "metadata",
-      code: "AAF_REEL_TAPE_MISMATCH",
-      title: "AAF reel or tape metadata does not match the primary timeline source",
-      description: "AAF clip metadata disagrees with the FCPXML/XML primary source for reel or tape identity.",
-      sourceLocation: "AAF vs FCPXML/XML",
-      impact: "Field recorder confidence may drop until the mismatch is resolved.",
-      recommendedAction: "Review reel and tape metadata upstream before relying on automated relink decisions.",
-      requiresDecision: false,
-      affectedItems: reelTapeMismatches,
-    });
-  }
-
-  if (aafTimeline.markers.length !== markers.length) {
-    issues.push({
-      id: `issue-${slugify(jobId)}-aaf-markers`,
-      jobId,
-      category: "manual-review",
-      severity: "warning",
-      scope: "markers",
-      code: "AAF_MARKER_COVERAGE_MISMATCH",
-      title: "AAF marker coverage does not match the primary timeline source",
-      description: "AAF marker parsing found a different marker count than the primary timeline source.",
-      sourceLocation: "AAF vs FCPXML/XML",
-      impact: "Marker exports may need manual review before delivery.",
-      recommendedAction: "Keep the FCPXML/XML marker set primary and review extra or missing AAF markers manually.",
-      requiresDecision: false,
-      affectedItems: [`primary markers=${markers.length}`, `aaf markers=${aafTimeline.markers.length}`],
-    });
+    if (aafTimeline.markers.length !== markers.length) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-aaf-markers`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "markers",
+        code: "AAF_MARKER_COVERAGE_MISMATCH",
+        title: "AAF marker coverage does not match the primary timeline source",
+        description: "AAF marker parsing found a different marker count than the primary timeline source.",
+        sourceLocation: "AAF vs FCPXML/XML",
+        impact: "Marker exports may need manual review before delivery.",
+        recommendedAction: "Keep the FCPXML/XML marker set primary and review extra or missing AAF markers manually.",
+        requiresDecision: false,
+        affectedItems: [`primary markers=${markers.length}`, `aaf markers=${aafTimeline.markers.length}`],
+      });
+    }
   }
 
   const missingAafMedia = [...new Set(

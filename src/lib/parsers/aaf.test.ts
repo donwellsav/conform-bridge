@@ -7,6 +7,7 @@ import { parseAafText } from "./aaf";
 import type { IntakeAsset } from "../types";
 
 const aafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only", "resolve", "RVR_205_R1_LOCK.aaf");
+const missingMediaAafFixturePath = resolve(process.cwd(), "fixtures", "intake", "rvr-207-aaf-missing-media", "resolve", "RVR_207_R1_LOCK.aaf");
 
 const assets: IntakeAsset[] = [
   {
@@ -68,6 +69,7 @@ test("parseAafText hydrates timeline, tracks, clips, and markers from the AAF te
   assert.equal(parsed?.markers.length, 1);
 
   const firstClip = parsed?.clipEvents[0];
+  const secondClip = parsed?.clipEvents[1];
   assert.equal(firstClip?.sourceFileName, "ROLL_070A_01.BWF");
   assert.equal(firstClip?.recordIn, "01:00:12:00");
   assert.equal(firstClip?.channelCount, 8);
@@ -75,4 +77,45 @@ test("parseAafText hydrates timeline, tracks, clips, and markers from the AAF te
   assert.equal(firstClip?.hasFadeIn, true);
   assert.equal(firstClip?.hasIXml, true);
   assert.equal(firstClip?.isOffline, false);
+  assert.match(firstClip?.clipNotes ?? "", /AAF mob: ROLL_070A_01/);
+  assert.equal(secondClip?.hasSpeedEffect, true);
+});
+
+test("parseAafText preserves missing-media and mob-name details from richer AAF-derived fixtures", () => {
+  const parsed = parseAafText(readFileSync(missingMediaAafFixturePath, "utf8"), {
+    bundleId: "bundle-rvr-207-aaf-missing-media",
+    translationModelId: "model-rvr-207-aaf-missing-media",
+    timelineId: "timeline-rvr-207-aaf-missing-media",
+    assets: [
+      {
+        id: "asset-roll-090a-01",
+        bundleId: "bundle-rvr-207-aaf-missing-media",
+        stage: "intake",
+        origin: "production-audio",
+        fileKind: "bwf",
+        fileRole: "production_audio",
+        name: "ROLL_090A_01.BWF",
+        sizeLabel: "64 B",
+        status: "present",
+        note: "Fixture roll.",
+        channelCount: 8,
+        channelLayout: "poly_8",
+        sampleRate: 48000,
+        isPolyWav: true,
+        hasBwf: true,
+        hasIXml: true,
+      },
+    ],
+    fallbackName: "RVR_207_R1",
+    fallbackFps: "23.976",
+    fallbackSampleRate: 48000,
+    fallbackStartTimecode: "01:00:00:00",
+    fallbackDropFrame: false,
+  });
+
+  assert.ok(parsed);
+  const missingClip = parsed?.clipEvents.find((clipEvent) => clipEvent.clipName === "LAV_090B_02_B");
+  assert.equal(missingClip?.sourceFileName, "ROLL_090B_02.BWF");
+  assert.equal(missingClip?.isOffline, true);
+  assert.match(missingClip?.clipNotes ?? "", /AAF mob: ROLL_090B_02/);
 });

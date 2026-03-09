@@ -96,7 +96,7 @@ The following roles may appear as intake or delivery artifacts depending on the 
 ## Explicit Rule About Manifests, Readmes, And Reports
 - `manifest.json`, delivery `README`, and delivery `field recorder report` are outbound delivery artifacts by default.
 - They must not be modeled as intake assets unless `stage` and `origin` explicitly mark them as inbound for a real workflow reason.
-- Phase 1 mock data should keep them in the delivery package.
+- The current repo keeps them in the delivery package unless a future real workflow explicitly requires inbound handling.
 
 ## Required Facts Surfaced In The UI
 - Intake package name and sequence name
@@ -106,5 +106,7 @@ The following roles may appear as intake or delivery artifacts depending on the 
 - Delivery readiness summary
 - Planned delivery artifact states
 
-## Phase 1 Constraint
-Packages are display-only fixtures. No file system inspection, parsing, write-back behavior, or fake backend processing should be implied by the scaffold.
+## Current Constraint
+Intake packages are real local fixture folders scanned from disk, and the importer now performs real parsing for manifest JSON, metadata CSV, marker CSV, simple EDL, FCPXML/XML, and richer AAF-derived fixtures.
+
+Delivery packages remain planning-only. No Nuendo write path, fake backend processing, or file write-back behavior should be implied by the current repo.

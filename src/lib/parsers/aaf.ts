@@ -19,6 +19,103 @@ interface ParsedSection {
   fields: Record<string, string>;
 }
 
+interface AafJsonComposition {
+  name?: string;
+  mobName?: string;
+  editRate?: string;
+  sampleRate?: number | string;
+  startTimecode?: string;
+  durationTimecode?: string;
+  dropFrame?: boolean;
+}
+
+interface AafJsonTrack {
+  id?: string;
+  slotId?: string;
+  index?: number;
+  name?: string;
+  role?: string;
+  channelCount?: number;
+  channelLayout?: string;
+}
+
+interface AafJsonMediaRef {
+  id?: string;
+  fileName?: string;
+  mobName?: string;
+  reel?: string;
+  tape?: string;
+  channelCount?: number;
+  channelLayout?: string;
+  hasBwf?: boolean;
+  hasIXml?: boolean;
+  missing?: boolean;
+  note?: string;
+}
+
+interface AafJsonEventTiming {
+  recordIn?: string;
+  recordOut?: string;
+  sourceIn?: string;
+  sourceOut?: string;
+}
+
+interface AafJsonEventMetadata {
+  reel?: string;
+  tape?: string;
+  scene?: string;
+  take?: string;
+  notes?: string;
+}
+
+interface AafJsonEventEffects {
+  fadeIn?: boolean;
+  fadeOut?: boolean;
+  speedEffect?: boolean;
+  speedRatio?: string | number;
+}
+
+interface AafJsonEventFlags {
+  offline?: boolean;
+  nested?: boolean;
+  flattened?: boolean;
+}
+
+interface AafJsonEvent {
+  id?: string;
+  trackId?: string;
+  trackSlotId?: string;
+  trackIndex?: number;
+  clipName?: string;
+  sourceFileName?: string;
+  mobName?: string;
+  mediaRefId?: string;
+  channelCount?: number;
+  channelLayout?: string;
+  timing?: AafJsonEventTiming;
+  metadata?: AafJsonEventMetadata;
+  effects?: AafJsonEventEffects;
+  flags?: AafJsonEventFlags;
+  notes?: string;
+}
+
+interface AafJsonMarker {
+  timecode?: string;
+  frame?: number;
+  name?: string;
+  color?: string;
+  note?: string;
+}
+
+interface AafJsonFixture {
+  format?: string;
+  composition?: AafJsonComposition;
+  tracks?: AafJsonTrack[];
+  mediaRefs?: AafJsonMediaRef[];
+  events?: AafJsonEvent[];
+  markers?: AafJsonMarker[];
+}
+
 export interface ParseAafContext {
   bundleId: string;
   translationModelId: string;
@@ -88,13 +185,25 @@ function parseFrameRate(value?: string): FrameRate | undefined {
   }
 }
 
-function parseSampleRate(value?: string): SampleRate | undefined {
-  const parsed = parseInteger(value);
-  if (parsed === 96000) {
-    return 96000;
+function parseSampleRate(value?: number | string): SampleRate | undefined {
+  if (typeof value === "number") {
+    if (value === 96000) {
+      return 96000;
+    }
+    if (value === 48000) {
+      return 48000;
+    }
+    return undefined;
   }
-  if (parsed === 48000) {
-    return 48000;
+
+  if (typeof value === "string") {
+    const parsed = parseInteger(value);
+    if (parsed === 96000) {
+      return 96000;
+    }
+    if (parsed === 48000) {
+      return 48000;
+    }
   }
 
   return undefined;
@@ -258,7 +367,239 @@ function parseSections(text: string) {
   return sections;
 }
 
-export function parseAafText(text: string, context: ParseAafContext): ParsedAafSource | null {
+function createTimelineFromPieces(
+  context: ParseAafContext,
+  name: string,
+  fps: FrameRate,
+  sampleRate: SampleRate,
+  dropFrame: boolean,
+  startTimecode: string,
+  durationTimecode: string | undefined,
+  tracks: Track[],
+  clipEvents: ClipEvent[],
+  markers: Marker[],
+) {
+  const startFrame = timecodeToFrames(startTimecode, fps);
+  const resolvedDurationTimecode = durationTimecode
+    ?? framesToTimecode(
+      clipEvents.reduce((maxFrame, clipEvent) => Math.max(maxFrame, clipEvent.recordOutFrames), startFrame) - (startFrame >= 0 ? startFrame : 0),
+      fps,
+    );
+  const durationFrames = timecodeToFrames(resolvedDurationTimecode, fps);
+
+  return {
+    id: context.timelineId,
+    translationModelId: context.translationModelId,
+    name,
+    fps,
+    sampleRate,
+    dropFrame,
+    startTimecode,
+    durationTimecode: resolvedDurationTimecode,
+    startFrame,
+    durationFrames,
+    trackIds: tracks.map((track) => track.id),
+    markerIds: markers.map((marker) => marker.id),
+  } satisfies Timeline;
+}
+
+function mergeTextParts(parts: Array<string | undefined>) {
+  return parts
+    .filter((part): part is string => Boolean(part && part.trim().length > 0))
+    .join(" ")
+    .trim();
+}
+
+function hasSpeedEffect(value: AafJsonEventEffects | undefined) {
+  if (!value) {
+    return false;
+  }
+
+  if (value.speedEffect === true) {
+    return true;
+  }
+
+  if (typeof value.speedRatio === "number") {
+    return value.speedRatio !== 1;
+  }
+
+  if (typeof value.speedRatio === "string") {
+    const normalized = value.speedRatio.trim();
+    if (!normalized || normalized === "1" || normalized === "1/1") {
+      return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+function parseAafJsonText(text: string, context: ParseAafContext): ParsedAafSource | null {
+  const normalized = text.replace(/^\uFEFF/, "").trim();
+  if (!normalized.startsWith("{")) {
+    return null;
+  }
+
+  let fixture: AafJsonFixture;
+  try {
+    fixture = JSON.parse(normalized) as AafJsonFixture;
+  } catch {
+    return null;
+  }
+
+  if (!fixture.composition || (!Array.isArray(fixture.events) && !Array.isArray(fixture.tracks))) {
+    return null;
+  }
+
+  const composition = fixture.composition;
+  const fps = parseFrameRate(composition.editRate) ?? context.fallbackFps;
+  const sampleRate = parseSampleRate(composition.sampleRate) ?? context.fallbackSampleRate;
+  const startTimecode = composition.startTimecode ?? context.fallbackStartTimecode;
+  const trackDefinitions = fixture.tracks ?? [];
+  const mediaRefMap = new Map((fixture.mediaRefs ?? []).flatMap((mediaRef) => mediaRef.id ? [[mediaRef.id, mediaRef] as const] : []));
+
+  const trackMap = new Map<string, Track>();
+  const trackIndexMap = new Map<number, Track>();
+
+  function ensureTrack(trackLike: {
+    slotId?: string;
+    id?: string;
+    index?: number;
+    name?: string;
+    role?: string;
+    channelCount?: number;
+    channelLayout?: string;
+  }) {
+    const trackIndex = trackLike.index ?? trackMap.size + 1;
+    const key = trackLike.slotId ?? trackLike.id ?? `${trackIndex}`;
+    const existing = trackMap.get(key) ?? trackIndexMap.get(trackIndex);
+    if (existing) {
+      return existing;
+    }
+
+    const created = {
+      id: `track-${slugify(context.bundleId)}-aaf-${slugify(key)}`,
+      timelineId: context.timelineId,
+      name: trackLike.name ?? `Track ${trackIndex}`,
+      role: inferRole(trackLike.role ?? trackLike.name),
+      index: trackIndex,
+      channelLayout: inferLayout(trackLike.channelLayout, trackLike.channelCount),
+      clipEventIds: [],
+    } satisfies Track;
+
+    trackMap.set(key, created);
+    trackIndexMap.set(trackIndex, created);
+    return created;
+  }
+
+  trackDefinitions.forEach((track) => {
+    ensureTrack({
+      slotId: track.slotId,
+      id: track.id,
+      index: track.index,
+      name: track.name,
+      role: track.role,
+      channelCount: track.channelCount,
+      channelLayout: track.channelLayout,
+    });
+  });
+
+  const clipEvents = (fixture.events ?? []).map((event, index): ClipEvent => {
+    const mediaRef = event.mediaRefId ? mediaRefMap.get(event.mediaRefId) : undefined;
+    const track = ensureTrack({
+      slotId: event.trackSlotId,
+      id: event.trackId,
+      index: event.trackIndex,
+      name: trackDefinitions.find((candidate) => candidate.slotId === event.trackSlotId || candidate.id === event.trackId || candidate.index === event.trackIndex)?.name,
+      role: trackDefinitions.find((candidate) => candidate.slotId === event.trackSlotId || candidate.id === event.trackId || candidate.index === event.trackIndex)?.role,
+      channelCount: event.channelCount ?? mediaRef?.channelCount,
+      channelLayout: event.channelLayout ?? mediaRef?.channelLayout,
+    });
+
+    const sourceFileName = mediaRef?.fileName ?? event.sourceFileName ?? mediaRef?.mobName ?? event.mobName ?? "unknown";
+    const mobName = mediaRef?.mobName ?? event.mobName;
+    const sourceAsset = findAssetByName(context.assets, sourceFileName);
+    const channelCount = event.channelCount ?? mediaRef?.channelCount ?? sourceAsset?.channelCount ?? 1;
+    const clipEventId = `clip-${slugify(context.bundleId)}-aaf-${event.id ? slugify(event.id) : index + 1}`;
+    track.clipEventIds.push(clipEventId);
+
+    return {
+      id: clipEventId,
+      timelineId: context.timelineId,
+      trackId: track.id,
+      sourceAssetId: sourceAsset?.id ?? `asset-${slugify(context.bundleId)}-aaf-${index + 1}`,
+      clipName: event.clipName ?? sourceFileName,
+      sourceFileName,
+      reel: event.metadata?.reel ?? mediaRef?.reel,
+      tape: event.metadata?.tape ?? mediaRef?.tape,
+      scene: event.metadata?.scene,
+      take: event.metadata?.take,
+      eventDescription: `AAF-derived clip imported from ${sourceFileName}.`,
+      clipNotes: mergeTextParts([
+        event.notes,
+        event.metadata?.notes,
+        mediaRef?.note,
+        mobName && mobName !== sourceFileName ? `AAF mob: ${mobName}` : undefined,
+      ]),
+      recordIn: event.timing?.recordIn ?? UNKNOWN_TIMECODE,
+      recordOut: event.timing?.recordOut ?? UNKNOWN_TIMECODE,
+      sourceIn: event.timing?.sourceIn ?? UNKNOWN_TIMECODE,
+      sourceOut: event.timing?.sourceOut ?? UNKNOWN_TIMECODE,
+      recordInFrames: timecodeToFrames(event.timing?.recordIn, fps),
+      recordOutFrames: timecodeToFrames(event.timing?.recordOut, fps),
+      sourceInFrames: timecodeToFrames(event.timing?.sourceIn, fps),
+      sourceOutFrames: timecodeToFrames(event.timing?.sourceOut, fps),
+      channelCount,
+      channelLayout: inferLayout(event.channelLayout ?? mediaRef?.channelLayout, channelCount),
+      isPolyWav: channelCount > 2,
+      hasBwf: mediaRef?.hasBwf ?? sourceFileName.toLowerCase().endsWith(".bwf"),
+      hasIXml: mediaRef?.hasIXml ?? false,
+      isOffline: event.flags?.offline === true || mediaRef?.missing === true || (!sourceAsset && sourceFileName !== "unknown"),
+      isNested: event.flags?.nested ?? false,
+      isFlattened: event.flags?.flattened ?? true,
+      hasSpeedEffect: hasSpeedEffect(event.effects),
+      hasFadeIn: event.effects?.fadeIn ?? false,
+      hasFadeOut: event.effects?.fadeOut ?? false,
+    };
+  });
+
+  const tracks = [...trackMap.values()].sort((left, right) => left.index - right.index);
+  const markers = (fixture.markers ?? []).map((marker, index): Marker => {
+    const frame = marker.frame ?? timecodeToFrames(marker.timecode, fps);
+    const timecode = marker.timecode ?? framesToTimecode(frame, fps);
+
+    return {
+      id: `marker-${slugify(context.timelineId)}-aaf-${index + 1}`,
+      timelineId: context.timelineId,
+      name: marker.name ?? `AAF Marker ${index + 1}`,
+      timecode,
+      frame,
+      color: inferMarkerColor(marker.color),
+      note: marker.note ?? "",
+    };
+  });
+
+  return {
+    source: "aaf",
+    timeline: createTimelineFromPieces(
+      context,
+      composition.name ?? composition.mobName ?? context.fallbackName,
+      fps,
+      sampleRate,
+      composition.dropFrame ?? context.fallbackDropFrame,
+      startTimecode,
+      composition.durationTimecode,
+      tracks,
+      clipEvents,
+      markers,
+    ),
+    tracks,
+    clipEvents,
+    markers,
+  };
+}
+
+function parseLegacyAafText(text: string, context: ParseAafContext): ParsedAafSource | null {
   const sections = parseSections(text);
   const composition = sections.find((section) => section.kind === "Composition");
 
@@ -310,7 +651,7 @@ export function parseAafText(text: string, context: ParseAafContext): ParsedAafS
 
     const clipEventId = `clip-${slugify(context.bundleId)}-aaf-${index + 1}`;
     trackMap.get(trackIndex)?.clipEventIds.push(clipEventId);
-
+    const mobName = section.fields.MobName;
     const recordIn = section.fields.RecordIn ?? UNKNOWN_TIMECODE;
     const recordOut = section.fields.RecordOut ?? UNKNOWN_TIMECODE;
     const sourceIn = section.fields.SourceIn ?? UNKNOWN_TIMECODE;
@@ -328,7 +669,7 @@ export function parseAafText(text: string, context: ParseAafContext): ParsedAafS
       scene: section.fields.Scene,
       take: section.fields.Take,
       eventDescription: `AAF clip imported from ${sourceFileName}.`,
-      clipNotes: section.fields.Notes ?? "",
+      clipNotes: mergeTextParts([section.fields.Notes, mobName && mobName !== sourceFileName ? `AAF mob: ${mobName}` : undefined]),
       recordIn,
       recordOut,
       sourceIn,
@@ -365,32 +706,26 @@ export function parseAafText(text: string, context: ParseAafContext): ParsedAafS
     };
   });
 
-  const startFrame = timecodeToFrames(startTimecode, fps);
-  const durationTimecode = composition.fields.DurationTimecode
-    ?? framesToTimecode(
-      clipEvents.reduce((maxFrame, clipEvent) => Math.max(maxFrame, clipEvent.recordOutFrames), startFrame) - (startFrame >= 0 ? startFrame : 0),
-      fps,
-    );
-  const durationFrames = timecodeToFrames(durationTimecode, fps);
-
   return {
     source: "aaf",
-    timeline: {
-      id: context.timelineId,
-      translationModelId: context.translationModelId,
-      name: composition.fields.Name ?? context.fallbackName,
+    timeline: createTimelineFromPieces(
+      context,
+      composition.fields.Name ?? context.fallbackName,
       fps,
       sampleRate,
-      dropFrame: composition.fields.DropFrame ? parseBoolean(composition.fields.DropFrame) : context.fallbackDropFrame,
+      composition.fields.DropFrame ? parseBoolean(composition.fields.DropFrame) : context.fallbackDropFrame,
       startTimecode,
-      durationTimecode,
-      startFrame,
-      durationFrames,
-      trackIds: tracks.map((track) => track.id),
-      markerIds: markers.map((marker) => marker.id),
-    },
+      composition.fields.DurationTimecode,
+      tracks,
+      clipEvents,
+      markers,
+    ),
     tracks,
     clipEvents,
     markers,
   };
+}
+
+export function parseAafText(text: string, context: ParseAafContext): ParsedAafSource | null {
+  return parseAafJsonText(text, context) ?? parseLegacyAafText(text, context);
 }

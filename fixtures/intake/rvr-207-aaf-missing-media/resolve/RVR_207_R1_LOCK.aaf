@@ -1,12 +1,12 @@
 {
   "format": "conform-bridge-aaf-derived/v2",
   "composition": {
-    "name": "RVR_205_R1_AAF_PRIMARY",
-    "mobName": "RVR_205_R1_COMPOSITION",
+    "name": "RVR_207_R1_AAF_PRIMARY",
+    "mobName": "RVR_207_R1_AAF_COMPOSITION",
     "editRate": "24000/1001",
     "sampleRate": 48000,
     "startTimecode": "01:00:00:00",
-    "durationTimecode": "00:08:10:00",
+    "durationTimecode": "00:07:20:00",
     "dropFrame": false
   },
   "tracks": [
@@ -21,7 +21,7 @@
     {
       "slotId": "2",
       "index": 2,
-      "name": "DX BOOM B",
+      "name": "DX LAV A",
       "role": "dx",
       "channelCount": 1,
       "channelLayout": "mono"
@@ -30,10 +30,10 @@
   "mediaRefs": [
     {
       "id": "mr-1",
-      "fileName": "ROLL_070A_01.BWF",
-      "mobName": "ROLL_070A_01",
-      "reel": "070A",
-      "tape": "R070A",
+      "fileName": "ROLL_090A_01.BWF",
+      "mobName": "ROLL_090A_01",
+      "reel": "090A",
+      "tape": "R090A",
       "channelCount": 8,
       "channelLayout": "poly_8",
       "hasBwf": true,
@@ -42,15 +42,16 @@
     },
     {
       "id": "mr-2",
-      "fileName": "ROLL_070A_02.BWF",
-      "mobName": "ROLL_070A_02",
-      "reel": "070A",
-      "tape": "R070A",
+      "fileName": "ROLL_090B_02.BWF",
+      "mobName": "ROLL_090B_02",
+      "reel": "090B",
+      "tape": "R090B",
       "channelCount": 8,
       "channelLayout": "poly_8",
       "hasBwf": true,
       "hasIXml": true,
-      "missing": false
+      "missing": true,
+      "note": "Missing media reference in the AAF-derived fixture."
     }
   ],
   "events": [
@@ -58,20 +59,19 @@
       "id": "evt-1",
       "trackSlotId": "1",
       "trackIndex": 1,
-      "clipName": "BOOM_070A_01_A",
+      "clipName": "BOOM_090A_01_A",
       "mediaRefId": "mr-1",
       "timing": {
-        "recordIn": "01:00:12:00",
-        "recordOut": "01:00:16:12",
-        "sourceIn": "09:10:00:00",
-        "sourceOut": "09:10:04:12"
+        "recordIn": "01:00:08:00",
+        "recordOut": "01:00:12:00",
+        "sourceIn": "07:04:10:00",
+        "sourceOut": "07:04:14:00"
       },
       "metadata": {
-        "reel": "070A",
-        "tape": "R070A",
-        "scene": "12C",
-        "take": "3",
-        "notes": "Primary boom event from the AAF-derived fixture."
+        "reel": "090A",
+        "tape": "R090A",
+        "scene": "44A",
+        "take": "2"
       },
       "effects": {
         "fadeIn": true,
@@ -88,27 +88,27 @@
       "id": "evt-2",
       "trackSlotId": "2",
       "trackIndex": 2,
-      "clipName": "BOOM_070A_02_B",
+      "clipName": "LAV_090B_02_B",
       "mediaRefId": "mr-2",
       "timing": {
-        "recordIn": "01:00:20:00",
-        "recordOut": "01:00:24:00",
-        "sourceIn": "09:10:08:00",
-        "sourceOut": "09:10:12:00"
+        "recordIn": "01:00:18:00",
+        "recordOut": "01:00:22:00",
+        "sourceIn": "07:04:20:00",
+        "sourceOut": "07:04:24:00"
       },
       "metadata": {
-        "reel": "070A",
-        "tape": "R070A",
-        "scene": "12C",
-        "take": "4"
+        "reel": "090B",
+        "tape": "R090B",
+        "scene": "44A",
+        "take": "2"
       },
       "effects": {
         "fadeIn": false,
         "fadeOut": true,
-        "speedRatio": "1001/960"
+        "speedRatio": "1/1"
       },
       "flags": {
-        "offline": false,
+        "offline": true,
         "nested": false,
         "flattened": true
       }
@@ -116,10 +116,10 @@
   ],
   "markers": [
     {
-      "timecode": "01:00:22:00",
-      "name": "AAF-only marker",
-      "color": "yellow",
-      "note": "Parsed from the richer AAF-derived fixture."
+      "timecode": "01:00:20:00",
+      "name": "Missing media review",
+      "color": "red",
+      "note": "AAF primary marker for the missing-media fixture."
     }
   ]
 }

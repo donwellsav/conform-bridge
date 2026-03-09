@@ -1,0 +1,3 @@
+timelineName,trackIndex,trackName,role,channelLayout,clipName,sourceFileName,reel,tape,scene,take,recordIn,recordOut,sourceIn,sourceOut,channelCount,isPolyWav,hasBwf,hasIXml,isOffline,isNested,isFlattened,hasSpeedEffect,hasFadeIn,hasFadeOut,eventDescription,clipNotes
+RVR_207_R1,1,DX BOOM A,dx,mono,BOOM_090A_01_A,ROLL_090A_01.BWF,090A,R090A,44A,2,01:00:08:00,01:00:12:00,07:04:10:00,07:04:14:00,8,true,true,true,false,false,true,false,true,false,Primary AAF-backed event,Present production roll
+RVR_207_R1,2,DX LAV A,dx,mono,LAV_090B_02_B,ROLL_090B_02.BWF,090B,R090B,44A,2,01:00:18:00,01:00:22:00,07:04:20:00,07:04:24:00,8,true,true,true,true,false,true,false,false,true,Missing-media AAF-backed event,Referenced production roll is not present in the intake folder

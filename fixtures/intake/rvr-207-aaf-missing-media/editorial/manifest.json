@@ -1,0 +1,24 @@
+{
+  "bundleName": "RVR_207_R1_TURNOVER",
+  "jobCode": "RVR207R1",
+  "title": "River Run Episode 207 Revision 1",
+  "sequenceName": "RVR_207_R1",
+  "pictureLock": true,
+  "fps": "23.976",
+  "startTimecode": "01:00:00:00",
+  "durationTimecode": "00:07:20:00",
+  "sampleRate": 48000,
+  "handlesFrames": 12,
+  "dropFrame": false,
+  "templateId": "tpl-dialogue-premix",
+  "outputPresetId": "tpl-dialogue-premix",
+  "expectedFiles": [
+    "RVR_207_R1_LOCK.aaf",
+    "RVR_207_METADATA.csv",
+    "RVR_207_REF.mov"
+  ],
+  "expectedProductionRolls": [
+    "ROLL_090A_01.BWF",
+    "ROLL_090B_02.BWF"
+  ]
+}

@@ -61,13 +61,23 @@ Implemented:
 - AAF mismatch reporting for track count, clip count, clip timing, source file names, reel/tape metadata, marker coverage, and missing media
 - Additional AAF-backed intake fixtures and parser tests
 
+### Phase 2E
+Richer AAF-derived ingest beyond the first section/text-dump fixtures.
+
+Implemented:
+- richer AAF-derived fixture parsing for composition, track slot, media reference, clip event, and marker structures
+- preserved mob-name context when it differs from the resolved source file name
+- improved missing-media and offline-reference handling in AAF-primary imports
+- stronger speed and fade extraction when inferable from AAF-derived inputs
+- additional missing-media fixture coverage and integration tests
+
 ## Current Status
 
 Implemented now:
 - Next.js App Router shell with operator-focused routes
 - typed intake, canonical, and delivery domain model
 - real intake folder scanning and classification
-- real parsing for FCPXML/XML, AAF text-dump fixtures, metadata CSV, marker CSV, `manifest.json`, and simple EDL extraction
+- real parsing for FCPXML/XML, richer AAF-derived fixtures, metadata CSV, marker CSV, `manifest.json`, and simple EDL extraction
 - Canonical hydration for bundles, timelines, tracks, clips, markers, and analysis
 - Primary timeline hydration from FCPXML/XML when present, with AAF enrichment and `aaf -> edl -> metadata` fallback after that
 - Deterministic delivery planning in `exporter.ts`
@@ -117,7 +127,7 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [TASKLIST.md](./TASKLIST.md): phased work tracking
 - [src/lib/types.ts](./src/lib/types.ts): shared domain types
 - [src/lib/parsers/fcpxml.ts](./src/lib/parsers/fcpxml.ts): FCPXML/XML parser for timeline, track, clip, and marker hydration
-- [src/lib/parsers/aaf.ts](./src/lib/parsers/aaf.ts): structured AAF parser for canonical hydration and reconciliation
+- [src/lib/parsers/aaf.ts](./src/lib/parsers/aaf.ts): richer AAF-derived parser for canonical hydration and reconciliation
 - [src/lib/services/importer.ts](./src/lib/services/importer.ts): intake scanning, source preference, parsing, reconciliation, hydration, analysis
 - [src/lib/services/exporter.ts](./src/lib/services/exporter.ts): delivery planning only
 - [src/lib/data-source.ts](./src/lib/data-source.ts): composes imported fixture data with exporter planning, or falls back to mock data
@@ -130,6 +140,7 @@ The repo includes real fixture turnover folders:
 - `fixtures/intake/rvr-204-edl-only`
 - `fixtures/intake/rvr-205-aaf-only`
 - `fixtures/intake/rvr-206-aaf-vs-fcpxml`
+- `fixtures/intake/rvr-207-aaf-missing-media`
 
 `rvr-203-r3` includes:
 - Resolve AAF
@@ -151,7 +162,7 @@ One production roll is intentionally missing so analysis, reconciliation, and de
 - production-audio BWF placeholder
 
 `rvr-205-aaf-only` includes:
-- AAF as the primary structured timeline source
+- richer AAF-derived data as the primary structured timeline source
 - metadata CSV for enrichment
 - `manifest.json`
 - reference video placeholder
@@ -159,12 +170,20 @@ One production roll is intentionally missing so analysis, reconciliation, and de
 
 `rvr-206-aaf-vs-fcpxml` includes:
 - FCPXML as the primary structured timeline source
-- AAF as the secondary structured source for enrichment and reconciliation
+- richer AAF-derived data as the secondary structured source for enrichment and reconciliation
 - metadata CSV
 - marker CSV
 - `manifest.json`
 - reference video placeholder
 - production-audio BWF placeholders
+
+`rvr-207-aaf-missing-media` includes:
+- richer AAF-derived data as the primary structured timeline source
+- explicit missing-media references inside the AAF-derived fixture
+- metadata CSV
+- `manifest.json`
+- reference video placeholder
+- one present production-audio roll and one intentionally missing roll
 
 ## Running Locally
 
@@ -215,7 +234,7 @@ npm run build
 
 Parsed:
 - FCPXML / XML timeline structure
-- structured AAF text-dump fixtures
+- richer AAF-derived fixture structures
 - metadata CSV
 - marker CSV
 - `manifest.json`
@@ -254,16 +273,17 @@ Reconciliation currently flags:
 
 ## Planned Next Phases
 
-### Phase 2E
-Deepen AAF ingestion beyond the current text-dump fixtures.
+### Phase 2F
+Deepen AAF ingestion beyond the current AAF-derived fixture layer.
 
 Targets:
-- richer composition and mob parsing
+- binary/container-aware AAF extraction from real files
+- composition mob, slot, and source mob traversal
 - media descriptor extraction
 - better locator and marker coverage
 - more reliable source clip and reel/tape extraction
 
-### Phase 2F
+### Phase 2G
 Operator tooling on top of the richer canonical model.
 
 Targets:

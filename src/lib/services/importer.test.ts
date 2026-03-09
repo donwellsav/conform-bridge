@@ -9,6 +9,7 @@ const fcpxmlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-203-
 const edlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-204-edl-only");
 const aafOnlyFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-205-aaf-only");
 const aafVsFcpxmlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-206-aaf-vs-fcpxml");
+const aafMissingMediaFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-207-aaf-missing-media");
 const manifestPath = resolve(fcpxmlFixtureRoot, "editorial", "manifest.json");
 const metadataPath = resolve(fcpxmlFixtureRoot, "editorial", "RVR_203_METADATA.csv");
 const importer = ("default" in importerModule ? importerModule.default : importerModule) as typeof importerModule;
@@ -118,6 +119,8 @@ test("importTurnoverFolderSync uses AAF as the primary timeline source when FCPX
   assert.equal(firstClip?.hasFadeIn, true);
   assert.equal(firstClip?.hasIXml, true);
   assert.equal(firstClip?.isOffline, false);
+  assert.match(result.clipEvents[0]?.clipNotes ?? "", /AAF mob: ROLL_070A_01/);
+  assert.equal(result.clipEvents[1]?.hasSpeedEffect, true);
   assert.ok(!issueCodes.includes("AAF_TRACK_COUNT_MISMATCH"));
   assert.ok(!issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
 });
@@ -141,5 +144,23 @@ test("importTurnoverFolderSync keeps FCPXML primary, enriches from AAF, and reco
   assert.ok(issueCodes.includes("AAF_SOURCE_FILE_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_REEL_TAPE_MISMATCH"));
   assert.ok(issueCodes.includes("AAF_MARKER_COVERAGE_MISMATCH"));
+  assert.ok(issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
+});
+
+test("importTurnoverFolderSync preserves explicit missing-media issues for AAF-primary fixtures", () => {
+  const result = importer.importTurnoverFolderSync(aafMissingMediaFixtureRoot);
+
+  assert.equal(result.timeline.name, "RVR_207_R1_AAF_PRIMARY");
+  assert.equal(result.timeline.trackIds.length, 2);
+  assert.equal(result.clipEvents.length, 2);
+  assert.equal(result.markers.length, 1);
+
+  const missingClip = result.clipEvents.find((clipEvent) => clipEvent.clipName === "LAV_090B_02_B");
+  const issueCodes = result.analysisReport.groups.flatMap((group) => group.findings.map((finding) => finding.code));
+
+  assert.equal(missingClip?.isOffline, true);
+  assert.equal(missingClip?.sourceFileName, "ROLL_090B_02.BWF");
+  assert.ok(issueCodes.includes("SOURCE_FILE_MISSING_FROM_INTAKE"));
+  assert.ok(issueCodes.includes("MISSING_PRODUCTION_ROLL"));
   assert.ok(issueCodes.includes("AAF_EXPECTED_MEDIA_MISSING"));
 });
