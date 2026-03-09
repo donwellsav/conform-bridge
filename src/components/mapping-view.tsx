@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
+import { DeliveryExecutionPreview } from "@/components/delivery-execution-preview";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -240,6 +241,9 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
               <p className="mt-2 text-sm text-muted">{artifact.note}</p>
             </div>
           ))}
+        </div>
+        <div className="mt-5 border-t border-border/70 pt-5">
+          <DeliveryExecutionPreview executionPlan={overlay.previewExecution} />
         </div>
       </SectionCard>
 

@@ -1,8 +1,8 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 2K` complete.
-- Next phase: `Phase 3` delivery execution prep once planning and review state stay stable.
+- Current phase: `Phase 3A` complete.
+- Next phase: `Phase 3B` staged delivery bundle materialization while keeping writer work deferred.
 - Ongoing compatibility work: keep shrinking remaining AAF fallback cases when new production samples justify it.
 
 ## Phase 1 Scaffold
@@ -28,5 +28,12 @@
 - [x] Add saved validation acknowledgements and reconform-ready review decisions on top of imported analysis.
 - [x] Broaden direct AAF parsing beyond current in-repo graph payload coverage toward more arbitrary real-world OLE/AAF layouts.
 - [x] Reduce `.adapter` compatibility fallback dependence for more real-world AAF layouts while keeping compatibility fallback available.
-- [ ] Prepare delivery execution only after saved review state and exporter planning remain stable.
+- [x] Prepare delivery execution behind a separate execution-prep boundary after planning.
 - [ ] Keep reducing unsupported AAF edge cases only when real containers still require compatibility fallback.
+
+## Phase 3
+- [x] Generate safe serializable delivery artifacts from planned outputs: manifest, README, marker CSV, marker EDL, metadata CSV, and field recorder report.
+- [x] Keep binary AAF and reference-video outputs deferred behind a future writer boundary.
+- [ ] Materialize generated execution-prep payloads into a staged delivery folder structure.
+- [ ] Define stable writer inputs for deferred binary artifacts without implementing native Nuendo session writing yet.
+- [ ] Implement real Nuendo/session writing only after staged delivery execution is proven stable.

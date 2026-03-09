@@ -6,13 +6,13 @@ Current workflow model:
 
 `Resolve/editorial intake -> canonical normalized translation model -> planned Nuendo delivery package`
 
-This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, and real delivery planning, but it does not write Nuendo files yet.
+This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, real delivery planning, and delivery execution prep for safe text/JSON/CSV artifacts, but it does not write Nuendo files yet.
 
 Current phase:
-- `Phase 2K` completed: direct AAF parsing now covers more non-trivial layouts directly, while `.adapter` fallback remains as a narrower compatibility path.
+- `Phase 3A` completed: delivery execution prep now generates safe serializable artifacts while keeping binary/session writing deferred.
 
 Next planned phase:
-- `Phase 3`: keep delivery execution prep separate from planning until the writer boundary is ready.
+- `Phase 3B`: materialize prepared delivery outputs and harden the future writer boundary without collapsing planning into writing.
 
 ## Phase History
 
@@ -140,6 +140,16 @@ Implemented:
 - explicit partial-fallback coverage through a dedicated compatibility fixture while keeping current fixtures on the direct path where possible
 - regression coverage proving existing direct fixtures still hydrate the same canonical model and saved review-state flow remains intact
 
+### Phase 3A
+Delivery execution prep while keeping planning separate from writing.
+
+Implemented:
+- a new execution-prep boundary after `exporter.ts`
+- deterministic generation of `manifest.json`, README import instructions, marker CSV, marker EDL, metadata CSV, and field recorder report payloads
+- deferred binary execution records for AAF and reference video artifacts instead of fake binary contents
+- job-detail and saved-review preview visibility for generated vs deferred execution state
+- regression coverage proving saved operator review deltas change execution-prep output without changing the importer/planner/writer split
+
 ## Current Status
 
 Implemented now:
@@ -151,11 +161,13 @@ Implemented now:
 - Canonical hydration for bundles, timelines, tracks, clips, markers, and analysis
 - Primary timeline hydration from FCPXML/XML when present, with AAF enrichment and `aaf -> edl -> metadata` fallback after that
 - Deterministic delivery planning in `exporter.ts`
+- Deterministic delivery execution prep for safe JSON, text, and CSV artifacts in `delivery-execution.ts`
 - operator mapping editors for track, marker, metadata, and field recorder review
 - shared validation rules that surface unresolved intake, metadata, production-audio, and delivery-blocker conditions
 - browser-local persisted review deltas for mappings, validation acknowledgements, and reconform review decisions
 - reconform review with saved per-change status, notes, filters, and summary counts
 - Fixture-backed tests for importer, exporter, and data flow
+- generated execution payload previews in the job-detail and saved-review workflow
 - measurably reduced adapter dependence in the current fixture library: direct parsing now covers `rvr-205`, `rvr-206`, `rvr-207`, and `rvr-208`, while `rvr-209` remains the explicit compatibility-fallback case
 
 ## Known Limitations
@@ -164,6 +176,7 @@ Implemented now:
 - Operator review persistence is browser-local only; no backend or shared multi-user state exists.
 - Full arbitrary-production AAF graph traversal without compatibility fallback is not complete yet.
 - `.adapter` fallback is still required for unsupported or only-partially-parsed AAF layouts, even though the current fixture library depends on it less than before.
+- Binary AAF, MOV/MP4, and any native Nuendo session/project outputs remain deferred behind a future writer boundary.
 - BWF/WAV and MOV/MP4 assets are classified but not deeply parsed.
 - Auth, billing, database, backend, and marketing site remain out of scope.
 
@@ -211,12 +224,14 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/lib/adapters/aaf-file.ts](./src/lib/adapters/aaf-file.ts): AAF file boundary that prefers direct parsing and falls back to `.adapter` compatibility payloads
 - [src/lib/services/importer.ts](./src/lib/services/importer.ts): intake scanning, source preference, parsing, reconciliation, hydration, analysis
 - [src/lib/services/exporter.ts](./src/lib/services/exporter.ts): delivery planning only
+- [src/lib/services/delivery-execution.ts](./src/lib/services/delivery-execution.ts): execution prep for safe serializable delivery artifacts while binary outputs remain deferred
 - [src/lib/mapping-workflow.ts](./src/lib/mapping-workflow.ts): pure mapping editor state helpers and review counters
 - [src/lib/review-state.ts](./src/lib/review-state.ts): pure review overlay, delta application, and review-summary helpers
 - [src/lib/local-review-state.ts](./src/lib/local-review-state.ts): SSR-safe browser-local persisted review-state store with versioning
 - [src/lib/validation.ts](./src/lib/validation.ts): shared validation-rule generation and analysis report rebuilding
 - [src/lib/data-source.ts](./src/lib/data-source.ts): composes imported fixture data with exporter planning, or falls back to mock data
 - [src/components/mapping-view.tsx](./src/components/mapping-view.tsx): operator-facing mapping editor and delivery preview
+- [src/components/delivery-execution-preview.tsx](./src/components/delivery-execution-preview.tsx): generated-vs-deferred execution-prep artifact preview
 - [src/components/reconform-review.tsx](./src/components/reconform-review.tsx): saved reconform review workflow with notes and filters
 
 ## Fixture Intake Folder
@@ -311,7 +326,7 @@ npm run lint
 npm run build
 ```
 
-## Importer / Exporter Boundary
+## Importer / Exporter / Execution Boundary
 
 `importer.ts` is responsible for:
 - scanning intake folders
@@ -332,7 +347,12 @@ npm run build
 - assigning deterministic artifact statuses
 - building the delivery package model
 
-`exporter.ts` does not write files yet.
+`delivery-execution.ts` is responsible for:
+- turning planned artifacts into safe serializable payloads where that is already deterministic
+- generating `manifest.json`, README, marker CSV, marker EDL, metadata CSV, and field recorder report payloads
+- recording deferred binary execution items for AAF and reference video outputs without faking binary contents
+
+Neither `exporter.ts` nor `delivery-execution.ts` writes native Nuendo files yet.
 
 ## Current Parser Coverage
 
@@ -373,6 +393,21 @@ Reconciliation currently flags:
 - missing reel / tape / scene / take
 - source files referenced by the timeline exchange but missing from intake
 
+## Current Delivery Execution Prep Coverage
+
+Generated now:
+- `manifest.json`
+- `README_NUENDO_IMPORT.txt`
+- marker CSV
+- marker EDL
+- metadata CSV
+- field recorder report
+
+Deferred:
+- Nuendo-ready AAF
+- reference video handoff
+- any native Nuendo session/project output
+
 ## Operator Review Workflow
 
 Current operator tooling includes:
@@ -394,17 +429,17 @@ Current operator tooling includes:
 
 ## Planned Next Phases
 
-### Phase 3
-Delivery execution after planning is stable.
+### Phase 3B
+Delivery staging and future writer-boundary hardening.
 
 Targets:
-- real Nuendo export writer
-- manifest and README file generation from exporter outputs
-- delivery package serialization
+- materialize generated execution-prep payloads into a staged delivery bundle
+- keep deferred binary artifacts explicit in the staged output
+- formalize stable inputs for a future writer without implementing native Nuendo session writing yet
 
 ## Next Recommended Work
 
-- reduce remaining AAF adapter and compatibility fallback dependence while keeping importer precedence at `fcpxml/xml -> aaf -> edl -> metadata`
-- broaden direct AAF coverage from supported fixture layouts toward more arbitrary production OLE/AAF layouts before adding any write path
-- prepare Phase 3 delivery execution only after AAF coverage and saved operator review state feel stable
-- keep delivery execution strictly separate from exporter planning until a real writer boundary is ready
+- materialize the generated execution-prep payloads into a real staged delivery folder without changing `exporter.ts`
+- keep AAF, reference video, and any future Nuendo session output behind a separate writer boundary
+- continue reducing AAF compatibility fallback only when new real containers require it
+- keep planning, execution prep, and future writing as three separate layers

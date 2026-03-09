@@ -42,6 +42,15 @@ export type MappingRuleStatus = "locked" | "review" | "issue";
 export type FieldRecorderCandidateStatus = "linked" | "candidate" | "missing";
 export type DeliveryDestination = "nuendo";
 export type ChangeType = "insert" | "delete" | "move" | "trim" | "replace";
+export type DeliveryExecutionStatus = "generated" | "deferred" | "unavailable";
+export type GeneratedArtifactPayloadKind =
+  | "manifest_json"
+  | "readme_text"
+  | "marker_csv"
+  | "marker_edl"
+  | "metadata_csv"
+  | "field_recorder_report"
+  | "reference_video_instruction";
 export type ReviewStateVersion = 1;
 export type ReviewStateKey = string;
 export type ValidationReviewStatus = "unreviewed" | "acknowledged" | "dismissed";
@@ -377,6 +386,107 @@ export interface DeliveryPackage {
   includeHandles: boolean;
   deliverySummary: string;
   artifacts: DeliveryArtifact[];
+}
+
+export interface DeliveryExecutionArtifactBase {
+  artifactId: string;
+  deliveryPackageId: string;
+  jobId: string;
+  fileName: string;
+  fileRole: FileRole;
+  fileKind: FileKind;
+  artifactStatus: DeliveryArtifactStatus;
+  executionStatus: DeliveryExecutionStatus;
+  summary: string;
+}
+
+export interface GeneratedManifestPayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "generated";
+  payloadKind: "manifest_json";
+  mimeType: "application/json";
+  content: string;
+  json: Record<string, unknown>;
+}
+
+export interface GeneratedReadmePayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "generated";
+  payloadKind: "readme_text";
+  mimeType: "text/plain";
+  content: string;
+}
+
+export interface GeneratedMarkerCsvPayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "generated";
+  payloadKind: "marker_csv";
+  mimeType: "text/csv";
+  content: string;
+  rowCount: number;
+}
+
+export interface GeneratedMarkerEdlPayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "generated";
+  payloadKind: "marker_edl";
+  mimeType: "text/plain";
+  content: string;
+  eventCount: number;
+}
+
+export interface GeneratedMetadataCsvPayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "generated";
+  payloadKind: "metadata_csv";
+  mimeType: "text/csv";
+  content: string;
+  rowCount: number;
+}
+
+export interface GeneratedFieldRecorderReportPayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "generated";
+  payloadKind: "field_recorder_report";
+  mimeType: "text/csv";
+  content: string;
+  rowCount: number;
+}
+
+export interface GeneratedReferenceVideoInstructionPayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "generated";
+  payloadKind: "reference_video_instruction";
+  mimeType: "text/plain";
+  content: string;
+}
+
+export interface DeferredBinaryArtifactPayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "deferred";
+  payloadKind: "deferred_binary";
+  nextBoundary: "future_writer" | "source_media_handoff";
+  reason: string;
+}
+
+export interface UnavailableArtifactPayload extends DeliveryExecutionArtifactBase {
+  executionStatus: "unavailable";
+  payloadKind: "unavailable";
+  reason: string;
+}
+
+export type DeliveryExecutionArtifactPayload =
+  | GeneratedManifestPayload
+  | GeneratedReadmePayload
+  | GeneratedMarkerCsvPayload
+  | GeneratedMarkerEdlPayload
+  | GeneratedMetadataCsvPayload
+  | GeneratedFieldRecorderReportPayload
+  | GeneratedReferenceVideoInstructionPayload
+  | DeferredBinaryArtifactPayload
+  | UnavailableArtifactPayload;
+
+export interface DeliveryExecutionPlan {
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  preparedArtifacts: DeliveryExecutionArtifactPayload[];
+  generatedCount: number;
+  deferredCount: number;
+  unavailableCount: number;
+  summary: string;
 }
 
 export interface TranslationJob {

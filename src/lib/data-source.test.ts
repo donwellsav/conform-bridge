@@ -13,13 +13,17 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(job);
 
   const deliveryPackage = dataSource.getDeliveryPackage(job.deliveryPackageId);
+  const executionPlan = dataSource.getDeliveryExecutionPlan(job.id);
   const exportArtifacts = dataSource.getExportArtifacts(job.id);
   const dashboardMetric = dataSource.dashboardMetrics.find((metric) => metric.label === "Planned delivery files");
   const deliveryActivity = dataSource.activityFeed.find((item) => item.id.endsWith("-delivery"));
 
   assert.ok(deliveryPackage);
+  assert.ok(executionPlan);
   assert.equal(exportArtifacts.length, 8);
   assert.equal(deliveryPackage?.artifacts.length, 8);
+  assert.ok(executionPlan?.preparedArtifacts.some((artifact) => artifact.executionStatus === "generated"));
+  assert.ok(executionPlan?.preparedArtifacts.some((artifact) => artifact.executionStatus === "deferred"));
   assert.ok(exportArtifacts.some((artifact) => artifact.status === "blocked"));
   assert.equal(dashboardMetric?.value, String(dataSource.jobs.length * 8).padStart(2, "0"));
   assert.match(dashboardMetric?.note ?? "", /exporter\.ts/);

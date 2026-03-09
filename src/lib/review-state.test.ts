@@ -25,6 +25,7 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.ok(candidate);
   assert.ok(track);
   assert.equal(baseOverlay.previewPlan.exportArtifacts.find((artifact) => artifact.fileRole === "field_recorder_report")?.status, "planned");
+  assert.equal(baseOverlay.previewExecution.preparedArtifacts.find((artifact) => artifact.fileRole === "field_recorder_report")?.executionStatus, "generated");
 
   const editedState = applyFieldRecorderReviewDecision(
     applyTrackOverride(baseState, context.mappingProfile, track.id, {
@@ -44,6 +45,11 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.equal(editedOverlay.effectiveMappingProfile.trackMappings[0]?.targetLane, "DX REVIEW A");
   assert.equal(editedOverlay.effectiveMappingProfile.trackMappings[0]?.action, "remap");
   assert.equal(editedOverlay.previewPlan.exportArtifacts.find((artifact) => artifact.fileRole === "field_recorder_report")?.status, "blocked");
+  assert.equal(editedOverlay.previewExecution.preparedArtifacts.find((artifact) => artifact.fileRole === "field_recorder_report")?.executionStatus, "unavailable");
+  assert.match(
+    editedOverlay.previewExecution.preparedArtifacts.find((artifact) => artifact.payloadKind === "metadata_csv" && artifact.executionStatus === "generated")?.content ?? "",
+    /DX REVIEW A/,
+  );
   assert.ok(editedOverlay.reviewCounts.mappingOpenCount >= baseOverlay.reviewCounts.mappingOpenCount);
 });
 

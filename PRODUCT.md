@@ -29,6 +29,7 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - CSV, manifest, marker CSV, and simple EDL parsing remain active enrichment and fallback inputs.
 - Operator-facing mapping editors and validation rules sit on top of the imported canonical model without changing the intake -> canonical -> delivery split.
 - Saved operator review state is layered as local browser deltas keyed by job plus source signature. The imported canonical model itself is not duplicated into browser storage.
+- Delivery execution prep is a separate boundary after planning. It may generate safe JSON, text, and CSV payloads, but it must not write native Nuendo session/project files in this phase.
 
 ## Current Non-Goals
 - No real Nuendo export writing.
@@ -58,10 +59,12 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Structured intake parsing for manifest JSON, metadata CSV, marker CSV, simple EDL, FCPXML/XML, and direct in-repo AAF container parsing with adapter fallback compatibility.
 - Canonical analysis and reconciliation output through `src/lib/services/importer.ts`.
 - Delivery artifact planning through `src/lib/services/exporter.ts`.
+- Delivery execution prep through `src/lib/services/delivery-execution.ts` for artifacts that can already be generated safely.
 - Operator mapping editors for track, marker, metadata, and field recorder review.
 - Validation rules that merge intake completeness, reconciliation, and delivery-blocker findings into `PreservationIssue` records.
 - Browser-local persistence for operator review deltas, validation acknowledgements, and reconform review decisions.
 - Reconform-ready review with saved per-change acknowledgement state, notes, filters, and summary counts.
+- Execution-prep previews that distinguish generated payloads from deferred binary artifacts.
 - Imported-data-first routes with deterministic mock fallback only when no fixture library exists.
 
 ## Current AAF State
@@ -70,13 +73,15 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Stable AAF-derived adapter payloads remain available as a compatibility fallback when direct extraction does not cover a file.
 - Legacy text-dump AAF fixtures remain supported as a fallback path for narrow tests and fixture maintenance.
 - Nuendo project writing still does not exist.
+- AAF and reference video outputs remain deferred binary artifacts, not generated files.
 
 ## Current Status
-- `Phase 2K` is complete.
+- `Phase 3A` is complete.
 - Intake, canonical, and delivery layers are explicit in docs, types, routes, and tests.
 - Operator-facing mapping and validation review is available on the Job Detail route.
 - Operator review progress now persists locally in the browser as deltas over imported data.
 - Delivery planning remains planning-only and does not write files.
+- Delivery execution prep now generates deterministic manifest, README, marker CSV, marker EDL, metadata CSV, and field recorder report payloads from planned artifacts.
 - Direct AAF parsing now covers the current embedded-graph and broader decoded-OLE fixture layouts first, while `.adapter` fallback remains a narrower compatibility path.
 
 ## Known Limitations
@@ -84,9 +89,10 @@ Resolve exports in -> canonical internal model -> Nuendo-ready delivery package 
 - Operator review persistence is browser-local only; no backend or shared multi-user state exists.
 - Some AAF layouts still require compatibility fallback payloads when the in-repo parser only partially covers the container graph.
 - BWF/WAV and MOV/MP4 assets are classified, but not deeply parsed.
+- Binary delivery artifacts still stop at deferred execution records in this phase.
 
 ## Next Recommended Work
-- `Phase 3`: keep delivery execution and any future writer boundary separate from current delivery planning.
+- `Phase 3B`: stage generated execution-prep outputs into a delivery folder while keeping binary artifacts deferred.
 - Continue broadening direct AAF coverage only where new production samples still require compatibility fallback.
 - Keep exporter planning and any future writer boundary strictly separate.
 

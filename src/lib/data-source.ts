@@ -1,6 +1,7 @@
 import * as fallback from "./mock-data";
 import { countMappingReviews, getFieldRecorderDecision } from "./mapping-workflow";
 import type { ReviewJobContext } from "./review-state";
+import { prepareDeliveryExecutionSync } from "./services/delivery-execution";
 import { planNuendoDeliverySync } from "./services/exporter";
 import { importFixtureLibrarySync, type ImportedIntakeData } from "./services/importer";
 import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
@@ -11,6 +12,7 @@ import type {
   ConformChangeEvent,
   DashboardMetric,
   DeliveryArtifact,
+  DeliveryExecutionPlan,
   DeliveryPackage,
   FieldRecorderCandidate,
   MappingProfile,
@@ -18,6 +20,7 @@ import type {
   Marker,
   OutputPreset,
   SourceBundle,
+  Track,
   Timeline,
   TranslationJob,
   TranslationModel,
@@ -26,6 +29,7 @@ import type {
 interface ImportedAppData extends ImportedIntakeData {
   deliveryPackages: DeliveryPackage[];
   exportArtifacts: DeliveryArtifact[];
+  deliveryExecutionPlans: DeliveryExecutionPlan[];
   dashboardMetrics: DashboardMetric[];
   activityFeed: ActivityItem[];
 }
@@ -106,6 +110,7 @@ function createImportedAppData(): ImportedAppData {
       ...importedIntakeData,
       deliveryPackages: [],
       exportArtifacts: [],
+      deliveryExecutionPlans: [],
       dashboardMetrics: [],
       activityFeed: [],
     };
@@ -121,6 +126,7 @@ function createImportedAppData(): ImportedAppData {
     const fieldRecorderCandidateSet = importedIntakeData.fieldRecorderCandidates.filter((candidate) => candidate.jobId === job.id);
     const baseIssues = importedIntakeData.preservationIssues.filter((issue) => issue.jobId === job.id);
     const timeline = translationModel ? getImportedTimelineForModel(importedIntakeData, translationModel) : undefined;
+    const trackSet = timeline ? importedIntakeData.tracks.filter((track) => track.timelineId === timeline.id) : [];
     const clipEventSet = timeline ? getImportedClipEventsForTimeline(importedIntakeData, timeline.id) : [];
     const markerSet = timeline ? getImportedMarkersForTimeline(importedIntakeData, timeline.id) : [];
     const analysisReport = baseReport;
@@ -217,6 +223,21 @@ function createImportedAppData(): ImportedAppData {
         fieldRecorderLinkedCount,
       },
     };
+    const executionPlan = prepareDeliveryExecutionSync({
+      job: updatedJob,
+      bundle: sourceBundle,
+      translationModel,
+      timelineName: timeline.name,
+      tracks: trackSet,
+      clipEvents: clipEventSet,
+      markers: markerSet,
+      analysisReport: finalReport,
+      mappingProfile,
+      fieldRecorderCandidates: fieldRecorderCandidateSet,
+      preservationIssues: finalIssues,
+      deliveryPackage: finalPlan.deliveryPackage,
+      exportArtifacts: finalPlan.exportArtifacts,
+    });
 
     return {
       job: updatedJob,
@@ -224,6 +245,7 @@ function createImportedAppData(): ImportedAppData {
       issues: finalIssues,
       deliveryPackage: finalPlan.deliveryPackage,
       exportArtifacts: finalPlan.exportArtifacts,
+      executionPlan,
     };
   });
 
@@ -233,6 +255,7 @@ function createImportedAppData(): ImportedAppData {
     preservationIssues: jobRecords.flatMap((record) => record.issues),
     deliveryPackages: jobRecords.map((record) => record.deliveryPackage),
     exportArtifacts: jobRecords.flatMap((record) => record.exportArtifacts),
+    deliveryExecutionPlans: jobRecords.map((record) => record.executionPlan),
     jobs: jobRecords.map((record) => record.job),
     dashboardMetrics: [],
     activityFeed: [],
@@ -262,6 +285,7 @@ export const analysisReports = hasImportedBundles ? importedData.analysisReports
 export const preservationIssues = hasImportedBundles ? importedData.preservationIssues : fallback.preservationIssues;
 export const deliveryPackages = hasImportedBundles ? importedData.deliveryPackages : fallback.deliveryPackages;
 export const exportArtifacts = hasImportedBundles ? importedData.exportArtifacts : fallback.exportArtifacts;
+export const deliveryExecutionPlans = hasImportedBundles ? importedData.deliveryExecutionPlans : [];
 export const mappingProfiles = hasImportedBundles ? importedData.mappingProfiles : fallback.mappingProfiles;
 export const mappingRules = hasImportedBundles ? importedData.mappingRules : fallback.mappingRules;
 export const fieldRecorderCandidates = hasImportedBundles ? importedData.fieldRecorderCandidates : fallback.fieldRecorderCandidates;
@@ -278,6 +302,7 @@ const timelineMap = new Map(timelines.map((timeline) => [timeline.id, timeline])
 const reportMap = new Map(analysisReports.map((report) => [report.id, report]));
 const mappingMap = new Map(mappingProfiles.map((profile) => [profile.jobId, profile]));
 const deliveryPackageMap = new Map(deliveryPackages.map((deliveryPackage) => [deliveryPackage.id, deliveryPackage]));
+const deliveryExecutionPlanMap = new Map(deliveryExecutionPlans.map((plan) => [plan.jobId, plan]));
 const jobMap = new Map(jobs.map((job) => [job.id, job]));
 const translationModelMap = new Map(translationModels.map((model) => [model.id, model]));
 
@@ -363,6 +388,10 @@ export function getExportArtifacts(jobId: string): DeliveryArtifact[] {
   return deliveryPackage?.artifacts ?? [];
 }
 
+export function getDeliveryExecutionPlan(jobId: string): DeliveryExecutionPlan | undefined {
+  return deliveryExecutionPlanMap.get(jobId);
+}
+
 export function getAnalysisReportForJob(jobId: string): AnalysisReport | undefined {
   const job = getJob(jobId);
   return job ? getReport(job.analysisReportId) : undefined;
@@ -417,7 +446,13 @@ export function getJobReviewContext(jobId: string): ReviewJobContext | undefined
     outputPreset: outputPreset as OutputPreset,
     preservationIssues: getPreservationIssues(job.id),
     conformChangeEvents: getConformChangeEvents(job.id),
+    tracks: trackSetForJob(job.id),
   };
+}
+
+function trackSetForJob(jobId: string): Track[] {
+  const timeline = getTimelineForJob(jobId);
+  return timeline ? tracks.filter((track) => track.timelineId === timeline.id) : [];
 }
 
 export const reviewJobContexts = jobs.flatMap((job) => {

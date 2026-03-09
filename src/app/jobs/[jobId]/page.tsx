@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { DeliveryExecutionPreview } from "@/components/delivery-execution-preview";
 import { MappingView } from "@/components/mapping-view";
 import { PageHeader } from "@/components/page-header";
 import { PreservationReportView } from "@/components/preservation-report";
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   getBundle,
+  getDeliveryExecutionPlan,
   getExportArtifacts,
   getJob,
   getJobReviewContext,
@@ -33,9 +35,10 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
   const report = getReport(job.analysisReportId);
   const outputPreset = getOutputPreset(job.outputPresetId ?? job.templateId);
   const artifacts = getExportArtifacts(job.id);
+  const executionPlan = getDeliveryExecutionPlan(job.id);
   const reviewContext = getJobReviewContext(job.id);
 
-  if (!bundle || !report || !outputPreset || !reviewContext) {
+  if (!bundle || !report || !outputPreset || !reviewContext || !executionPlan) {
     notFound();
   }
 
@@ -115,6 +118,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                   <p className="mt-2 text-sm leading-6 text-muted">{artifact.note}</p>
                 </div>
               ))}
+            </div>
+            <div className="mt-5 border-t border-border/70 pt-5">
+              <DeliveryExecutionPreview executionPlan={executionPlan} />
             </div>
           </SectionCard>
           <MappingView context={reviewContext} />

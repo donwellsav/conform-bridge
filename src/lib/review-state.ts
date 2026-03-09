@@ -5,11 +5,13 @@ import {
   setFieldRecorderDecision,
   setMarkerAction,
 } from "./mapping-workflow";
+import { prepareDeliveryExecutionSync } from "./services/delivery-execution";
 import { planNuendoDeliverySync } from "./services/exporter";
 import type {
   AnalysisReport,
   ClipEvent,
   ConformChangeEvent,
+  DeliveryExecutionPlan,
   FieldRecorderCandidate,
   FieldRecorderReviewDecision,
   MappingProfile,
@@ -25,6 +27,7 @@ import type {
   ReviewStateKey,
   SourceBundle,
   Timeline,
+  Track,
   TrackMappingOverride,
   TranslationJob,
   TranslationModel,
@@ -45,6 +48,7 @@ export interface ReviewJobContext {
   mappingRules: MappingRule[];
   markers: Marker[];
   clipEvents: ClipEvent[];
+  tracks: Track[];
   fieldRecorderCandidates: FieldRecorderCandidate[];
   outputPreset: OutputPreset;
   preservationIssues: PreservationIssue[];
@@ -77,6 +81,7 @@ export interface ReviewOverlayResult {
   validationItems: ValidationReviewItem[];
   previewReport: AnalysisReport;
   previewPlan: ReturnType<typeof planNuendoDeliverySync>;
+  previewExecution: DeliveryExecutionPlan;
   reconformItems: ReconformReviewItem[];
   reviewCounts: {
     mappingOpenCount: number;
@@ -664,6 +669,43 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
   const reconformOpenCount = reconformItems.filter((item) => item.isOpen).length;
   const reconformAcknowledgedCount = reconformItems.filter((item) => item.status === "acknowledged").length;
   const reconformNeedsFollowUpCount = reconformItems.filter((item) => item.status === "needs-follow-up").length;
+  const previewJob: TranslationJob = {
+    ...context.job,
+    status: previewPlan.exportArtifacts.some((artifact) => artifact.status === "blocked")
+      || previewReport.highRiskCount > 0
+      || mappingReviewSummary.total > 0
+      ? "attention"
+      : "ready",
+    priority: previewReport.highRiskCount > 0
+      ? "high"
+      : mappingReviewSummary.total > 0 || previewReport.warningCount > 0
+        ? "normal"
+        : "low",
+    analysisReportId: previewReport.id,
+    mappingSnapshot: {
+      mappedTrackCount: effectiveMappingProfile.trackMappings.filter((track) => track.action !== "ignore").length,
+      preservedMetadataCount: effectiveMappingProfile.metadataMappings.filter((mapping) => mapping.status === "mapped").length,
+      unresolvedCount: mappingReviewSummary.total,
+      fieldRecorderLinkedCount: context.fieldRecorderCandidates.filter((candidate) =>
+        getFieldRecorderDecision(effectiveMappingProfile, candidate) === "linked",
+      ).length,
+    },
+  };
+  const previewExecution = prepareDeliveryExecutionSync({
+    job: previewJob,
+    bundle: context.bundle,
+    translationModel: context.translationModel,
+    timelineName: context.timeline.name,
+    tracks: context.tracks,
+    clipEvents: context.clipEvents,
+    markers: effectiveMarkers,
+    analysisReport: previewReport,
+    mappingProfile: effectiveMappingProfile,
+    fieldRecorderCandidates: context.fieldRecorderCandidates,
+    preservationIssues: previewIssues,
+    deliveryPackage: previewPlan.deliveryPackage,
+    exportArtifacts: previewPlan.exportArtifacts,
+  });
 
   return {
     reviewState,
@@ -674,6 +716,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     validationItems,
     previewReport,
     previewPlan,
+    previewExecution,
     reconformItems,
     reviewCounts: {
       mappingOpenCount: mappingReviewSummary.total,
