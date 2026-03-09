@@ -1,4 +1,5 @@
 import { joinPath, stableToken } from "./writer-run-audit";
+import { listReceiptSchemaDescriptors } from "./receipt-schema-registry";
 import { createDefaultWriterRunTransportAdapters } from "./writer-run-transport-registry";
 import type {
   ExternalExecutionPackage,
@@ -70,6 +71,20 @@ function createDispatchFiles(
     dependencyIds: envelope.dependencyIds,
     blockedReasons: envelope.blockedReasons,
     outboundRoot: relativeOutboundRoot,
+    expectedReceiptProfile: "canonical-filesystem-transport-v1",
+    acceptedReceiptProfiles: ["canonical-filesystem-transport-v1", "compatibility-filesystem-receipt-v1", "future-service-transport-placeholder"],
+  };
+  const receiptCompatibility = {
+    schemaVersion: 1,
+    dispatchId,
+    artifactId: envelope.artifactId,
+    fileName: envelope.fileName,
+    expectedReceiptProfile: "canonical-filesystem-transport-v1",
+    expectedReceiptVersion: 1,
+    acceptedReceiptProfiles: ["canonical-filesystem-transport-v1", "compatibility-filesystem-receipt-v1", "future-service-transport-placeholder"],
+    sourceSignature: envelope.sourceSignature,
+    reviewSignature: envelope.reviewSignature,
+    deliveryPackageSignature: envelope.deliveryPackageSignature,
   };
 
   return [
@@ -93,6 +108,13 @@ function createDispatchFiles(
       mimeType: "application/json",
       content: JSON.stringify(packageReference, null, 2),
       summary: `Package and transport references for ${envelope.fileName}.`,
+    },
+    {
+      relativePath: joinPath(relativeOutboundRoot, "receipt-compatibility-profile.json"),
+      fileName: "receipt-compatibility-profile.json",
+      mimeType: "application/json",
+      content: JSON.stringify(receiptCompatibility, null, 2),
+      summary: `Declared receipt compatibility expectations for ${envelope.fileName}.`,
     },
   ];
 }
@@ -136,6 +158,9 @@ function createDispatchEnvelope(
     endpoint: adapter.endpoint,
     outboundRoot: adapter.endpoint.outboundPath,
     relativeOutboundRoot,
+    expectedReceiptProfile: "canonical-filesystem-transport-v1",
+    acceptedReceiptProfiles: [...adapter.receiptCompatibilityProfiles].sort((left, right) => left.localeCompare(right)),
+    expectedReceiptVersion: 1,
     dependencyIds: [...envelope.dependencyIds].sort((left, right) => left.localeCompare(right)),
     blockedReasons: [...envelope.blockedReasons].sort((left, right) =>
       `${left.code}:${left.artifactId ?? ""}:${left.message}`.localeCompare(`${right.code}:${right.artifactId ?? ""}:${right.message}`),
@@ -162,6 +187,7 @@ function createDispatchResult(envelope: WriterRunDispatchEnvelope): WriterRunDis
     endpoint: envelope.endpoint,
     outboundRoot: envelope.outboundRoot,
     relativeOutboundRoot: envelope.relativeOutboundRoot,
+    expectedReceiptProfile: envelope.expectedReceiptProfile,
     filePaths: envelope.files.map((file) => file.relativePath).sort((left, right) => left.localeCompare(right)),
     note: envelope.dispatchable
       ? `${envelope.fileName} is ready for filesystem dispatch packaging.`
@@ -193,12 +219,14 @@ export function prepareWriterRunTransportAdapterBundleSync(
   transportBundle: WriterRunTransportBundle,
   adapters: WriterRunTransportAdapter[] = createDefaultWriterRunTransportAdapters(packageBundle.jobId),
 ): WriterRunTransportAdapterBundle {
+  const declaredReceiptProfiles = listReceiptSchemaDescriptors();
   const adapterResults = adapters.map((adapter) => ({
     id: adapter.id,
     version: adapter.version,
     label: adapter.label,
     capabilities: adapter.capabilities,
     endpoint: adapter.endpoint,
+    receiptCompatibilityProfiles: [...adapter.receiptCompatibilityProfiles].sort((left, right) => left.localeCompare(right)),
     validation: adapter.validate(transportBundle),
   })).sort((left, right) => left.label.localeCompare(right.label));
   const activeAdapter = chooseActiveAdapter(adapters);
@@ -245,6 +273,18 @@ export function prepareWriterRunTransportAdapterBundleSync(
       }, null, 2),
       "Deterministic dispatch results for the active transport adapter.",
     ),
+    createEntry(
+      joinPath(packageBundle.rootRelativePath, "handoff", "writer-run-receipt-compatibility-profiles.json"),
+      "writer-run-receipt-compatibility-profiles.json",
+      "writer_run_dispatch_receipt_profile",
+      JSON.stringify({
+        version: 1,
+        packageId: packageBundle.id,
+        activeAdapterId: activeAdapter.id,
+        declaredReceiptProfiles,
+      }, null, 2),
+      "Declared receipt compatibility profiles and expected schema versions for filesystem dispatch packaging.",
+    ),
     ...dispatchEnvelopes.flatMap((envelope) =>
       envelope.files.map((file) =>
         createEntry(
@@ -270,6 +310,7 @@ export function prepareWriterRunTransportAdapterBundleSync(
     deliveryPackageSignature: packageBundle.deliveryPackageSignature,
     adapters: adapterResults,
     activeAdapterId: activeAdapter.id,
+    declaredReceiptProfiles,
     dispatchEnvelopes,
     dispatchResults,
     readiness,

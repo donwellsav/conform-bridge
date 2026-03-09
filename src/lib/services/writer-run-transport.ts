@@ -687,12 +687,17 @@ function createTransportReceipt(
     failedCount: history.filter((item) => item.currentStatus === "transport-failed").length,
     cancelledCount: history.filter((item) => item.currentStatus === "cancelled").length,
     receiptRecordedCount: history.filter((item) => item.currentStatus === "receipt-recorded").length,
+    receiptNormalizedCount: 0,
+    receiptMigratedCount: 0,
     receiptImportedCount: 0,
     completedCount: 0,
     partialCount: 0,
     staleCount: 0,
+    supersededCount: 0,
     duplicateCount: 0,
     unmatchedCount: 0,
+    incompatibleCount: 0,
+    partialCompatibilityCount: 0,
     invalidCount: 0,
     note: status === "receipt-recorded"
       ? "Reference transport completed deterministic no-op dispatch plus receipt recording for every dispatchable artifact."

@@ -3,10 +3,10 @@
 ## Layer 1: Intake Package
 
 ### SourceBundle
-Represents the inbound package received from Resolve or picture editorial.
+Inbound package received from Resolve or editorial.
 - `id`
 - `name`
-- `stage` = `intake`
+- `stage = intake`
 - `receivedFrom`
 - `sequenceName`
 - `pictureLock`
@@ -24,10 +24,10 @@ Represents the inbound package received from Resolve or picture editorial.
 - `assets`
 
 ### IntakeAsset
-Represents one inbound file or production-audio element.
+Inbound file or production-audio asset.
 - `id`
 - `bundleId`
-- `stage` = `intake`
+- `stage = intake`
 - `origin`
 - `fileKind`
 - `fileRole`
@@ -44,7 +44,7 @@ Represents one inbound file or production-audio element.
 - `hasBwf`
 - `hasIXml`
 
-## Layer 2: Canonical Normalized Model
+## Layer 2: Canonical Translation Model
 
 ### TranslationModel
 Canonical normalized project model produced from intake analysis.
@@ -58,11 +58,7 @@ Canonical normalized project model produced from intake analysis.
 - `analysisReportId`
 - `deliveryPackageId`
 
-### CanonicalProject
-Alias of `TranslationModel`. Both names refer to the same canonical layer.
-
 ### NormalizedTimeline
-Normalized timeline representation used by translation and delivery planning.
 - `id`
 - `translationModelId`
 - `name`
@@ -77,7 +73,6 @@ Normalized timeline representation used by translation and delivery planning.
 - `markerIds`
 
 ### NormalizedTrack
-Normalized track representation.
 - `id`
 - `timelineId`
 - `name`
@@ -87,7 +82,6 @@ Normalized track representation.
 - `clipEventIds`
 
 ### ClipEvent
-Normalized event with both timecode and frame-domain values.
 - `id`
 - `timelineId`
 - `trackId`
@@ -121,7 +115,6 @@ Normalized event with both timecode and frame-domain values.
 - `hasFadeOut`
 
 ### Marker
-Normalized marker event.
 - `id`
 - `timelineId`
 - `name`
@@ -136,10 +129,7 @@ Canonical analysis summary for operator review.
 - `jobId`
 - `translationModelId`
 - `updatedOn`
-- `totals.trackCount`
-- `totals.clipCount`
-- `totals.markerCount`
-- `totals.offlineAssetCount`
+- `totals`
 - `highRiskCount`
 - `warningCount`
 - `blockedCount`
@@ -147,17 +137,7 @@ Canonical analysis summary for operator review.
 - `deliveryReadinessSummary`
 - `groups`
 
-### MappingProfile
-Operator-editable review state layered on top of the canonical model.
-- `id`
-- `jobId`
-- `trackMappings`
-- `metadataMappings`
-- `timecodePolicy`
-- `fieldRecorderOverrides`
-
 ### FieldRecorderCandidate
-Potential production-audio relink target derived from canonical clip metadata and intake coverage.
 - `id`
 - `jobId`
 - `clipEventId`
@@ -167,7 +147,6 @@ Potential production-audio relink target derived from canonical clip metadata an
 - `note`
 
 ### MappingRule
-Operator-visible mapping decision in the canonical layer.
 - `id`
 - `jobId`
 - `scope`
@@ -178,10 +157,9 @@ Operator-visible mapping decision in the canonical layer.
 - `note`
 
 ### PreservationIssue
-Granular preservation result used in the analysis report.
 - `id`
 - `jobId`
-- `category` = `preserved | downgraded | dropped | manual-review`
+- `category`
 - `severity`
 - `scope`
 - `title`
@@ -195,26 +173,47 @@ Granular preservation result used in the analysis report.
 - `affectedItems`
 
 ### ReConformChange
-Minimal canonical change-event record for revision workflows.
 - `id`
 - `jobId`
-- `changeType` = `insert | delete | move | trim | replace`
+- `changeType`
 - `oldTimecode`
 - `newTimecode`
 - `oldFrame`
 - `newFrame`
 - `note`
 
-### ConformChangeEvent
-Alias of `ReConformChange`.
+## Layer 3: Review-State Overlay
 
-## Layer 3: Delivery Package
+Review-state is not a second canonical model. It is a persisted delta layer applied on top of imported canonical data.
+
+### ReviewState
+- `version`
+- `jobId`
+- `sourceSignature`
+- `trackOverrides`
+- `markerDecisions`
+- `metadataOverrides`
+- `fieldRecorderDecisions`
+- `validationAcknowledgements`
+- `reconformDecisions`
+
+### ValidationAcknowledgement
+- `issueId`
+- `status`
+- `note`
+
+### ReconformReviewDecision
+- `changeEventId`
+- `status`
+- `note`
+
+## Layer 4: Delivery Planning
 
 ### DeliveryPackage
-Represents the planned outbound package for Nuendo.
+Planned outbound package for Nuendo.
 - `id`
 - `jobId`
-- `stage` = `delivery`
+- `stage = delivery`
 - `destination`
 - `outputPresetId`
 - `name`
@@ -224,11 +223,11 @@ Represents the planned outbound package for Nuendo.
 - `artifacts`
 
 ### DeliveryArtifact
-Represents one planned output file.
+One planned output file.
 - `id`
 - `deliveryPackageId`
 - `jobId`
-- `stage` = `delivery`
+- `stage = delivery`
 - `origin`
 - `fileKind`
 - `fileRole`
@@ -236,10 +235,58 @@ Represents one planned output file.
 - `status`
 - `note`
 
-## Layer 4: Delivery Handoff Contracts
+## Layer 5: Delivery Execution Prep
+
+Execution prep turns planned artifacts into safe serializable payloads when that is already deterministic.
+
+### DeliveryExecutionPlan
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `status`
+- `generatedArtifacts`
+- `deferredArtifacts`
+- `entries`
+
+### Generated Artifact Payloads
+Examples:
+- `GeneratedManifestPayload`
+- `GeneratedReadmePayload`
+- `GeneratedMarkerCsvPayload`
+- `GeneratedMarkerEdlPayload`
+- `GeneratedMetadataCsvPayload`
+- `GeneratedFieldRecorderReportPayload`
+
+### DeferredBinaryArtifactPayload
+Deferred record for binary/writer-only artifacts.
+- `artifactId`
+- `artifactKind`
+- `reason`
+- `requiredWriterCapability`
+
+## Layer 6: Delivery Staging
+
+### DeliveryStagingBundle
+Deterministic staged delivery layout.
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `rootFolderName`
+- `entries`
+- `summary`
+
+### DeliveryStagingEntry
+- `relativePath`
+- `fileName`
+- `payloadKind`
+- `content`
+- `artifactId`
+- `artifactStatus`
+
+## Layer 7: Delivery Handoff Contracts
 
 ### DeferredWriterInput
-Stable machine-readable contract set for deferred writer-only artifacts.
+Stable contract set for deferred writer-only artifacts.
 - `version`
 - `id`
 - `jobId`
@@ -250,9 +297,7 @@ Stable machine-readable contract set for deferred writer-only artifacts.
 - `artifacts`
 
 ### DeferredWriterArtifact
-Deferred artifact contract with readiness and dependency detail.
 - `artifactId`
-- `deferredDescriptorPath`
 - `artifactKind`
 - `fileName`
 - `fileRole`
@@ -267,7 +312,6 @@ Deferred artifact contract with readiness and dependency detail.
 - `payload`
 
 ### WriterDependency
-Explicit prerequisite or blocker for a deferred writer artifact.
 - `id`
 - `type`
 - `label`
@@ -277,41 +321,28 @@ Explicit prerequisite or blocker for a deferred writer artifact.
 - `reason`
 
 ### DeliveryHandoffManifest
-Structured summary that links staged outputs to deferred-writer contracts.
 - `schemaVersion`
 - `jobId`
 - `deliveryPackageId`
 - `sourceSignature`
 - `reviewSignature`
 - `deliveryPackageSignature`
-- `stagingRoot`
-- `reviewInfluence`
 - `generatedArtifacts`
 - `deferredArtifacts`
 - `blockedArtifacts`
 
 ### DeliveryHandoffSummary
-Aggregate readiness summary for the current handoff state.
 - `schemaVersion`
 - `jobId`
 - `deliveryPackageId`
-- `sourceSignature`
-- `reviewSignature`
-- `deliveryPackageSignature`
-- `stagedArtifactCount`
-- `deferredArtifactCount`
-- `blockedArtifactCount`
-- `readyForWriterCount`
-- `partialCount`
-- `deferredWithKnownGapsCount`
 - `readinessStatus`
 - `unresolvedBlockers`
 - `note`
 
-## Layer 5: External Execution Package
+## Layer 8: External Execution Package
 
 ### ExternalExecutionPackage
-Deterministic export bundle that packages staged outputs plus handoff contracts for downstream execution.
+Deterministic export bundle that packages staged output plus handoff contracts.
 - `id`
 - `version`
 - `jobId`
@@ -329,10 +360,8 @@ Deterministic export bundle that packages staged outputs plus handoff contracts 
 - `checksumsJson`
 - `deferredInputsJson`
 - `generatedArtifactIndexJson`
-- `summary`
 
 ### ExternalExecutionEntry
-One packaged file entry inside the external execution bundle.
 - `relativePath`
 - `fileName`
 - `layer`
@@ -342,7 +371,6 @@ One packaged file entry inside the external execution bundle.
 - `content`
 - `byteSize`
 - `checksum`
-- `summary`
 - `artifactId`
 - `artifactStatus`
 - `fileRole`
@@ -350,7 +378,6 @@ One packaged file entry inside the external execution bundle.
 - `writerReadinessStatus`
 
 ### ExternalExecutionManifest
-Package-level manifest linking staged outputs, handoff files, and package readiness.
 - `schemaVersion`
 - `jobId`
 - `deliveryPackageId`
@@ -358,64 +385,25 @@ Package-level manifest linking staged outputs, handoff files, and package readin
 - `reviewSignature`
 - `deliveryPackageSignature`
 - `packageStatus`
-- `stagedRoot`
-- `handoffRoot`
-- `packageRoot`
 - `generatedEntryCount`
 - `deferredContractCount`
-- `packageMetadataCount`
 - `reasons`
-- `note`
 
 ### ExternalExecutionIndex
-Deterministic index of every packaged staged, handoff, and package metadata file.
 - `schemaVersion`
 - `jobId`
 - `deliveryPackageId`
 - `entries`
 
 ### ExternalExecutionChecksum
-Deterministic checksum record for one packaged file.
 - `relativePath`
 - `algorithm`
 - `value`
 - `byteSize`
 
-### ExternalExecutionDeferredInput
-Export-friendly contract record for one deferred writer artifact inside the external package.
-- `artifactId`
-- `artifactKind`
-- `relativePath`
-- `plannedOutputPath`
-- `readinessStatus`
-- `requiredWriterCapability`
-- `blockers`
-- `dependencyIds`
-- `payload`
-
-### ExternalExecutionSummary
-Package-level readiness summary for downstream external execution.
-- `schemaVersion`
-- `jobId`
-- `deliveryPackageId`
-- `sourceSignature`
-- `reviewSignature`
-- `deliveryPackageSignature`
-- `packageStatus`
-- `stagedEntryCount`
-- `handoffEntryCount`
-- `packageEntryCount`
-- `generatedEntryCount`
-- `deferredContractCount`
-- `blockedDeferredCount`
-- `totalEntryCount`
-- `note`
-- `reasons`
-
-## Layer 6: Writer Adapter Contracts
+## Layer 9: Writer Adapter Contracts
 
 ### WriterAdapterInput
-Normalized adapter-facing contract derived only from the packaged external execution bundle.
 - `version`
 - `id`
 - `jobId`
@@ -430,7 +418,6 @@ Normalized adapter-facing contract derived only from the packaged external execu
 - `artifactInputs`
 
 ### WriterAdapterArtifactInput
-Deferred artifact contract normalized for adapter capability matching and dry runs.
 - `artifactId`
 - `artifactKind`
 - `fileName`
@@ -444,50 +431,8 @@ Deferred artifact contract normalized for adapter capability matching and dry ru
 - `dependencyIds`
 - `payload`
 
-### WriterAdapter
-Capability-based boundary that validates packaged deferred contracts and produces dry-run plans.
-- `id`
-- `version`
-- `label`
-- `capabilities`
-- `validate(input)`
-- `dryRun(input)`
-
-### WriterAdapterValidationResult
-Machine-readable readiness and unsupported-reason summary for one adapter against one packaged contract input.
-- `adapterId`
-- `readiness`
-- `diagnostics`
-- `supportedArtifactIds`
-- `unsupportedReasons`
-
-### WriterAdapterExecutionPlan
-Deterministic dry-run plan for a matched adapter without performing binary generation.
-- `adapterId`
-- `readiness`
-- `steps`
-- `dependencySummary`
-- `note`
-
-### WriterAdapterDryRunResult
-Combined validation and dry-run result for one adapter.
-- `adapterId`
-- `adapterLabel`
-- `validation`
-- `executionPlan`
-
-### WriterAdapterArtifactMatch
-Per-deferred-artifact adapter match summary.
-- `artifactId`
-- `fileName`
-- `artifactKind`
-- `requiredCapability`
-- `matchedAdapterIds`
-- `status`
-- `reason`
-
 ### WriterAdapterBundle
-Aggregate adapter view for one packaged delivery handoff.
+Aggregate adapter match and dry-run view.
 - `id`
 - `jobId`
 - `deliveryPackageId`
@@ -498,10 +443,9 @@ Aggregate adapter view for one packaged delivery handoff.
 - `readiness`
 - `summary`
 
-## Layer 7: Writer Runner Contracts
+## Layer 10: Writer Runner Contracts
 
 ### WriterRunnerInput
-Normalized runner-facing contract derived from the external execution package plus adapter dry-run output.
 - `version`
 - `id`
 - `jobId`
@@ -515,24 +459,7 @@ Normalized runner-facing contract derived from the external execution package pl
 - `adapterBundleId`
 - `artifactInputs`
 
-### WriterRunnerArtifactInput
-Deferred artifact contract normalized for runner request generation after adapter dry runs.
-- `artifactId`
-- `fileName`
-- `artifactKind`
-- `requiredCapability`
-- `plannedOutputPath`
-- `relativePath`
-- `packageStatus`
-- `adapterId`
-- `adapterReadiness`
-- `runnerReadiness`
-- `blockerReasons`
-- `dependencyIds`
-- `payload`
-
 ### WriterRunRequest
-Deterministic runnable, blocked, or unsupported request set for the current deferred artifact bundle.
 - `version`
 - `id`
 - `jobId`
@@ -546,24 +473,7 @@ Deterministic runnable, blocked, or unsupported request set for the current defe
 - `readiness`
 - `summary`
 
-### WriterRunArtifactRequest
-Per-artifact request derived from one deferred artifact contract plus runner matching.
-- `id`
-- `artifactId`
-- `fileName`
-- `artifactKind`
-- `requiredCapability`
-- `adapterId`
-- `runnerId`
-- `requestReadiness`
-- `plannedOutputPath`
-- `relativePath`
-- `dependencyIds`
-- `blockedReasons`
-- `payload`
-
 ### WriterRunResponse
-Deterministic runner response set produced by the current reference no-op runner.
 - `version`
 - `id`
 - `requestId`
@@ -573,51 +483,32 @@ Deterministic runner response set produced by the current reference no-op runner
 - `summary`
 
 ### WriterRunReceipt
-Normalized receipt summary for one writer-run request/response cycle.
 - `version`
 - `id`
 - `requestId`
 - `responseId`
 - `jobId`
 - `deliveryPackageId`
-- `packageStatus`
 - `sourceSignature`
 - `reviewSignature`
 - `deliveryPackageSignature`
-- `runnerReadiness`
-- `runnerId`
-- `sequence`
 - `summary`
 - `artifacts`
 
-### WriterRunner
-Runner boundary that consumes runner inputs and request bundles after adapter dry runs.
-- `id`
-- `version`
-- `label`
-- `capabilities`
-- `validate(input)`
-- `run(request)`
-
 ### WriterRunBundle
-Aggregate runner view for one packaged delivery handoff.
 - `id`
 - `jobId`
 - `deliveryPackageId`
-- `rootRelativePath`
 - `input`
-- `validation`
 - `request`
 - `response`
 - `receipt`
-- `entries`
 - `readiness`
 - `summary`
 
-## Layer 8: Writer Run Transport And Audit Contracts
+## Layer 11: Writer-Run Transport And Audit
 
 ### WriterRunTransportEnvelope
-Deterministic external transport envelope derived from one writer-run artifact request plus package and signature context.
 - `version`
 - `id`
 - `transportId`
@@ -625,47 +516,25 @@ Deterministic external transport envelope derived from one writer-run artifact r
 - `jobId`
 - `deliveryPackageId`
 - `externalExecutionPackageId`
-- `handoffBundleId`
-- `writerRunBundleId`
 - `requestId`
-- `requestArtifactId`
-- `responseId`
-- `receiptId`
 - `artifactId`
-- `fileName`
-- `artifactKind`
-- `requiredCapability`
 - `packageStatus`
 - `requestReadiness`
 - `sourceSignature`
 - `reviewSignature`
 - `deliveryPackageSignature`
-- `adapterId`
-- `runnerId`
-- `plannedOutputPath`
-- `relativePath`
-- `envelopeStatus`
 - `dispatchable`
 - `dispatchReason`
-- `dependencyIds`
-- `blockedReasons`
 - `retryState`
 - `cancellationState`
 - `payload`
 
 ### WriterRunDispatchRecord
-Deterministic dispatch or blocked-state record for one transport envelope.
 - `id`
 - `transportId`
 - `correlationId`
 - `requestId`
-- `requestArtifactId`
-- `responseId`
-- `receiptId`
 - `artifactId`
-- `fileName`
-- `adapterId`
-- `runnerId`
 - `status`
 - `transportSequence`
 - `requestReadiness`
@@ -673,55 +542,20 @@ Deterministic dispatch or blocked-state record for one transport envelope.
 - `note`
 - `failure`
 
-### WriterRunTransportResponse
-Aggregate acknowledgement or blocked-state response for the current transport batch.
-- `version`
-- `id`
-- `transportId`
-- `packageId`
-- `requestId`
-- `runnerResponseId`
-- `runnerReceiptId`
-- `jobId`
-- `deliveryPackageId`
-- `sourceSignature`
-- `reviewSignature`
-- `deliveryPackageSignature`
-- `status`
-- `dispatchedCount`
-- `acknowledgedCount`
-- `blockedCount`
-- `failedCount`
-- `cancelledCount`
-- `note`
-
 ### WriterRunAuditRecord
-Ordered audit event log for the transport lifecycle.
 - `id`
 - `transportId`
 - `packageId`
 - `requestId`
 - `runnerResponseId`
 - `runnerReceiptId`
-- `jobId`
-- `deliveryPackageId`
-- `sourceSignature`
-- `reviewSignature`
-- `deliveryPackageSignature`
 - `events`
 - `summary`
 
 ### WriterRunAttemptHistory
-Per-artifact lifecycle summary across envelope, dispatch, audit, and receipt state.
 - `artifactId`
-- `fileName`
 - `correlationId`
 - `transportId`
-- `adapterId`
-- `runnerId`
-- `requestReadiness`
-- `responseStatus`
-- `dispatchable`
 - `currentStatus`
 - `statusTrail`
 - `retryState`
@@ -730,7 +564,6 @@ Per-artifact lifecycle summary across envelope, dispatch, audit, and receipt sta
 - `note`
 
 ### WriterRunTransportReceipt
-Aggregate history summary for the current transport bundle.
 - `version`
 - `id`
 - `transportId`
@@ -738,18 +571,11 @@ Aggregate history summary for the current transport bundle.
 - `requestId`
 - `runnerResponseId`
 - `runnerReceiptId`
-- `jobId`
-- `deliveryPackageId`
-- `sourceSignature`
-- `reviewSignature`
-- `deliveryPackageSignature`
 - `status`
 - `dispatchableCount`
 - `dispatchedCount`
 - `acknowledgedCount`
 - `blockedCount`
-- `failedCount`
-- `cancelledCount`
 - `receiptRecordedCount`
 - `receiptImportedCount`
 - `completedCount`
@@ -758,14 +584,12 @@ Aggregate history summary for the current transport bundle.
 - `duplicateCount`
 - `unmatchedCount`
 - `invalidCount`
-- `note`
+- `incompatibleCount`
 
 ### WriterRunTransportBundle
-Aggregate transport and audit view for one packaged delivery handoff.
 - `id`
 - `jobId`
 - `deliveryPackageId`
-- `rootRelativePath`
 - `transportId`
 - `sourceSignature`
 - `reviewSignature`
@@ -776,31 +600,22 @@ Aggregate transport and audit view for one packaged delivery handoff.
 - `transportReceipt`
 - `auditRecord`
 - `history`
-- `entries`
 - `status`
 - `summary`
 
-## Layer 9: Transport Adapter And Receipt-Ingestion Contracts
+## Layer 12: Transport Adapter Packaging
 
 ### WriterRunTransportAdapter
-Post-transport boundary that packages deterministic outbound dispatch payloads for external execution.
+Adapter that packages outbound dispatch payloads for an external execution environment.
 - `id`
 - `version`
 - `label`
 - `capabilities`
 - `endpoint`
+- `receiptCompatibilityProfiles`
 - `validate(bundle)`
 
-### WriterRunTransportAdapterValidationResult
-Adapter readiness and unsupported-reason summary for one transport bundle.
-- `adapterId`
-- `readiness`
-- `diagnostics`
-- `supportedArtifactIds`
-- `unsupportedReasons`
-
 ### WriterRunDispatchEnvelope
-Deterministic outbound dispatch package contract for one transport envelope.
 - `version`
 - `id`
 - `adapterId`
@@ -811,61 +626,73 @@ Deterministic outbound dispatch package contract for one transport envelope.
 - `deliveryPackageId`
 - `packageId`
 - `requestId`
-- `requestArtifactId`
-- `responseId`
-- `receiptId`
 - `artifactId`
-- `fileName`
-- `requestReadiness`
 - `dispatchStatus`
 - `dispatchable`
-- `dispatchReason`
-- `sourceSignature`
-- `reviewSignature`
-- `deliveryPackageSignature`
-- `endpoint`
-- `outboundRoot`
-- `relativeOutboundRoot`
-- `dependencyIds`
-- `blockedReasons`
+- `expectedReceiptProfile`
+- `acceptedReceiptProfiles`
+- `expectedReceiptVersion`
 - `payload`
 - `files`
 
 ### WriterRunDispatchResult
-Deterministic dispatch outcome for one outbound adapter package.
 - `id`
 - `adapterId`
 - `dispatchId`
 - `correlationId`
 - `artifactId`
-- `fileName`
 - `status`
 - `endpoint`
-- `outboundRoot`
 - `relativeOutboundRoot`
+- `expectedReceiptProfile`
 - `filePaths`
-- `note`
 
 ### WriterRunTransportAdapterBundle
-Aggregate adapter view for outbound dispatch packaging.
 - `id`
 - `jobId`
 - `deliveryPackageId`
-- `rootRelativePath`
 - `packageId`
 - `sourceSignature`
 - `reviewSignature`
 - `deliveryPackageSignature`
 - `adapters`
 - `activeAdapterId`
+- `declaredReceiptProfiles`
 - `dispatchEnvelopes`
 - `dispatchResults`
 - `readiness`
-- `entries`
 - `summary`
 
+## Layer 13: Receipt Compatibility And Ingestion
+
+### ReceiptSchemaDescriptor
+Declared compatibility profile for inbound receipts.
+- `profile`
+- `currentVersion`
+- `supportedVersions`
+- `requiredFields`
+- `optionalFields`
+- `payloadSource`
+- `normalizationRule`
+- `unsupportedReason`
+
+### ReceiptNormalizationResult
+Normalization or migration result before dispatch matching.
+- `id`
+- `sourceFileName`
+- `sourcePath`
+- `status`
+- `compatibilityProfile`
+- `schemaMatch`
+- `payloadSource`
+- `payloadFingerprint`
+- `envelope`
+- `warnings`
+- `problems`
+- `note`
+
 ### WriterRunReceiptEnvelope
-Normalized inbound receipt contract imported from an external transport folder.
+Canonical inbound receipt envelope after normalization.
 - `version`
 - `id`
 - `adapterId`
@@ -879,50 +706,59 @@ Normalized inbound receipt contract imported from an external transport folder.
 - `sourceSignature`
 - `reviewSignature`
 - `deliveryPackageSignature`
-- `source`
+- `compatibilityProfile`
+- `payloadSource`
+- `payloadFingerprint`
 - `receiptSequence`
 - `status`
 - `note`
 - `payload`
 
 ### WriterRunReceiptIngestionResult
-Validation and match result for one imported inbound receipt file.
+Compatibility-aware validation and match result for one receipt import.
 - `id`
 - `sourceFileName`
 - `sourcePath`
+- `normalizationStatus`
+- `compatibilityProfile`
+- `payloadSource`
+- `payloadFingerprint`
 - `importStatus`
 - `matchStatus`
 - `validationStatus`
+- `signatureMatch`
+- `correlationMatch`
 - `dispatchStatus`
 - `correlationId`
 - `dispatchId`
 - `artifactId`
 - `note`
+- `warnings`
 - `errors`
 
 ### WriterRunReceiptIngestionBundle
-Aggregate post-dispatch receipt-import view that updates audit/history deterministically.
+Aggregate receipt-import view after normalization, compatibility checks, and audit/history updates.
 - `id`
 - `jobId`
 - `deliveryPackageId`
-- `rootRelativePath`
 - `packageId`
 - `sourceSignature`
 - `reviewSignature`
 - `deliveryPackageSignature`
+- `normalizationResults`
+- `compatibilityProfiles`
 - `receipts`
 - `results`
 - `auditRecord`
 - `history`
 - `transportReceipt`
 - `status`
-- `entries`
 - `summary`
 
 ## Orchestration Entity
 
 ### TranslationJob
-Operator-facing record that ties the three layers together.
+Operator-facing record that ties the full workflow together.
 - `id`
 - `jobCode`
 - `title`
@@ -941,34 +777,19 @@ Operator-facing record that ties the three layers together.
 
 ## Direction Rules
 - File direction is determined by `stage` and `origin`.
-- `fileKind` describes the concrete format only.
-- `fileRole` describes the artifact purpose only.
-- The same `fileKind` may appear in intake or delivery.
-- The same `fileRole` may appear in intake or delivery.
+- `fileKind` describes format only.
+- `fileRole` describes purpose only.
+- The same `fileKind` or `fileRole` may appear on intake or delivery sides when `stage` and `origin` differ.
 
-## Relationships
+## Core Relationships
 - One `TranslationJob` references one `SourceBundle`, one `TranslationModel`, one `AnalysisReport`, and one `DeliveryPackage`.
-- One `SourceBundle` contains many `IntakeAsset` records.
 - One `TranslationModel` contains one or more `NormalizedTimeline` records.
-- One `NormalizedTimeline` contains many `NormalizedTrack`, `ClipEvent`, and `Marker` records.
-- One `TranslationJob` contains one `MappingProfile` and may contain many `MappingRule` and `FieldRecorderCandidate` records.
-- One `AnalysisReport` contains many `PreservationIssue` records grouped for operator review.
-- One `DeliveryPackage` contains many `DeliveryArtifact` records.
-- One `DeliveryPackage` may produce one `DeliveryExecutionPlan`, one `DeliveryStagingBundle`, and one `DeliveryHandoffManifest` in downstream non-writer layers.
-- One `DeliveryHandoffManifest` references one `DeferredWriterInput` document containing many `DeferredWriterArtifact` contracts.
-- One `DeliveryHandoffManifest` may be packaged into one `ExternalExecutionPackage` together with staged outputs and package metadata.
-- One `ExternalExecutionPackage` may produce one `WriterAdapterInput` document and one `WriterAdapterBundle` for adapter matching and dry-run validation.
-- One `WriterAdapterBundle` contains many `WriterAdapterDryRunResult` records and many `WriterAdapterArtifactMatch` records.
-- One `WriterAdapterBundle` may produce one `WriterRunnerInput`, one `WriterRunRequest`, one `WriterRunResponse`, and one `WriterRunReceipt` in the downstream runner layer.
-- One `WriterRunBundle` may produce many `WriterRunTransportEnvelope` records, many `WriterRunDispatchRecord` records, one `WriterRunTransportResponse`, one `WriterRunAuditRecord`, many `WriterRunAttemptHistory` records, and one `WriterRunTransportReceipt` in the downstream transport/audit layer.
-- One `WriterRunTransportBundle` may be consumed by one or more `WriterRunTransportAdapter` records and one `WriterRunTransportAdapterBundle` in the downstream adapter-packaging layer.
-- One `WriterRunTransportAdapterBundle` may consume many inbound `WriterRunReceiptEnvelope` records and produce one `WriterRunReceiptIngestionBundle` in the downstream receipt-ingestion layer.
-- One `TranslationJob` may contain many `ConformChangeEvent` records.
+- Review-state overlays persist decisions against source signatures without duplicating imported canonical data.
+- One `DeliveryPackage` may produce one execution plan, one staging bundle, one handoff bundle, one external execution package, one adapter bundle, one runner bundle, one transport bundle, one transport-adapter bundle, and one receipt-ingestion bundle.
 
 ## Current Repo Rules
-- IDs are fixed string literals.
-- Dates are fixed strings.
-- The repo prefers real fixture imports and falls back to deterministic mock data only when the fixture library is absent.
+- IDs and seeded dates are deterministic in fixtures and fallback data.
+- Real fixture imports are primary; deterministic mock data is only fallback when the fixture library is absent.
 - Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
-- Operator mapping editors persist browser-local review deltas keyed by job plus source signature.
-- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, external execution packaging, writer-adapter dry runs, writer-runner requests/responses/receipts, writer-run transport/audit contracts, transport-adapter packaging, and receipt-ingestion contracts without implying that a Nuendo writer already exists.
+- Browser-local persistence is review-delta-only.
+- Types must support the real implemented non-writer layers without implying that a Nuendo writer already exists.

@@ -9,15 +9,20 @@ function statusVariant(status: WriterRunDispatchStatus) {
     case "acknowledged":
     case "runner-complete":
     case "receipt-recorded":
+    case "receipt-normalized":
+    case "receipt-matched":
     case "receipt-imported":
     case "completed":
       return "accent" as const;
+    case "receipt-migrated":
     case "partial":
     case "duplicate":
     case "stale":
+    case "superseded":
       return "warning" as const;
     case "runner-blocked":
     case "failed":
+    case "incompatible":
     case "invalid":
     case "unmatched":
       return "danger" as const;

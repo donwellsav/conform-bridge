@@ -6,15 +6,20 @@ function statusVariant(status: WriterRunDispatchStatus) {
   switch (status) {
     case "completed":
     case "receipt-imported":
+    case "receipt-normalized":
+    case "receipt-matched":
     case "acknowledged":
     case "runner-complete":
     case "receipt-recorded":
       return "accent" as const;
+    case "receipt-migrated":
     case "partial":
     case "duplicate":
     case "stale":
+    case "superseded":
       return "warning" as const;
     case "failed":
+    case "incompatible":
     case "invalid":
     case "unmatched":
     case "transport-failed":
@@ -30,12 +35,16 @@ function statusVariant(status: WriterRunDispatchStatus) {
 function importVariant(status: WriterRunReceiptImportStatus) {
   switch (status) {
     case "receipt-imported":
+    case "receipt-migrated":
       return "accent" as const;
     case "receipt-duplicate":
     case "receipt-stale":
+    case "receipt-superseded":
+    case "receipt-partial":
       return "warning" as const;
     case "receipt-unmatched":
     case "receipt-invalid":
+    case "receipt-incompatible":
       return "danger" as const;
   }
 }
@@ -51,16 +60,16 @@ export function WriterRunReceiptIngestionPreview({ bundle }: { bundle: WriterRun
           </div>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Normalized</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{bundle.transportReceipt.receiptNormalizedCount + bundle.transportReceipt.receiptMigratedCount}</p>
+        </div>
+        <div className="rounded-2xl border border-border/70 bg-panel p-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Imported</p>
           <p className="mt-2 text-2xl font-semibold text-foreground">{bundle.transportReceipt.receiptImportedCount}</p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Completed</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{bundle.transportReceipt.completedCount}</p>
-        </div>
-        <div className="rounded-2xl border border-border/70 bg-panel p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Stale or invalid</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{bundle.transportReceipt.staleCount + bundle.transportReceipt.invalidCount}</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Compatibility gaps</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{bundle.transportReceipt.staleCount + bundle.transportReceipt.supersededCount + bundle.transportReceipt.incompatibleCount + bundle.transportReceipt.invalidCount}</p>
         </div>
       </div>
 
@@ -72,6 +81,9 @@ export function WriterRunReceiptIngestionPreview({ bundle }: { bundle: WriterRun
         <p className="mt-2 text-sm text-muted">{bundle.summary}</p>
         <p className="mt-2 text-xs text-muted">
           source signature {bundle.sourceSignature} / review signature {bundle.reviewSignature}
+        </p>
+        <p className="mt-2 text-xs text-muted">
+          profiles {bundle.compatibilityProfiles.map((profile) => profile.profile).join(" / ")}
         </p>
       </div>
 
@@ -87,8 +99,21 @@ export function WriterRunReceiptIngestionPreview({ bundle }: { bundle: WriterRun
             </div>
             <p className="mt-2 text-sm text-muted">{result.note}</p>
             <p className="mt-2 text-xs text-muted">
-              correlation {result.correlationId ?? "none"} / artifact {result.artifactId ?? "none"}
+              profile {result.compatibilityProfile} / normalization {result.normalizationStatus} / validation {result.validationStatus}
             </p>
+            <p className="mt-2 text-xs text-muted">
+              correlation {result.correlationId ?? "none"} / artifact {result.artifactId ?? "none"} / fingerprint {result.payloadFingerprint}
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              match {result.matchStatus} / signatures {result.signatureMatch} / correlation path {result.correlationMatch}
+            </p>
+            {result.warnings.length > 0 ? (
+              <div className="mt-2 space-y-1 text-xs text-muted">
+                {result.warnings.map((warning) => (
+                  <p key={`${result.id}-warning-${warning}`}>{warning}</p>
+                ))}
+              </div>
+            ) : null}
             {result.errors.length > 0 ? (
               <div className="mt-2 space-y-1 text-xs text-muted">
                 {result.errors.map((error) => (

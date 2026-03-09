@@ -1,4 +1,5 @@
 import type {
+  ReceiptCompatibilityProfile,
   WriterRunTransportAdapter,
   WriterRunTransportAdapterId,
   WriterRunTransportAdapterReadiness,
@@ -123,6 +124,7 @@ function createAdapter(
   label: string,
   capabilities: WriterRunTransportCapability[],
   endpoint: WriterRunTransportEndpoint,
+  receiptCompatibilityProfiles: ReceiptCompatibilityProfile[],
   implemented: boolean,
 ): WriterRunTransportAdapter {
   return {
@@ -131,6 +133,7 @@ function createAdapter(
     label,
     capabilities,
     endpoint,
+    receiptCompatibilityProfiles,
     validate(bundle) {
       return createValidation(id, capabilities, bundle, implemented);
     },
@@ -146,6 +149,7 @@ export function createDefaultWriterRunTransportAdapters(jobId: string): WriterRu
       "Filesystem transport adapter",
       ["filesystem_dispatch", "receipt_ingestion"],
       endpoint,
+      ["canonical-filesystem-transport-v1", "compatibility-filesystem-receipt-v1", "future-service-transport-placeholder"],
       true,
     ),
     createAdapter(
@@ -153,6 +157,7 @@ export function createDefaultWriterRunTransportAdapters(jobId: string): WriterRu
       "Reference no-op transport adapter",
       ["reference_noop_dispatch"],
       endpoint,
+      ["canonical-filesystem-transport-v1"],
       false,
     ),
   ];

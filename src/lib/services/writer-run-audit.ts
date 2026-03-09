@@ -60,8 +60,16 @@ export function aggregateDispatchStatus(statuses: WriterRunDispatchStatus[]): Wr
     return "invalid";
   }
 
+  if (statuses.some((status) => status === "incompatible")) {
+    return "incompatible";
+  }
+
   if (statuses.some((status) => status === "unmatched")) {
     return "unmatched";
+  }
+
+  if (statuses.some((status) => status === "superseded")) {
+    return "superseded";
   }
 
   if (statuses.some((status) => status === "stale")) {
@@ -98,6 +106,18 @@ export function aggregateDispatchStatus(statuses: WriterRunDispatchStatus[]): Wr
 
   if (statuses.some((status) => status === "receipt-imported")) {
     return "receipt-imported";
+  }
+
+  if (statuses.some((status) => status === "receipt-matched")) {
+    return "receipt-matched";
+  }
+
+  if (statuses.some((status) => status === "receipt-migrated")) {
+    return "receipt-migrated";
+  }
+
+  if (statuses.some((status) => status === "receipt-normalized")) {
+    return "receipt-normalized";
   }
 
   if (statuses.some((status) => status === "transport-failed")) {

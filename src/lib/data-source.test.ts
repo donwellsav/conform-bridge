@@ -54,7 +54,10 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(writerRunTransportBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-transport-envelopes.json")));
   assert.ok(writerRunTransportBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-audit-log.json")));
   assert.ok(writerRunTransportAdapterBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-dispatch-results.json")));
+  assert.ok(writerRunTransportAdapterBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-receipt-compatibility-profiles.json")));
   assert.ok(writerRunReceiptIngestionBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-receipt-import-results.json")));
+  assert.ok(writerRunReceiptIngestionBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-receipt-normalization.json")));
+  assert.ok(writerRunReceiptIngestionBundle?.compatibilityProfiles.length);
   assert.equal(readyTransportBundle?.status, "receipt-recorded");
   assert.equal(externalExecutionPackage?.status === "ready" || externalExecutionPackage?.status === "partial" || externalExecutionPackage?.status === "blocked", true);
   assert.ok(handoffBundle?.deferredWriterInput.artifacts.length);

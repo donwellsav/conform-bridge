@@ -1,6 +1,9 @@
+import { evaluateReceiptCompatibility } from "./receipt-compatibility";
+import { normalizeReceiptSource } from "./receipt-normalization";
 import { aggregateDispatchStatus, joinPath, sortAuditEvents, stableToken } from "./writer-run-audit";
 import type {
   ExternalExecutionPackage,
+  ReceiptNormalizationResult,
   WriterRunAuditEvent,
   WriterRunAuditRecord,
   WriterRunAttemptHistory,
@@ -18,6 +21,16 @@ import type {
 
 function sortReceiptSources(sources: WriterRunReceiptSourceFile[]) {
   return [...sources].sort((left, right) => left.fileName.localeCompare(right.fileName) || left.id.localeCompare(right.id));
+}
+
+function cloneHistory(history: WriterRunAttemptHistory[]): WriterRunAttemptHistory[] {
+  return history.map((item) => ({
+    ...item,
+    statusTrail: [...item.statusTrail],
+    retryState: { ...item.retryState },
+    cancellationState: { ...item.cancellationState },
+    failure: item.failure ? { ...item.failure } : undefined,
+  }));
 }
 
 function createEventId(suffix: string, correlationId: string, sequence: number) {
@@ -49,181 +62,102 @@ function baseAuditEvent(
   };
 }
 
-function parseReceiptSource(source: WriterRunReceiptSourceFile): { envelope?: WriterRunReceiptEnvelope; errors: string[] } {
-  try {
-    const parsed = JSON.parse(source.content) as Record<string, unknown>;
-    const errors: string[] = [];
+function createReceiptEvents(
+  normalization: ReceiptNormalizationResult,
+  result: WriterRunReceiptIngestionResult,
+  sequenceBase: number,
+): WriterRunAuditEvent[] {
+  const envelope = normalization.envelope;
+  const events: WriterRunAuditEvent[] = [];
+  let sequence = sequenceBase;
 
-    if (parsed.version !== 1) {
-      errors.push(`Unsupported receipt version ${String(parsed.version)}.`);
-    }
-
-    const requiredStringFields = [
-      "id",
-      "adapterId",
-      "transportId",
-      "dispatchId",
-      "correlationId",
-      "packageId",
-      "requestId",
-      "artifactId",
-      "fileName",
-      "sourceSignature",
-      "reviewSignature",
-      "deliveryPackageSignature",
-      "source",
-      "status",
-      "note",
-    ] as const;
-
-    requiredStringFields.forEach((field) => {
-      if (typeof parsed[field] !== "string" || parsed[field].length === 0) {
-        errors.push(`Receipt field ${field} must be a non-empty string.`);
-      }
-    });
-
-    if (typeof parsed.receiptSequence !== "number") {
-      errors.push("Receipt field receiptSequence must be a number.");
-    }
-
-    if (typeof parsed.payload !== "object" || parsed.payload === null || Array.isArray(parsed.payload)) {
-      errors.push("Receipt field payload must be an object.");
-    }
-
-    if (errors.length > 0) {
-      return { errors };
-    }
-
-    return {
-      envelope: {
-        version: 1,
-        id: parsed.id as string,
-        adapterId: parsed.adapterId as WriterRunReceiptEnvelope["adapterId"],
-        transportId: parsed.transportId as WriterRunReceiptEnvelope["transportId"],
-        dispatchId: parsed.dispatchId as string,
-        correlationId: parsed.correlationId as string,
-        packageId: parsed.packageId as string,
-        requestId: parsed.requestId as string,
-        artifactId: parsed.artifactId as string,
-        fileName: parsed.fileName as string,
-        sourceSignature: parsed.sourceSignature as string,
-        reviewSignature: parsed.reviewSignature as string,
-        deliveryPackageSignature: parsed.deliveryPackageSignature as string,
-        source: parsed.source as WriterRunReceiptEnvelope["source"],
-        receiptSequence: parsed.receiptSequence as number,
-        status: parsed.status as WriterRunReceiptEnvelope["status"],
-        note: parsed.note as string,
-        payload: parsed.payload as Record<string, unknown>,
-      },
-      errors: [],
-    };
-  } catch (error) {
-    return {
-      errors: [error instanceof Error ? error.message : "Receipt content is not valid JSON."],
-    };
+  if (normalization.status === "normalized" || normalization.status === "partially-compatible") {
+    events.push(baseAuditEvent(envelope, sequence, "receipt-normalized", "receipt-normalized", normalization.note));
+    sequence += 1;
+  } else if (normalization.status === "migrated") {
+    events.push(baseAuditEvent(envelope, sequence, "receipt-migrated", "receipt-migrated", normalization.note));
+    sequence += 1;
   }
+
+  if (result.matchStatus === "matched" || result.matchStatus === "partial-match") {
+    events.push(baseAuditEvent(envelope, sequence, "receipt-matched", "receipt-matched", result.note));
+    sequence += 1;
+  }
+
+  switch (result.importStatus) {
+    case "receipt-imported":
+    case "receipt-migrated":
+    case "receipt-partial":
+      events.push(baseAuditEvent(envelope, sequence, "receipt-imported", "receipt-imported", result.note));
+      sequence += 1;
+      if (result.dispatchStatus === "completed") {
+        events.push(baseAuditEvent(envelope, sequence, "completed", "completed", result.note));
+      } else if (result.dispatchStatus === "partial") {
+        events.push(baseAuditEvent(envelope, sequence, "partial", "partial", result.note));
+      } else if (result.dispatchStatus === "failed") {
+        events.push(baseAuditEvent(envelope, sequence, "failed", "failed", result.note));
+      }
+      break;
+    case "receipt-duplicate":
+      events.push(baseAuditEvent(envelope, sequence, "receipt-duplicate", "duplicate", result.note));
+      break;
+    case "receipt-stale":
+      events.push(baseAuditEvent(envelope, sequence, "receipt-stale", "stale", result.note));
+      break;
+    case "receipt-superseded":
+      events.push(baseAuditEvent(envelope, sequence, "superseded", "superseded", result.note));
+      break;
+    case "receipt-unmatched":
+      events.push(baseAuditEvent(envelope, sequence, "receipt-unmatched", "unmatched", result.note));
+      break;
+    case "receipt-incompatible":
+      events.push(baseAuditEvent(envelope, sequence, "receipt-incompatible", "incompatible", result.note));
+      break;
+    case "receipt-invalid":
+      events.push(baseAuditEvent(envelope, sequence, "receipt-invalid", "invalid", result.note));
+      break;
+  }
+
+  return events;
 }
 
-function cloneHistory(history: WriterRunAttemptHistory[]): WriterRunAttemptHistory[] {
-  return history.map((item) => ({
-    ...item,
-    statusTrail: [...item.statusTrail],
-    retryState: { ...item.retryState },
-    cancellationState: { ...item.cancellationState },
-    failure: item.failure ? { ...item.failure } : undefined,
-  }));
-}
-
-function appendHistoryStatus(historyItem: WriterRunAttemptHistory, status: WriterRunDispatchStatus, note: string) {
-  const statusTrail = [...historyItem.statusTrail, status];
-
-  return {
-    ...historyItem,
-    currentStatus: status,
-    statusTrail,
-    note,
-  };
-}
-
-function aggregateReceiptStatus(results: WriterRunReceiptIngestionResult[], history: WriterRunAttemptHistory[], fallbackStatus: WriterRunDispatchStatus) {
+function aggregateReceiptStatus(
+  results: WriterRunReceiptIngestionResult[],
+  history: WriterRunAttemptHistory[],
+  fallbackStatus: WriterRunDispatchStatus,
+) {
   if (results.length === 0) {
     return fallbackStatus;
   }
 
-  const statuses = results.map((result) => result.dispatchStatus);
-  return aggregateDispatchStatus([...statuses, ...history.map((item) => item.currentStatus)]);
+  return aggregateDispatchStatus([
+    ...results.map((result) => result.dispatchStatus),
+    ...history.map((item) => item.currentStatus),
+  ]);
 }
 
-function createImportResult(
-  source: WriterRunReceiptSourceFile,
-  importStatus: WriterRunReceiptImportStatus,
-  dispatchStatus: WriterRunDispatchStatus,
-  note: string,
-  errors: string[],
-  envelope?: WriterRunReceiptEnvelope,
-): WriterRunReceiptIngestionResult {
-  return {
-    id: `writer-run-receipt-import-${source.id}`,
-    sourceFileName: source.fileName,
-    sourcePath: source.absolutePath,
-    importStatus,
-    matchStatus: importStatus === "receipt-imported"
-      ? "matched"
-      : importStatus === "receipt-duplicate"
-        ? "duplicate"
-        : importStatus === "receipt-stale"
-          ? "stale"
-          : importStatus === "receipt-unmatched"
-            ? "unmatched"
-            : "unmatched",
-    validationStatus: importStatus === "receipt-invalid"
-      ? "invalid"
-      : importStatus === "receipt-stale"
-        ? "signature-mismatch"
-        : "valid",
-    dispatchStatus,
-    correlationId: envelope?.correlationId,
-    dispatchId: envelope?.dispatchId,
-    artifactId: envelope?.artifactId,
-    note,
-    errors,
-  };
-}
-
-function createReceiptEvent(
-  envelope: WriterRunReceiptEnvelope,
-  sequence: number,
-  resultStatus: WriterRunDispatchStatus,
-  note: string,
-): WriterRunAuditEvent[] {
-  const importedEvent = baseAuditEvent(envelope, sequence, "receipt-imported", "receipt-imported", `Imported receipt for ${envelope.fileName}.`);
-
-  switch (resultStatus) {
+function buildTransportReceiptNote(status: WriterRunDispatchStatus) {
+  switch (status) {
     case "completed":
-      return [
-        importedEvent,
-        baseAuditEvent(envelope, sequence + 1, "completed", "completed", note),
-      ];
+      return "Receipt ingestion imported matched external execution receipts for every runnable dispatch.";
     case "partial":
-      return [
-        importedEvent,
-        baseAuditEvent(envelope, sequence + 1, "partial", "partial", note),
-      ];
+      return "Receipt ingestion imported a mix of completed and partial receipts.";
     case "failed":
-      return [
-        importedEvent,
-        baseAuditEvent(envelope, sequence + 1, "failed", "failed", note),
-      ];
+      return "Receipt ingestion recorded one or more failure receipts.";
     case "stale":
-      return [baseAuditEvent(envelope, sequence, "receipt-stale", "stale", note)];
+      return "Receipt ingestion detected stale receipts that no longer match the active source or review signature.";
+    case "superseded":
+      return "Receipt ingestion detected receipts for superseded dispatch revisions.";
     case "duplicate":
-      return [baseAuditEvent(envelope, sequence, "receipt-duplicate", "duplicate", note)];
+      return "Receipt ingestion detected duplicate receipts for an already imported dispatch.";
     case "unmatched":
-      return [baseAuditEvent(envelope, sequence, "receipt-unmatched", "unmatched", note)];
+      return "Receipt ingestion detected receipts with no matching transport dispatch.";
+    case "incompatible":
+      return "Receipt ingestion detected receipts that matched a known profile but remain incompatible with the active transport contract.";
     case "invalid":
-      return [baseAuditEvent(envelope, sequence, "receipt-invalid", "invalid", note)];
+      return "Receipt ingestion detected invalid receipt payloads.";
     default:
-      return [baseAuditEvent(envelope, sequence, "receipt-imported", resultStatus, note)];
+      return "Receipt ingestion preserved the existing transport state without importing new external receipts.";
   }
 }
 
@@ -234,6 +168,8 @@ function createTransportReceipt(
   results: WriterRunReceiptIngestionResult[],
   status: WriterRunDispatchStatus,
 ): WriterRunTransportReceipt {
+  const importedStatuses: WriterRunReceiptImportStatus[] = ["receipt-imported", "receipt-migrated", "receipt-partial"];
+
   return {
     ...transportBundle.transportReceipt,
     id: `writer-run-transport-receipt-import-${packageBundle.jobId}-${stableToken(transportBundle.transportReceipt.id, status)}`,
@@ -254,28 +190,19 @@ function createTransportReceipt(
     failedCount: history.filter((item) => item.currentStatus === "failed" || item.currentStatus === "transport-failed").length,
     cancelledCount: history.filter((item) => item.currentStatus === "cancelled").length,
     receiptRecordedCount: history.filter((item) => item.statusTrail.includes("receipt-recorded")).length,
-    receiptImportedCount: results.filter((item) => item.importStatus === "receipt-imported").length,
+    receiptNormalizedCount: results.filter((item) => item.normalizationStatus === "normalized" || item.normalizationStatus === "partially-compatible").length,
+    receiptMigratedCount: results.filter((item) => item.normalizationStatus === "migrated").length,
+    receiptImportedCount: results.filter((item) => importedStatuses.includes(item.importStatus)).length,
     completedCount: history.filter((item) => item.currentStatus === "completed").length,
     partialCount: history.filter((item) => item.currentStatus === "partial").length,
     staleCount: results.filter((item) => item.importStatus === "receipt-stale").length,
+    supersededCount: results.filter((item) => item.importStatus === "receipt-superseded").length,
     duplicateCount: results.filter((item) => item.importStatus === "receipt-duplicate").length,
     unmatchedCount: results.filter((item) => item.importStatus === "receipt-unmatched").length,
+    incompatibleCount: results.filter((item) => item.importStatus === "receipt-incompatible").length,
+    partialCompatibilityCount: results.filter((item) => item.validationStatus === "partially-compatible").length,
     invalidCount: results.filter((item) => item.importStatus === "receipt-invalid").length,
-    note: status === "completed"
-      ? "Receipt ingestion imported matched external execution receipts for every runnable dispatch."
-      : status === "partial"
-        ? "Receipt ingestion imported a mix of completed and partial receipts."
-        : status === "failed"
-          ? "Receipt ingestion recorded one or more failure receipts."
-          : status === "stale"
-            ? "Receipt ingestion detected stale receipts that no longer match the active source or review signature."
-            : status === "duplicate"
-              ? "Receipt ingestion detected duplicate receipts for an already imported dispatch."
-              : status === "unmatched"
-                ? "Receipt ingestion detected receipts with no matching transport dispatch."
-                : status === "invalid"
-                  ? "Receipt ingestion detected invalid receipt payloads."
-                  : "Receipt ingestion preserved the existing transport state without importing new external receipts.",
+    note: buildTransportReceiptNote(status),
   };
 }
 
@@ -289,21 +216,7 @@ function createAuditRecord(
     ...transportBundle.auditRecord,
     id: `writer-run-receipt-audit-${packageBundle.jobId}-${stableToken(transportBundle.auditRecord.id, status)}`,
     events: sortAuditEvents(events),
-    summary: status === "completed"
-      ? "Transport audit includes imported external receipts and completed execution outcomes."
-      : status === "partial"
-        ? "Transport audit includes imported external receipts with partial outcomes."
-        : status === "failed"
-          ? "Transport audit includes imported failure receipts."
-          : status === "stale"
-            ? "Transport audit includes stale receipt events that no longer match the active signatures."
-            : status === "duplicate"
-              ? "Transport audit includes duplicate receipt events."
-              : status === "unmatched"
-                ? "Transport audit includes unmatched external receipt payloads."
-                : status === "invalid"
-                  ? "Transport audit includes invalid receipt payloads."
-                  : transportBundle.auditRecord.summary,
+    summary: buildTransportReceiptNote(status),
   };
 }
 
@@ -332,86 +245,74 @@ export function ingestWriterRunReceiptsSync(
   receiptSources: WriterRunReceiptSourceFile[],
 ): WriterRunReceiptIngestionBundle {
   const sortedSources = sortReceiptSources(receiptSources);
-  const normalizedReceipts: WriterRunReceiptEnvelope[] = [];
+  const normalizationResults = sortedSources.map((source) => normalizeReceiptSource(source));
+  const normalizedReceipts = normalizationResults
+    .map((result) => result.envelope)
+    .filter((result): result is WriterRunReceiptEnvelope => Boolean(result))
+    .sort((left, right) => left.fileName.localeCompare(right.fileName) || left.id.localeCompare(right.id));
   const results: WriterRunReceiptIngestionResult[] = [];
   const historyMap = new Map(cloneHistory(transportBundle.history).map((item) => [item.correlationId, item]));
-  const dispatchMap = new Map(adapterBundle.dispatchResults.map((item) => [item.correlationId, item]));
-  const dispatchByArtifactId = new Map(adapterBundle.dispatchResults.map((item) => [item.artifactId, item]));
   const historyByArtifactId = new Map(cloneHistory(transportBundle.history).map((item) => [item.artifactId, item]));
-  const seenCorrelations = new Set<string>();
   const auditEvents = [...transportBundle.auditRecord.events];
+  const importedCorrelations = new Set<string>();
+  const importedFingerprints = new Set<string>();
   let sequenceBase = auditEvents.reduce((highest, event) => Math.max(highest, event.sequence), 0) + 1;
 
-  sortedSources.forEach((source) => {
-    const parsed = parseReceiptSource(source);
-    if (!parsed.envelope) {
-      const result = createImportResult(
-        source,
-        "receipt-invalid",
-        "invalid",
-        "Receipt payload could not be parsed or validated.",
-        parsed.errors,
-      );
-      results.push(result);
-      auditEvents.push(baseAuditEvent(undefined, sequenceBase, "receipt-invalid", "invalid", `${source.fileName} is invalid.`));
-      sequenceBase += 1;
-      return;
+  normalizationResults.forEach((normalization) => {
+    const evaluation = evaluateReceiptCompatibility({
+      packageBundle,
+      transportBundle,
+      adapterBundle,
+      importedCorrelations,
+      importedFingerprints,
+    }, normalization);
+
+    const { result, historyItem, nextStatus } = evaluation;
+    results.push(result);
+
+    if (normalization.envelope && (result.importStatus === "receipt-imported" || result.importStatus === "receipt-migrated" || result.importStatus === "receipt-partial")) {
+      importedCorrelations.add(normalization.envelope.correlationId);
+      importedFingerprints.add(normalization.payloadFingerprint);
+
+      if (historyItem && nextStatus) {
+        historyMap.set(normalization.envelope.correlationId, historyItem);
+        historyByArtifactId.set(normalization.envelope.artifactId, historyItem);
+      }
     }
 
-    const envelope = parsed.envelope;
-    normalizedReceipts.push(envelope);
-
-    const matchingDispatch = dispatchMap.get(envelope.correlationId) ?? dispatchByArtifactId.get(envelope.artifactId);
-    const historyItem = historyMap.get(envelope.correlationId) ?? historyByArtifactId.get(envelope.artifactId);
-
-    if (!matchingDispatch || !historyItem) {
-      const note = `No dispatch record matched receipt ${source.fileName}.`;
-      results.push(createImportResult(source, "receipt-unmatched", "unmatched", note, [], envelope));
-      auditEvents.push(...createReceiptEvent(envelope, sequenceBase, "unmatched", note));
-      sequenceBase += 1;
-      return;
-    }
-
-    if (
-      envelope.packageId !== packageBundle.id
-      || envelope.sourceSignature !== packageBundle.sourceSignature
-      || envelope.reviewSignature !== packageBundle.reviewSignature
-      || envelope.deliveryPackageSignature !== packageBundle.deliveryPackageSignature
-    ) {
-      const note = `Receipt ${source.fileName} is stale for the active package or review signature.`;
-      results.push(createImportResult(source, "receipt-stale", "stale", note, [], envelope));
-      auditEvents.push(...createReceiptEvent(envelope, sequenceBase, "stale", note));
-      sequenceBase += 1;
-      return;
-    }
-
-    if (seenCorrelations.has(envelope.correlationId)) {
-      const note = `Receipt ${source.fileName} duplicates an already imported correlation id.`;
-      results.push(createImportResult(source, "receipt-duplicate", "duplicate", note, [], envelope));
-      auditEvents.push(...createReceiptEvent(envelope, sequenceBase, "duplicate", note));
-      sequenceBase += 1;
-      return;
-    }
-
-    seenCorrelations.add(envelope.correlationId);
-
-    const nextStatus = envelope.status === "completed"
-      ? "completed"
-      : envelope.status === "partial"
-        ? "partial"
-        : "failed";
-    const note = envelope.note || `Imported ${envelope.status} receipt for ${envelope.fileName}.`;
-    historyMap.set(envelope.correlationId, appendHistoryStatus(historyItem, nextStatus, note));
-    results.push(createImportResult(source, "receipt-imported", nextStatus, note, [], envelope));
-    auditEvents.push(...createReceiptEvent(envelope, sequenceBase, nextStatus, note));
-    sequenceBase += 2;
+    const events = createReceiptEvents(normalization, result, sequenceBase);
+    auditEvents.push(...events);
+    sequenceBase += events.length;
   });
 
-  const history = [...historyMap.values()].sort((left, right) => left.fileName.localeCompare(right.fileName));
+  const history = [...new Map([...historyMap.values(), ...historyByArtifactId.values()].map((item) => [item.correlationId, item])).values()]
+    .sort((left, right) => left.fileName.localeCompare(right.fileName));
   const status = aggregateReceiptStatus(results, history, transportBundle.status);
   const transportReceipt = createTransportReceipt(packageBundle, transportBundle, history, results, status);
   const auditRecord = createAuditRecord(packageBundle, transportBundle, auditEvents, status);
   const entries = [
+    createEntry(
+      joinPath(packageBundle.rootRelativePath, "handoff", "writer-run-receipt-compatibility-profiles.json"),
+      "writer-run-receipt-compatibility-profiles.json",
+      "writer_run_receipt_compatibility_profiles",
+      JSON.stringify({
+        version: 1,
+        packageId: packageBundle.id,
+        profiles: adapterBundle.declaredReceiptProfiles,
+      }, null, 2),
+      "Declared receipt compatibility profiles and supported schema versions for inbound receipt ingestion.",
+    ),
+    createEntry(
+      joinPath(packageBundle.rootRelativePath, "handoff", "writer-run-receipt-normalization.json"),
+      "writer-run-receipt-normalization.json",
+      "writer_run_receipt_normalization",
+      JSON.stringify({
+        version: 1,
+        packageId: packageBundle.id,
+        normalizationResults,
+      }, null, 2),
+      "Receipt normalization and compatibility results before dispatch matching.",
+    ),
     createEntry(
       joinPath(packageBundle.rootRelativePath, "handoff", "writer-run-receipt-envelopes.json"),
       "writer-run-receipt-envelopes.json",
@@ -432,14 +333,14 @@ export function ingestWriterRunReceiptsSync(
         packageId: packageBundle.id,
         results,
       }, null, 2),
-      "Receipt ingestion results covering matched, duplicate, stale, unmatched, and invalid inbound receipts.",
+      "Receipt ingestion results covering normalized, migrated, duplicate, stale, superseded, unmatched, incompatible, and invalid inbound receipts.",
     ),
     createEntry(
       joinPath(packageBundle.rootRelativePath, "handoff", "writer-run-receipt-audit-log.json"),
       "writer-run-receipt-audit-log.json",
       "writer_run_receipt_audit_log",
       JSON.stringify(auditRecord, null, 2),
-      "Updated transport audit log after receipt ingestion.",
+      "Updated transport audit log after receipt normalization and ingestion.",
     ),
     createEntry(
       joinPath(packageBundle.rootRelativePath, "handoff", "writer-run-receipt-history.json"),
@@ -463,6 +364,8 @@ export function ingestWriterRunReceiptsSync(
     sourceSignature: packageBundle.sourceSignature,
     reviewSignature: packageBundle.reviewSignature,
     deliveryPackageSignature: packageBundle.deliveryPackageSignature,
+    normalizationResults,
+    compatibilityProfiles: adapterBundle.declaredReceiptProfiles,
     receipts: normalizedReceipts,
     results,
     auditRecord,
@@ -470,20 +373,6 @@ export function ingestWriterRunReceiptsSync(
     transportReceipt,
     status,
     entries,
-    summary: status === "completed"
-      ? `Inbound receipt ingestion completed for ${packageBundle.rootFolderName}.`
-      : status === "partial"
-        ? `Inbound receipt ingestion completed with partial outcomes for ${packageBundle.rootFolderName}.`
-        : status === "failed"
-          ? `Inbound receipt ingestion recorded failure outcomes for ${packageBundle.rootFolderName}.`
-          : status === "stale"
-            ? `Inbound receipt ingestion detected stale receipts for ${packageBundle.rootFolderName}.`
-            : status === "duplicate"
-              ? `Inbound receipt ingestion detected duplicate receipts for ${packageBundle.rootFolderName}.`
-              : status === "unmatched"
-                ? `Inbound receipt ingestion detected unmatched receipts for ${packageBundle.rootFolderName}.`
-                : status === "invalid"
-                  ? `Inbound receipt ingestion detected invalid receipt payloads for ${packageBundle.rootFolderName}.`
-                  : `No inbound receipts were imported for ${packageBundle.rootFolderName}.`,
+    summary: buildTransportReceiptNote(status),
   };
 }

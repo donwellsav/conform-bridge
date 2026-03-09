@@ -42,6 +42,7 @@ export function WriterRunTransportAdapterPreview({ bundle }: { bundle: WriterRun
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Active adapter</p>
           <p className="mt-2 text-sm font-semibold text-foreground">{bundle.activeAdapterId}</p>
+          <p className="mt-2 text-xs text-muted">{bundle.declaredReceiptProfiles[0]?.profile ?? "no declared profile"}</p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Dispatch packages</p>
@@ -67,6 +68,9 @@ export function WriterRunTransportAdapterPreview({ bundle }: { bundle: WriterRun
             </div>
             <p className="mt-2 text-sm text-muted">
               endpoint {adapter.endpoint.outboundPath} / inbound {adapter.endpoint.inboundPath}
+            </p>
+            <p className="mt-2 text-xs text-muted">
+              receipt profiles {adapter.receiptCompatibilityProfiles.join(" / ")}
             </p>
             {adapter.validation.diagnostics.length > 0 ? (
               <div className="mt-2 space-y-1 text-xs text-muted">

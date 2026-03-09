@@ -21,8 +21,10 @@ test("prepareWriterRunTransportAdapterBundleSync prefers the filesystem adapter 
   assert.equal(bundle.activeAdapterId, "filesystem-transport-adapter");
   assert.equal(bundle.readiness, "ready");
   assert.equal(bundle.dispatchEnvelopes.length, transportBundle.envelopes.length);
-  assert.ok(bundle.dispatchEnvelopes.every((envelope) => envelope.files.length >= 3));
+  assert.ok(bundle.dispatchEnvelopes.every((envelope) => envelope.expectedReceiptProfile === "canonical-filesystem-transport-v1"));
+  assert.ok(bundle.dispatchEnvelopes.every((envelope) => envelope.files.length >= 4));
   assert.ok(bundle.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-transport-adapters.json")));
+  assert.ok(bundle.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-receipt-compatibility-profiles.json")));
   assert.ok(bundle.entries.some((entry) => entry.relativePath.includes("/transport/job-rvr-205-aaf-only/outbound/")));
   assert.deepEqual(
     bundle.dispatchResults.map((result) => result.id),
@@ -45,6 +47,7 @@ test("writeWriterRunTransportAdapterBundleSync materializes deterministic outbou
 
     assert.ok(writtenPaths.some((writtenPath) => writtenPath.endsWith(`${path.sep}handoff${path.sep}writer-run-dispatch-results.json`)));
     assert.ok(writtenPaths.some((writtenPath) => writtenPath.endsWith(`${path.sep}envelope.json`)));
+    assert.ok(writtenPaths.some((writtenPath) => writtenPath.endsWith(`${path.sep}receipt-compatibility-profile.json`)));
     assert.ok(existsSync(path.join(tempRoot, ...bundle.entries[0]!.relativePath.split("/"))));
   } finally {
     rmSync(tempRoot, { force: true, recursive: true });

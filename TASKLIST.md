@@ -1,46 +1,49 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 3H` complete.
-- Next phase: `Phase 3I` deepen external execution interoperability and receipt compatibility on top of filesystem transport and deterministic receipt-ingestion contracts.
-- Ongoing compatibility work: keep shrinking remaining AAF fallback cases when new production samples justify it.
+- Current phase: `Phase 3I` complete
+- Next phase: `Phase 3J` external executor compatibility hardening and optional additional transport adapters
+- Ongoing parser work: reduce remaining AAF compatibility fallback only when real samples justify broader direct coverage
 
-## Phase 1 Scaffold
-- [x] Write product, schema, bundle, agent, and task specs.
-- [x] Scaffold Next.js App Router with TypeScript, Tailwind CSS, and shadcn/ui-style primitives.
-- [x] Add `src/lib/types.ts` and realistic mock workflow data.
-- [x] Build dark desktop shell with sidebar and top bar.
-- [x] Add Dashboard, New Job, Jobs, Templates, Field Recorder, ReConform, and Settings routes.
-- [x] Keep the repo frontend-only with deterministic SSR-safe rendering.
+## Phase 1
+- [x] Define product, schema, bundle, task, and agent contracts
+- [x] Scaffold Next.js App Router with TypeScript, Tailwind, and reusable UI primitives
+- [x] Build the desktop-first operator shell and route set
+- [x] Add deterministic mock fallback for SSR-safe first render
 
 ## Phase 2
-- [x] Replace placeholder bundle review with real CSV/manifest/EDL intake analysis.
-- [x] Replace placeholder output cards with real Nuendo delivery planning.
-- [x] Make FCPXML/XML parsing the active intake milestone and primary timeline source when present.
-- [x] Add structured AAF parsing as the next intake milestone after FCPXML/XML.
-- [x] Deepen AAF ingestion beyond text-dump fixtures into richer composition, mob, and media reference parsing.
-- [x] Add binary/container-aware AAF extraction from real files with a stable external AAF-derived adapter fallback.
-- [x] Add direct in-repo AAF container graph parsing while keeping adapter fallback as a compatibility path.
-- [x] Expand direct AAF container parsing into broader composition mob, slot, source mob, locator, descriptor, and transition traversal while reducing adapter fallback dependence.
-- [x] Add richer mapping editors for tracks, markers, metadata, and field recorder candidates.
-- [x] Add validation rules that inspect real turnover completeness and delivery blockers.
-- [x] Persist operator review deltas locally in the browser without duplicating the imported canonical model.
-- [x] Add saved validation acknowledgements and reconform-ready review decisions on top of imported analysis.
-- [x] Broaden direct AAF parsing beyond current in-repo graph payload coverage toward more arbitrary real-world OLE/AAF layouts.
-- [x] Reduce `.adapter` compatibility fallback dependence for more real-world AAF layouts while keeping compatibility fallback available.
-- [x] Prepare delivery execution behind a separate execution-prep boundary after planning.
-- [ ] Keep reducing unsupported AAF edge cases only when real containers still require compatibility fallback.
+- [x] Implement real intake scanning and CSV/manifest/EDL parsing
+- [x] Move delivery planning into `exporter.ts`
+- [x] Make FCPXML/XML the primary timeline source when present
+- [x] Add structured AAF ingestion and reconciliation
+- [x] Deepen AAF parsing beyond text-dump fixtures
+- [x] Add binary/container-aware AAF extraction
+- [x] Add direct in-repo AAF container graph parsing
+- [x] Expand direct AAF parsing across broader mob/slot/source/locator/media-descriptor coverage
+- [x] Reduce AAF compatibility fallback dependence while keeping fallback available
+- [x] Add operator mapping editors for track, marker, metadata, and field recorder review
+- [x] Add validation rules for intake completeness and delivery blockers
+- [x] Persist operator review deltas locally in the browser
+- [x] Add saved validation acknowledgements and reconform review decisions
+- [ ] Continue reducing unsupported AAF edge cases only when real production samples require it
 
 ## Phase 3
-- [x] Generate safe serializable delivery artifacts from planned outputs: manifest, README, marker CSV, marker EDL, metadata CSV, and field recorder report.
-- [x] Keep binary AAF and reference-video outputs deferred behind a future writer boundary.
-- [x] Materialize generated execution-prep payloads into a staged delivery folder structure.
-- [x] Define stable writer inputs for deferred binary artifacts without implementing native Nuendo session writing yet.
-- [x] Define delivery handoff/export contracts for staged bundle output without collapsing planning, execution prep, and writing.
-- [x] Package staged output plus handoff contracts for external execution without implementing native Nuendo/session writing.
-- [x] Formalize writer adapter interfaces that consume the current external execution package and deferred writer-input contracts.
-- [x] Define writer-runner request/response and receipt contracts on top of writer-adapter dry runs.
-- [x] Formalize external runner transport and execution audit flow on top of writer-runner contracts.
-- [x] Formalize real external transport adapters and receipt-ingestion flow on top of transport/audit contracts.
-- [ ] Deepen external execution interoperability and receipt compatibility on top of filesystem transport and deterministic receipt-ingestion contracts.
-- [ ] Implement real Nuendo/session writing only after staged delivery execution is proven stable.
+- [x] Add delivery execution prep for safe serializable artifacts
+- [x] Keep binary AAF and reference-video outputs deferred behind a writer boundary
+- [x] Materialize staged delivery bundles
+- [x] Formalize deferred writer-input handoff contracts
+- [x] Export deterministic external execution packages
+- [x] Formalize writer-adapter interfaces and dry-run readiness
+- [x] Define writer-runner requests, responses, and receipts
+- [x] Formalize transport envelopes, dispatch records, audit logs, and history
+- [x] Add a real filesystem transport adapter
+- [x] Add deterministic receipt ingestion
+- [x] Deepen receipt compatibility, normalization, migration, and replay safety
+- [ ] Harden executor/package compatibility rules and optional additional transport adapters without introducing a backend or queue
+- [ ] Keep native Nuendo/session writing out of scope until the external execution boundary is proven stable
+
+## Current Focus For Phase 3J
+- Tighten compatibility rules between packaged output, transport metadata, and inbound receipts
+- Expand transport-adapter support only if new adapters consume the same normalized contracts
+- Keep receipt normalization, transport dispatch, and audit/history as separate layers
+- Preserve deterministic package/signature matching across source revisions and saved review-state changes
