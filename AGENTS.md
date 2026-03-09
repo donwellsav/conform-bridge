@@ -23,12 +23,16 @@ This repository is a frontend-only internal operator application for Resolve to 
 - Importer precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
 - Operator-facing mapping editors and validation workflow exist.
 - Delivery planning exists in `exporter.ts`.
-- Persistence beyond the current in-memory review session is not implemented yet.
+- Delivery execution prep exists in `delivery-execution.ts`.
+- Delivery staging exists in `delivery-staging.ts`.
+- Deferred writer-input contracts and handoff manifests exist in `delivery-handoff.ts`.
+- Operator review persistence exists as browser-local review deltas keyed by job plus source signature.
 
 ## Ongoing Scope Rules
 - No real Nuendo export writer.
 - No auth, billing, database, or marketing pages.
 - No AI chat UI.
+- Do not collapse planning, execution prep, staging, and deferred writer contracts into one layer.
 
 ## Mock Data Rules
 - Mock bundles must reflect real Resolve/Nuendo workflows and remain compatible with the current intake -> canonical -> delivery contract.
@@ -48,3 +52,4 @@ The scaffold must include:
 ## Review Standard
 Reject work that hides hydration problems with client-only wrappers, uses browser APIs on first render, or introduces backend-looking abstractions for features that do not exist yet.
 Reject wording that implies the repo is still scaffold-only or mock-only when describing the current implementation state.
+Reject wording that implies browser-local review persistence, staged bundle output, or deferred writer contracts do not exist.

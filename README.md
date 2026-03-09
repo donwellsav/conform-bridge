@@ -6,13 +6,13 @@ Current workflow model:
 
 `Resolve/editorial intake -> canonical normalized translation model -> planned Nuendo delivery package`
 
-This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, real delivery planning, delivery execution prep for safe text/JSON/CSV artifacts, and staged delivery bundle materialization for those safe artifacts, but it does not write Nuendo files yet.
+This repo is frontend-first. It includes real intake analysis, broader direct in-repo AAF parsing across supported graph and decoded-OLE fixture layouts, browser-local persisted operator review state, real delivery planning, delivery execution prep for safe text/JSON/CSV artifacts, staged delivery bundle materialization for those safe artifacts, and hardened deferred-writer handoff contracts for binary outputs, but it does not write Nuendo files yet.
 
 Current phase:
-- `Phase 3B` completed: staged delivery bundles now materialize generated payloads while binary/session writing stays deferred.
+- `Phase 3C` completed: deferred writer inputs and delivery handoff contracts are now formalized while binary/session writing stays deferred.
 
 Next planned phase:
-- `Phase 3C`: harden deferred-writer inputs and delivery handoff contracts without implementing native Nuendo writing yet.
+- `Phase 3D`: package staged output plus handoff contracts for external writer execution without implementing native Nuendo writing yet.
 
 ## Phase History
 
@@ -162,6 +162,17 @@ Implemented:
 - job-detail and saved-review preview visibility for staged bundle structure and deferred records
 - regression coverage for deterministic staged layout, disk materialization helper output, and saved-review influence on staged results
 
+### Phase 3C
+Deferred writer-input contract hardening.
+
+Implemented:
+- a new handoff boundary after staging
+- deterministic deferred-writer input contracts for deferred AAF and reference-video artifacts
+- writer dependency graphs, source/review signatures, delivery package signatures, and readiness states
+- handoff JSON outputs under `handoff/` for deferred writer inputs, handoff manifest, and handoff summary
+- job-detail and saved-review preview visibility for deferred writer contracts, readiness, blockers, and handoff summary
+- regression coverage for deterministic handoff serialization, dependency resolution, blocked-state generation, and staged-output consistency
+
 ## Current Status
 
 Implemented now:
@@ -175,6 +186,7 @@ Implemented now:
 - Deterministic delivery planning in `exporter.ts`
 - Deterministic delivery execution prep for safe JSON, text, and CSV artifacts in `delivery-execution.ts`
 - Deterministic staged delivery bundle materialization in `delivery-staging.ts`
+- Deterministic deferred-writer input and handoff contract generation in `delivery-handoff.ts`
 - operator mapping editors for track, marker, metadata, and field recorder review
 - shared validation rules that surface unresolved intake, metadata, production-audio, and delivery-blocker conditions
 - browser-local persisted review deltas for mappings, validation acknowledgements, and reconform review decisions
@@ -182,6 +194,7 @@ Implemented now:
 - Fixture-backed tests for importer, exporter, and data flow
 - generated execution payload previews in the job-detail and saved-review workflow
 - staged delivery bundle previews for imported and saved-review states
+- deferred writer-input and handoff previews for imported and saved-review states
 - measurably reduced adapter dependence in the current fixture library: direct parsing now covers `rvr-205`, `rvr-206`, `rvr-207`, and `rvr-208`, while `rvr-209` remains the explicit compatibility-fallback case
 
 ## Known Limitations
@@ -192,6 +205,7 @@ Implemented now:
 - `.adapter` fallback is still required for unsupported or only-partially-parsed AAF layouts, even though the current fixture library depends on it less than before.
 - Binary AAF, MOV/MP4, and any native Nuendo session/project outputs remain deferred behind a future writer boundary.
 - Generated staging is serializable and can be written to disk through the staging helper, but native writer output is still not implemented.
+- Deferred writer inputs are formalized, but no writer executes them yet.
 - BWF/WAV and MOV/MP4 assets are classified but not deeply parsed.
 - Auth, billing, database, backend, and marketing site remain out of scope.
 
@@ -242,6 +256,7 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/lib/services/delivery-execution.ts](./src/lib/services/delivery-execution.ts): execution prep for safe serializable delivery artifacts while binary outputs remain deferred
 - [src/lib/services/delivery-staging.ts](./src/lib/services/delivery-staging.ts): deterministic staged delivery bundle materialization for generated payloads plus deferred binary descriptors
 - [src/lib/services/delivery-staging-write.ts](./src/lib/services/delivery-staging-write.ts): Node-only helper that writes staged bundle entries to disk for execution tests and later handoff work
+- [src/lib/services/delivery-handoff.ts](./src/lib/services/delivery-handoff.ts): deterministic deferred-writer input contracts, handoff manifests, and readiness summaries for deferred artifacts
 - [src/lib/mapping-workflow.ts](./src/lib/mapping-workflow.ts): pure mapping editor state helpers and review counters
 - [src/lib/review-state.ts](./src/lib/review-state.ts): pure review overlay, delta application, and review-summary helpers
 - [src/lib/local-review-state.ts](./src/lib/local-review-state.ts): SSR-safe browser-local persisted review-state store with versioning
@@ -250,6 +265,7 @@ Direction is modeled explicitly with stage and origin metadata. File kind alone 
 - [src/components/mapping-view.tsx](./src/components/mapping-view.tsx): operator-facing mapping editor and delivery preview
 - [src/components/delivery-execution-preview.tsx](./src/components/delivery-execution-preview.tsx): generated-vs-deferred execution-prep artifact preview
 - [src/components/delivery-staging-preview.tsx](./src/components/delivery-staging-preview.tsx): staged bundle tree, content preview, and deferred record preview
+- [src/components/delivery-handoff-preview.tsx](./src/components/delivery-handoff-preview.tsx): deferred writer-input readiness, dependency, and handoff JSON preview
 - [src/components/reconform-review.tsx](./src/components/reconform-review.tsx): saved reconform review workflow with notes and filters
 
 ## Fixture Intake Folder
@@ -344,7 +360,7 @@ npm run lint
 npm run build
 ```
 
-## Importer / Exporter / Execution / Staging Boundary
+## Importer / Exporter / Execution / Staging / Handoff Boundary
 
 `importer.ts` is responsible for:
 - scanning intake folders
@@ -376,7 +392,12 @@ npm run build
 - materializing deferred binary artifacts into explicit `.deferred.json` descriptors
 - generating `staging-summary.json` with counts, paths, blockers, and review-influence context
 
-Neither `exporter.ts`, `delivery-execution.ts`, nor `delivery-staging.ts` writes native Nuendo files yet.
+`delivery-handoff.ts` is responsible for:
+- turning staged deferred artifacts into stable writer-input contracts
+- generating `handoff/deferred-writer-inputs.json`, `delivery-handoff-manifest.json`, and `delivery-handoff-summary.json`
+- classifying deferred artifacts as `ready-for-writer`, `blocked`, `partial`, or `deferred-with-known-gaps`
+
+Neither `exporter.ts`, `delivery-execution.ts`, `delivery-staging.ts`, nor `delivery-handoff.ts` writes native Nuendo files yet.
 
 ## Current Parser Coverage
 
@@ -417,7 +438,7 @@ Reconciliation currently flags:
 - missing reel / tape / scene / take
 - source files referenced by the timeline exchange but missing from intake
 
-## Current Delivery Execution And Staging Coverage
+## Current Delivery Execution, Staging, And Handoff Coverage
 
 Generated now:
 - `manifest.json`
@@ -432,6 +453,12 @@ Staged now:
 - generated files under root, `markers/`, `metadata/`, and `reports/`
 - deferred JSON descriptors under `deferred/`
 - `staging-summary.json`
+
+Handoff now:
+- `handoff/deferred-writer-inputs.json`
+- `handoff/delivery-handoff-manifest.json`
+- `handoff/delivery-handoff-summary.json`
+- deterministic source signature, review signature, delivery package signature, dependency graph, and writer-readiness state for each deferred artifact
 
 Deferred:
 - Nuendo-ready AAF
@@ -459,17 +486,18 @@ Current operator tooling includes:
 
 ## Planned Next Phases
 
-### Phase 3C
-Deferred writer-boundary hardening.
+### Phase 3D
+Delivery handoff export and writer-adapter prep.
 
 Targets:
-- formalize stable writer inputs for deferred AAF and reference-video outputs
-- define delivery handoff contracts for staged bundle export and future writer execution
+- package staged output plus handoff contracts for external execution
+- formalize writer adapter interfaces that consume `DeferredWriterInput`
 - keep native Nuendo session writing deferred until the writer boundary is stable
 
 ## Next Recommended Work
 
-- formalize stable deferred-writer inputs for AAF and reference-video artifacts on top of the staged bundle output
+- package staged output plus handoff contracts into a clean export/handoff bundle for external writer runners
+- formalize writer adapter interfaces that consume the current deferred writer-input contracts
 - keep AAF, reference video, and any future Nuendo session output behind a separate writer boundary
 - continue reducing AAF compatibility fallback only when new real containers require it
 - keep planning, execution prep, and future writing as three separate layers

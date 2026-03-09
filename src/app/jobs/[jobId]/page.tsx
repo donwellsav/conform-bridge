@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DeliveryExecutionPreview } from "@/components/delivery-execution-preview";
+import { DeliveryHandoffPreview } from "@/components/delivery-handoff-preview";
 import { DeliveryStagingPreview } from "@/components/delivery-staging-preview";
 import { MappingView } from "@/components/mapping-view";
 import { PageHeader } from "@/components/page-header";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import {
   getBundle,
   getDeliveryExecutionPlan,
+  getDeliveryHandoffBundle,
   getDeliveryStagingBundle,
   getExportArtifacts,
   getJob,
@@ -38,10 +40,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
   const outputPreset = getOutputPreset(job.outputPresetId ?? job.templateId);
   const artifacts = getExportArtifacts(job.id);
   const executionPlan = getDeliveryExecutionPlan(job.id);
+  const handoffBundle = getDeliveryHandoffBundle(job.id);
   const stagingBundle = getDeliveryStagingBundle(job.id);
   const reviewContext = getJobReviewContext(job.id);
 
-  if (!bundle || !report || !outputPreset || !reviewContext || !executionPlan || !stagingBundle) {
+  if (!bundle || !report || !outputPreset || !reviewContext || !executionPlan || !stagingBundle || !handoffBundle) {
     notFound();
   }
 
@@ -127,6 +130,9 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
             </div>
             <div className="mt-5 border-t border-border/70 pt-5">
               <DeliveryStagingPreview stagingBundle={stagingBundle} />
+            </div>
+            <div className="mt-5 border-t border-border/70 pt-5">
+              <DeliveryHandoffPreview handoffBundle={handoffBundle} />
             </div>
           </SectionCard>
           <MappingView context={reviewContext} />

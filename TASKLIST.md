@@ -1,8 +1,8 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 3B` complete.
-- Next phase: `Phase 3C` deferred writer-boundary hardening on top of staged bundle output.
+- Current phase: `Phase 3C` complete.
+- Next phase: `Phase 3D` delivery handoff export and writer-adapter prep on top of staged bundle output.
 - Ongoing compatibility work: keep shrinking remaining AAF fallback cases when new production samples justify it.
 
 ## Phase 1 Scaffold
@@ -35,6 +35,8 @@
 - [x] Generate safe serializable delivery artifacts from planned outputs: manifest, README, marker CSV, marker EDL, metadata CSV, and field recorder report.
 - [x] Keep binary AAF and reference-video outputs deferred behind a future writer boundary.
 - [x] Materialize generated execution-prep payloads into a staged delivery folder structure.
-- [ ] Define stable writer inputs for deferred binary artifacts without implementing native Nuendo session writing yet.
-- [ ] Define delivery handoff/export contracts for staged bundle output without collapsing planning, execution prep, and writing.
+- [x] Define stable writer inputs for deferred binary artifacts without implementing native Nuendo session writing yet.
+- [x] Define delivery handoff/export contracts for staged bundle output without collapsing planning, execution prep, and writing.
+- [ ] Package staged output plus handoff contracts for external execution without implementing native Nuendo/session writing.
+- [ ] Formalize writer adapter interfaces that consume the current deferred writer-input contracts.
 - [ ] Implement real Nuendo/session writing only after staged delivery execution is proven stable.

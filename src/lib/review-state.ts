@@ -6,6 +6,7 @@ import {
   setMarkerAction,
 } from "./mapping-workflow";
 import { prepareDeliveryExecutionSync } from "./services/delivery-execution";
+import { prepareDeliveryHandoffSync } from "./services/delivery-handoff";
 import { createOverlayReviewInfluence, prepareDeliveryStagingSync } from "./services/delivery-staging";
 import { planNuendoDeliverySync } from "./services/exporter";
 import type {
@@ -13,6 +14,7 @@ import type {
   ClipEvent,
   ConformChangeEvent,
   DeliveryExecutionPlan,
+  DeliveryHandoffBundle,
   DeliveryStagingBundle,
   FieldRecorderCandidate,
   FieldRecorderReviewDecision,
@@ -85,6 +87,7 @@ export interface ReviewOverlayResult {
   previewPlan: ReturnType<typeof planNuendoDeliverySync>;
   previewExecution: DeliveryExecutionPlan;
   previewStaging: DeliveryStagingBundle;
+  previewHandoff: DeliveryHandoffBundle;
   reconformItems: ReconformReviewItem[];
   reviewCounts: {
     mappingOpenCount: number;
@@ -128,6 +131,37 @@ export function createReviewStateSourceSignature(job: TranslationJob, bundle: So
 
 export function createReviewStateKey(jobId: string, sourceSignature: string): ReviewStateKey {
   return `${jobId}::${sourceSignature}`;
+}
+
+export function createImportedReviewSignature(jobId: string, sourceSignature: string) {
+  return `imported-base::${jobId}::${sourceSignature}`;
+}
+
+export function createReviewStateSignature(reviewState: ReviewState) {
+  const signatureParts = [
+    ...reviewState.trackOverrides
+      .map((override) => `track:${override.mappingId}:${override.targetLane ?? ""}:${override.targetType ?? ""}:${override.action ?? ""}`)
+      .sort((left, right) => left.localeCompare(right)),
+    ...reviewState.metadataOverrides
+      .map((override) => `metadata:${override.mappingId}:${override.targetValue ?? ""}:${override.status ?? ""}`)
+      .sort((left, right) => left.localeCompare(right)),
+    ...reviewState.markerDecisions
+      .map((decision) => `marker:${decision.markerId}:${decision.action}:${decision.note}`)
+      .sort((left, right) => left.localeCompare(right)),
+    ...reviewState.fieldRecorderDecisions
+      .map((decision) => `field:${decision.candidateId}:${decision.status}:${decision.note}`)
+      .sort((left, right) => left.localeCompare(right)),
+    ...reviewState.validationAcknowledgements
+      .map((item) => `validation:${item.issueKey}:${item.status}:${item.note}`)
+      .sort((left, right) => left.localeCompare(right)),
+    ...reviewState.reconformDecisions
+      .map((item) => `reconform:${item.changeEventId}:${item.status}:${item.note}`)
+      .sort((left, right) => left.localeCompare(right)),
+  ];
+
+  return signatureParts.length > 0
+    ? `review-overlay::${reviewState.jobId}::${reviewState.sourceSignature}::${signatureParts.join("|")}`
+    : createImportedReviewSignature(reviewState.jobId, reviewState.sourceSignature);
 }
 
 export function createEmptyReviewState(jobId: string, sourceSignature: string): ReviewState {
@@ -734,6 +768,18 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
       openReviewCount: mappingReviewSummary.total + validationOpenCount + reconformOpenCount,
     }),
   });
+  const previewHandoff = prepareDeliveryHandoffSync({
+    job: previewJob,
+    bundle: context.bundle,
+    translationModel: context.translationModel,
+    deliveryPackage: previewPlan.deliveryPackage,
+    exportArtifacts: previewPlan.exportArtifacts,
+    executionPlan: previewExecution,
+    stagingBundle: previewStaging,
+    preservationIssues: previewIssues,
+    sourceSignature: reviewState.sourceSignature,
+    reviewSignature: createReviewStateSignature(reviewState),
+  });
 
   return {
     reviewState,
@@ -746,6 +792,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewPlan,
     previewExecution,
     previewStaging,
+    previewHandoff,
     reconformItems,
     reviewCounts: {
       mappingOpenCount: mappingReviewSummary.total,

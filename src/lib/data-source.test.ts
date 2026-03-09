@@ -14,6 +14,7 @@ test("imported fixture data flows through exporter planning into dashboard and j
 
   const deliveryPackage = dataSource.getDeliveryPackage(job.deliveryPackageId);
   const executionPlan = dataSource.getDeliveryExecutionPlan(job.id);
+  const handoffBundle = dataSource.getDeliveryHandoffBundle(job.id);
   const stagingBundle = dataSource.getDeliveryStagingBundle(job.id);
   const exportArtifacts = dataSource.getExportArtifacts(job.id);
   const dashboardMetric = dataSource.dashboardMetrics.find((metric) => metric.label === "Planned delivery files");
@@ -21,6 +22,7 @@ test("imported fixture data flows through exporter planning into dashboard and j
 
   assert.ok(deliveryPackage);
   assert.ok(executionPlan);
+  assert.ok(handoffBundle);
   assert.ok(stagingBundle);
   assert.equal(exportArtifacts.length, 8);
   assert.equal(deliveryPackage?.artifacts.length, 8);
@@ -28,6 +30,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(executionPlan?.preparedArtifacts.some((artifact) => artifact.executionStatus === "deferred"));
   assert.ok(stagingBundle?.entries.some((entry) => entry.relativePath.endsWith("/staging-summary.json")));
   assert.ok(stagingBundle?.entries.some((entry) => entry.kind === "deferred_descriptor"));
+  assert.ok(handoffBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/deferred-writer-inputs.json")));
+  assert.ok(handoffBundle?.deferredWriterInput.artifacts.length);
   assert.ok(exportArtifacts.some((artifact) => artifact.status === "blocked"));
   assert.equal(dashboardMetric?.value, String(dataSource.jobs.length * 8).padStart(2, "0"));
   assert.match(dashboardMetric?.note ?? "", /exporter\.ts/);

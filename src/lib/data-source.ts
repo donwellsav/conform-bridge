@@ -1,7 +1,8 @@
 import * as fallback from "./mock-data";
 import { countMappingReviews, getFieldRecorderDecision } from "./mapping-workflow";
-import { createReviewStateSourceSignature, type ReviewJobContext } from "./review-state";
+import { createImportedReviewSignature, createReviewStateSourceSignature, type ReviewJobContext } from "./review-state";
 import { prepareDeliveryExecutionSync } from "./services/delivery-execution";
+import { prepareDeliveryHandoffSync } from "./services/delivery-handoff";
 import { createImportedBaseReviewInfluence, prepareDeliveryStagingSync } from "./services/delivery-staging";
 import { planNuendoDeliverySync } from "./services/exporter";
 import { importFixtureLibrarySync, type ImportedIntakeData } from "./services/importer";
@@ -14,6 +15,7 @@ import type {
   DashboardMetric,
   DeliveryArtifact,
   DeliveryExecutionPlan,
+  DeliveryHandoffBundle,
   DeliveryPackage,
   DeliveryStagingBundle,
   FieldRecorderCandidate,
@@ -33,6 +35,7 @@ interface ImportedAppData extends ImportedIntakeData {
   exportArtifacts: DeliveryArtifact[];
   deliveryExecutionPlans: DeliveryExecutionPlan[];
   deliveryStagingBundles: DeliveryStagingBundle[];
+  deliveryHandoffBundles: DeliveryHandoffBundle[];
   dashboardMetrics: DashboardMetric[];
   activityFeed: ActivityItem[];
 }
@@ -115,6 +118,7 @@ function createImportedAppData(): ImportedAppData {
       exportArtifacts: [],
       deliveryExecutionPlans: [],
       deliveryStagingBundles: [],
+      deliveryHandoffBundles: [],
       dashboardMetrics: [],
       activityFeed: [],
     };
@@ -253,6 +257,18 @@ function createImportedAppData(): ImportedAppData {
       sourceSignature,
       reviewInfluence: createImportedBaseReviewInfluence(),
     });
+    const handoffBundle = prepareDeliveryHandoffSync({
+      job: updatedJob,
+      bundle: sourceBundle,
+      translationModel,
+      deliveryPackage: finalPlan.deliveryPackage,
+      exportArtifacts: finalPlan.exportArtifacts,
+      executionPlan,
+      stagingBundle,
+      preservationIssues: finalIssues,
+      sourceSignature,
+      reviewSignature: createImportedReviewSignature(updatedJob.id, sourceSignature),
+    });
 
     return {
       job: updatedJob,
@@ -262,6 +278,7 @@ function createImportedAppData(): ImportedAppData {
       exportArtifacts: finalPlan.exportArtifacts,
       executionPlan,
       stagingBundle,
+      handoffBundle,
     };
   });
 
@@ -273,6 +290,7 @@ function createImportedAppData(): ImportedAppData {
     exportArtifacts: jobRecords.flatMap((record) => record.exportArtifacts),
     deliveryExecutionPlans: jobRecords.map((record) => record.executionPlan),
     deliveryStagingBundles: jobRecords.map((record) => record.stagingBundle),
+    deliveryHandoffBundles: jobRecords.map((record) => record.handoffBundle),
     jobs: jobRecords.map((record) => record.job),
     dashboardMetrics: [],
     activityFeed: [],
@@ -304,6 +322,7 @@ export const deliveryPackages = hasImportedBundles ? importedData.deliveryPackag
 export const exportArtifacts = hasImportedBundles ? importedData.exportArtifacts : fallback.exportArtifacts;
 export const deliveryExecutionPlans = hasImportedBundles ? importedData.deliveryExecutionPlans : [];
 export const deliveryStagingBundles = hasImportedBundles ? importedData.deliveryStagingBundles : [];
+export const deliveryHandoffBundles = hasImportedBundles ? importedData.deliveryHandoffBundles : [];
 export const mappingProfiles = hasImportedBundles ? importedData.mappingProfiles : fallback.mappingProfiles;
 export const mappingRules = hasImportedBundles ? importedData.mappingRules : fallback.mappingRules;
 export const fieldRecorderCandidates = hasImportedBundles ? importedData.fieldRecorderCandidates : fallback.fieldRecorderCandidates;
@@ -322,6 +341,7 @@ const mappingMap = new Map(mappingProfiles.map((profile) => [profile.jobId, prof
 const deliveryPackageMap = new Map(deliveryPackages.map((deliveryPackage) => [deliveryPackage.id, deliveryPackage]));
 const deliveryExecutionPlanMap = new Map(deliveryExecutionPlans.map((plan) => [plan.jobId, plan]));
 const deliveryStagingBundleMap = new Map(deliveryStagingBundles.map((bundle) => [bundle.jobId, bundle]));
+const deliveryHandoffBundleMap = new Map(deliveryHandoffBundles.map((bundle) => [bundle.jobId, bundle]));
 const jobMap = new Map(jobs.map((job) => [job.id, job]));
 const translationModelMap = new Map(translationModels.map((model) => [model.id, model]));
 
@@ -413,6 +433,10 @@ export function getDeliveryExecutionPlan(jobId: string): DeliveryExecutionPlan |
 
 export function getDeliveryStagingBundle(jobId: string): DeliveryStagingBundle | undefined {
   return deliveryStagingBundleMap.get(jobId);
+}
+
+export function getDeliveryHandoffBundle(jobId: string): DeliveryHandoffBundle | undefined {
+  return deliveryHandoffBundleMap.get(jobId);
 }
 
 export function getAnalysisReportForJob(jobId: string): AnalysisReport | undefined {

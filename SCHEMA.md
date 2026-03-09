@@ -236,6 +236,78 @@ Represents one planned output file.
 - `status`
 - `note`
 
+## Layer 4: Delivery Handoff Contracts
+
+### DeferredWriterInput
+Stable machine-readable contract set for deferred writer-only artifacts.
+- `version`
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `artifacts`
+
+### DeferredWriterArtifact
+Deferred artifact contract with readiness and dependency detail.
+- `artifactId`
+- `deferredDescriptorPath`
+- `artifactKind`
+- `fileName`
+- `fileRole`
+- `fileKind`
+- `artifactStatus`
+- `plannedOutputPath`
+- `requiredWriterCapability`
+- `readinessStatus`
+- `explanation`
+- `blockers`
+- `dependencies`
+- `payload`
+
+### WriterDependency
+Explicit prerequisite or blocker for a deferred writer artifact.
+- `id`
+- `type`
+- `label`
+- `reference`
+- `status`
+- `required`
+- `reason`
+
+### DeliveryHandoffManifest
+Structured summary that links staged outputs to deferred-writer contracts.
+- `schemaVersion`
+- `jobId`
+- `deliveryPackageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `stagingRoot`
+- `reviewInfluence`
+- `generatedArtifacts`
+- `deferredArtifacts`
+- `blockedArtifacts`
+
+### DeliveryHandoffSummary
+Aggregate readiness summary for the current handoff state.
+- `schemaVersion`
+- `jobId`
+- `deliveryPackageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `stagedArtifactCount`
+- `deferredArtifactCount`
+- `blockedArtifactCount`
+- `readyForWriterCount`
+- `partialCount`
+- `deferredWithKnownGapsCount`
+- `readinessStatus`
+- `unresolvedBlockers`
+- `note`
+
 ## Orchestration Entity
 
 ### TranslationJob
@@ -271,6 +343,8 @@ Operator-facing record that ties the three layers together.
 - One `TranslationJob` contains one `MappingProfile` and may contain many `MappingRule` and `FieldRecorderCandidate` records.
 - One `AnalysisReport` contains many `PreservationIssue` records grouped for operator review.
 - One `DeliveryPackage` contains many `DeliveryArtifact` records.
+- One `DeliveryPackage` may produce one `DeliveryExecutionPlan`, one `DeliveryStagingBundle`, and one `DeliveryHandoffManifest` in downstream non-writer layers.
+- One `DeliveryHandoffManifest` references one `DeferredWriterInput` document containing many `DeferredWriterArtifact` contracts.
 - One `TranslationJob` may contain many `ConformChangeEvent` records.
 
 ## Current Repo Rules
@@ -278,5 +352,5 @@ Operator-facing record that ties the three layers together.
 - Dates are fixed strings.
 - The repo prefers real fixture imports and falls back to deterministic mock data only when the fixture library is absent.
 - Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
-- Operator mapping editors work against `MappingProfile` and `MappingRule` state, but persistence beyond the current in-memory review session is not implemented yet.
-- Types must support real intake analysis, canonical review, delivery planning, and validation without implying that a Nuendo writer already exists.
+- Operator mapping editors persist browser-local review deltas keyed by job plus source signature.
+- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, and deferred writer contracts without implying that a Nuendo writer already exists.

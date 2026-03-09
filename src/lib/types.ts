@@ -55,6 +55,13 @@ export type ReviewStateVersion = 1;
 export type ReviewStateKey = string;
 export type ValidationReviewStatus = "unreviewed" | "acknowledged" | "dismissed";
 export type ReconformReviewStatus = "unreviewed" | "acknowledged" | "needs-follow-up";
+export type DeferredWriterInputVersion = 1;
+export type DeliverySourceSignature = string;
+export type DeliveryReviewSignature = string;
+export type WriterDependencyStatus = "present" | "missing" | "blocked" | "optional";
+export type WriterReadinessStatus = "ready-for-writer" | "blocked" | "partial" | "deferred-with-known-gaps";
+export type DeferredWriterArtifactKind = "nuendo_ready_aaf" | "reference_video_handoff" | "native_nuendo_session" | "unknown_deferred_artifact";
+export type WriterCapability = "aaf_delivery_writer" | "reference_video_handoff" | "native_nuendo_session_writer" | "unsupported_writer_capability";
 
 export interface SourceSnapshot {
   sequenceName: string;
@@ -616,6 +623,108 @@ export interface DeliveryStagingBundle {
   sourceSignature: string;
   reviewInfluence: DeliveryStagingReviewInfluence;
   summaryPath: string;
+  summary: string;
+}
+
+export interface WriterDependency {
+  id: string;
+  type: "staged_file" | "intake_asset" | "preservation_issue" | "review_state";
+  label: string;
+  reference: string;
+  status: WriterDependencyStatus;
+  required: boolean;
+  reason: string;
+}
+
+export interface DeferredWriterArtifact {
+  artifactId: string;
+  deferredDescriptorPath: string;
+  artifactKind: DeferredWriterArtifactKind;
+  fileName: string;
+  fileRole: FileRole;
+  fileKind: FileKind;
+  artifactStatus: DeliveryArtifactStatus;
+  plannedOutputPath: string;
+  requiredWriterCapability: WriterCapability;
+  readinessStatus: WriterReadinessStatus;
+  explanation: string;
+  blockers: string[];
+  dependencies: WriterDependency[];
+  payload: Record<string, unknown>;
+}
+
+export interface DeferredWriterInput {
+  version: DeferredWriterInputVersion;
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  artifacts: DeferredWriterArtifact[];
+}
+
+export interface DeliveryHandoffArtifact {
+  artifactId: string;
+  fileName: string;
+  relativePath: string;
+  state: "staged" | "deferred-contract" | "blocked";
+  summary: string;
+}
+
+export interface DeliveryHandoffSummary {
+  schemaVersion: 1;
+  jobId: string;
+  deliveryPackageId: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  stagedArtifactCount: number;
+  deferredArtifactCount: number;
+  blockedArtifactCount: number;
+  readyForWriterCount: number;
+  partialCount: number;
+  deferredWithKnownGapsCount: number;
+  readinessStatus: WriterReadinessStatus;
+  unresolvedBlockers: string[];
+  note: string;
+}
+
+export interface DeliveryHandoffManifest {
+  schemaVersion: 1;
+  jobId: string;
+  deliveryPackageId: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  stagingRoot: string;
+  reviewInfluence: DeliveryStagingReviewInfluence;
+  generatedArtifacts: DeliveryHandoffArtifact[];
+  deferredArtifacts: DeliveryHandoffArtifact[];
+  blockedArtifacts: DeliveryHandoffArtifact[];
+}
+
+export interface HandoffGeneratedFile {
+  kind: "handoff_file";
+  relativePath: string;
+  fileName: string;
+  mimeType: "application/json";
+  payloadKind: "deferred_writer_inputs" | "delivery_handoff_manifest" | "delivery_handoff_summary";
+  content: string;
+  summary: string;
+}
+
+export type DeliveryHandoffEntry = HandoffGeneratedFile;
+
+export interface DeliveryHandoffBundle {
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  rootRelativePath: string;
+  entries: DeliveryHandoffEntry[];
+  deferredWriterInput: DeferredWriterInput;
+  manifest: DeliveryHandoffManifest;
+  summaryJson: DeliveryHandoffSummary;
   summary: string;
 }
 

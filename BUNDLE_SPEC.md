@@ -3,7 +3,7 @@
 ## Purpose
 Conform Bridge models two distinct packages around one canonical internal layer:
 - Intake Package: what arrives from Resolve and editorial.
-- Delivery Package: what Conform Bridge plans to hand off for Nuendo.
+- Delivery Package: what Conform Bridge plans, stages, and prepares for handoff to Nuendo.
 
 Direction must be represented explicitly. Do not infer inbound versus outbound from file kind alone.
 
@@ -68,6 +68,14 @@ A planned Nuendo delivery package may include:
 - `blocked`
 - `placeholder`
 
+## Downstream Delivery Layers
+The delivery side now has three explicit downstream layers after canonical normalization:
+- Delivery planning in `exporter.ts`
+- Delivery execution prep in `delivery-execution.ts`
+- Delivery staging and handoff contract generation in `delivery-staging.ts` and `delivery-handoff.ts`
+
+These layers must stay separate. Planning does not generate files, execution prep only generates safe serializable payloads, staging only materializes staged bundle outputs, and handoff only formalizes deferred-writer contracts.
+
 ## Shared File Kinds
 The following file kinds may appear on either side of the workflow depending on `stage` and `origin`:
 - `aaf`
@@ -105,6 +113,9 @@ The following roles may appear as intake or delivery artifacts depending on the 
 - Intake completeness summary
 - Delivery readiness summary
 - Planned delivery artifact states
+- Generated execution-prep payload state
+- Staged bundle paths and deferred descriptor records
+- Deferred writer-input readiness, dependencies, and blockers
 
 ## Current Parser Coverage
 The current repo scans real local fixture folders and parses these intake formats:
@@ -122,9 +133,10 @@ Timeline precedence is:
 4. metadata-only fallback
 
 ## Known Limitations
-- Delivery packages are still planning-only.
 - No Nuendo write path exists yet.
-- Persistence for operator review decisions is not implemented beyond the current in-memory review session.
+- Operator review persistence is browser-local only.
 - Some AAF layouts still require compatibility fallback payloads.
+- Generated text/JSON/CSV artifacts can be staged and written through the staging helper, but binary writer artifacts remain deferred.
+- Deferred-writer contracts are formalized, but no writer executes them yet.
 
-Delivery packages remain planning-only. No Nuendo write path, fake backend processing, or file write-back behavior should be implied by the current repo.
+No Nuendo write path, fake backend processing, or binary file write-back behavior should be implied by the current repo.
