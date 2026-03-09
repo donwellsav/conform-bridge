@@ -6,12 +6,12 @@ Current workflow model:
 
 `Resolve/editorial intake -> canonical normalized translation model -> planned Nuendo delivery package`
 
-The repo is beyond scaffold-only. It now includes real intake parsing, deterministic delivery planning, execution-prep payload generation, staged delivery bundles, deferred-writer handoff contracts, external execution package export, writer-adapter dry runs, writer-runner request/response/receipt contracts, filesystem transport dispatch packaging, and compatibility-aware receipt ingestion. Native Nuendo writing is still out of scope.
+The repo is beyond scaffold-only. It now includes real intake parsing, deterministic delivery planning, execution-prep payload generation, staged delivery bundles, deferred-writer handoff contracts, external execution package export, writer-adapter dry runs, writer-runner request/response/receipt contracts, filesystem transport dispatch packaging, compatibility-aware receipt ingestion, and executor/package compatibility validation. Native Nuendo writing is still out of scope.
 
 ## Current Status
 
-- Current phase: `Phase 3I` complete.
-- Next phase: `Phase 3J` external executor compatibility hardening and optional additional transport adapters.
+- Current phase: `Phase 3J` complete.
+- Next phase: `Phase 3K` sample-driven external executor/profile expansion only when it preserves the current layered contracts.
 - Current real transport path: `filesystem-transport-adapter`.
 - Current persistence model: browser-local review-state deltas only.
 
@@ -31,6 +31,7 @@ Conform Bridge keeps these layers separate:
 10. Writer-run transport and audit in `writer-run-transport.ts`
 11. Transport-adapter packaging in `writer-run-transport-adapters.ts`
 12. Receipt compatibility, normalization, and ingestion in `receipt-schema-registry.ts`, `receipt-normalization.ts`, `receipt-compatibility.ts`, and `writer-run-receipt-ingestion.ts`
+13. Executor/package compatibility validation in `executor-profile-registry.ts`, `executor-package-validation.ts`, and `executor-compatibility.ts`
 
 Those layers are intentionally separate. Planning does not generate files, execution prep only generates safe text/JSON/CSV payloads, staging only materializes deterministic bundle entries, handoff only defines deferred-writer inputs, package export only bundles staged and handoff outputs, adapters only validate and dry-run, runners only create runnable contracts and simulated receipts, transport only packages dispatch state, and receipt ingestion only normalizes and matches inbound receipts.
 
@@ -89,10 +90,11 @@ Staged now:
 - deferred JSON descriptors for writer-only binary artifacts
 - `staging-summary.json`
 
-Handoff and package outputs now:
+Handoff, compatibility, and package outputs now:
 - deferred writer-input contracts
 - delivery handoff manifests and summaries
 - external execution manifests, index files, summaries, deferred input exports, and checksums
+- executor profile resolution, compatibility reports, and compatibility summaries
 - writer-adapter dry-run outputs
 - writer-runner requests, responses, and receipts
 - transport envelopes, dispatch records, audit logs, and history
@@ -213,6 +215,9 @@ Filesystem transport adapter packaging and deterministic receipt ingestion lande
 ### Phase 3I
 Receipt compatibility profiles, normalization, migration, and stronger matching/replay safety landed.
 
+### Phase 3J
+Executor/package compatibility validation landed on top of packaged output, handoff contracts, transport profiles, and receipt expectations. Filesystem transport remains the primary real path, and additional transport profiles were intentionally deferred.
+
 ## Known Limitations
 
 - No Nuendo writer exists yet.
@@ -221,16 +226,18 @@ Receipt compatibility profiles, normalization, migration, and stronger matching/
 - Some AAF layouts still require compatibility fallback payloads.
 - Receipt compatibility currently covers canonical filesystem receipts, compatibility filesystem receipts, and a future-placeholder profile only.
 - Only the filesystem transport adapter is real. Other transport paths remain future work.
+- Executor compatibility currently targets canonical and compatibility filesystem executor profiles plus a future placeholder profile.
+- No additional transport adapter or transport profile was added in Phase 3J because the current filesystem path already covers the real deterministic boundary cleanly.
 - Writer adapters and runners are still reference/no-op or placeholder implementations.
 - Binary outputs remain deferred contracts, not generated native files.
 
 ## Next Recommended Work
 
-`Phase 3J` should focus on external executor compatibility hardening:
-- strengthen executor/package compatibility checks
-- keep transport/profile/version validation strict and explicit
-- add additional transport adapters only if they preserve the existing layered contracts
-- continue reducing AAF fallback only when new real samples require it
+`Phase 3K` should stay sample-driven:
+- add executor/profile variants only when a real external executor requires them
+- keep filesystem transport as the primary deterministic path unless a new transport path can consume the same normalized contracts cleanly
+- continue tightening receipt/profile/version compatibility without introducing a backend or queue
+- keep native Nuendo writing deferred until the external execution boundary is proven stable
 
 ## Key Root Docs
 

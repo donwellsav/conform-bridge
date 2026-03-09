@@ -34,6 +34,7 @@ This repository is a frontend-first internal operator application for Resolve to
 - Real filesystem transport adapter packaging exists in `writer-run-transport-adapters.ts`.
 - Receipt compatibility profiles, normalization, migration, and signature-aware matching exist in `receipt-schema-registry.ts`, `receipt-normalization.ts`, and `receipt-compatibility.ts`.
 - Deterministic receipt ingestion exists in `writer-run-receipt-ingestion.ts`.
+- Executor/package compatibility validation exists in `executor-profile-registry.ts`, `executor-package-validation.ts`, and `executor-compatibility.ts`.
 
 ## Ongoing Scope Rules
 - No native Nuendo export writer.
@@ -75,4 +76,5 @@ Reject work that:
 - introduces backend-looking abstractions for features that do not exist
 - implies the repo is still scaffold-only or mock-only
 - implies browser-local review persistence, staged bundle output, handoff contracts, external execution packaging, writer-adapter dry runs, writer-runner contracts, transport packaging, or receipt-ingestion flow do not exist
+- implies executor/profile compatibility validation does not exist
 - implies that a Nuendo writer already exists

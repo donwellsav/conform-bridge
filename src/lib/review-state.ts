@@ -7,12 +7,14 @@ import {
 } from "./mapping-workflow";
 import { prepareDeliveryExecutionSync } from "./services/delivery-execution";
 import { prepareExternalExecutionPackageSync } from "./services/external-execution-package";
+import { prepareExecutorCompatibilityBundleSync } from "./services/executor-compatibility";
 import { prepareDeliveryHandoffSync } from "./services/delivery-handoff";
 import { createOverlayReviewInfluence, prepareDeliveryStagingSync } from "./services/delivery-staging";
 import { planNuendoDeliverySync } from "./services/exporter";
 import { prepareWriterAdapterBundleSync } from "./services/writer-adapters";
 import { prepareWriterRunBundleSync } from "./services/writer-runner";
 import { prepareWriterRunTransportBundleSync } from "./services/writer-run-transport";
+import { createDefaultWriterRunTransportAdapters } from "./services/writer-run-transport-registry";
 import { prepareWriterRunTransportAdapterBundleSync } from "./services/writer-run-transport-adapters";
 import { ingestWriterRunReceiptsSync } from "./services/writer-run-receipt-ingestion";
 import type {
@@ -20,6 +22,7 @@ import type {
   ClipEvent,
   ConformChangeEvent,
   DeliveryExecutionPlan,
+  ExecutorCompatibilityBundle,
   ExternalExecutionPackage,
   DeliveryHandoffBundle,
   DeliveryStagingBundle,
@@ -103,6 +106,7 @@ export interface ReviewOverlayResult {
   previewStaging: DeliveryStagingBundle;
   previewHandoff: DeliveryHandoffBundle;
   previewExternalPackage: ExternalExecutionPackage;
+  previewExecutorCompatibility: ExecutorCompatibilityBundle;
   previewWriterAdapters: WriterAdapterBundle;
   previewWriterRuns: WriterRunBundle;
   previewWriterRunTransport: WriterRunTransportBundle;
@@ -816,15 +820,27 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewWriterAdapters,
     previewWriterRuns,
   );
+  const previewTransportAdapters = createDefaultWriterRunTransportAdapters(previewJob.id);
+  const previewExecutorCompatibility = prepareExecutorCompatibilityBundleSync({
+    packageBundle: previewExternalPackage,
+    handoffBundle: previewHandoff,
+    writerAdapterBundle: previewWriterAdapters,
+    writerRunBundle: previewWriterRuns,
+    transportBundle: previewWriterRunTransport,
+    transportAdapters: previewTransportAdapters,
+  });
   const previewWriterRunTransportAdapters = prepareWriterRunTransportAdapterBundleSync(
     previewExternalPackage,
     previewWriterRunTransport,
+    previewTransportAdapters,
+    previewExecutorCompatibility,
   );
   const previewWriterRunReceipts = ingestWriterRunReceiptsSync(
     previewExternalPackage,
     previewWriterRunTransport,
     previewWriterRunTransportAdapters,
     context.writerRunReceiptSources,
+    previewExecutorCompatibility,
   );
 
   return {
@@ -840,6 +856,7 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewStaging,
     previewHandoff,
     previewExternalPackage,
+    previewExecutorCompatibility,
     previewWriterAdapters,
     previewWriterRuns,
     previewWriterRunTransport,

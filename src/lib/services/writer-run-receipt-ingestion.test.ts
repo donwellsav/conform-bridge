@@ -2,13 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  getDeliveryHandoffBundle,
+  getExecutorCompatibilityBundle,
   getExternalExecutionPackage,
+  getWriterAdapterBundle,
   getWriterRunReceiptIngestionBundle,
+  getWriterRunBundle,
   getWriterRunTransportAdapterBundle,
   getWriterRunTransportBundle,
 } from "../data-source";
 import type { WriterRunDispatchEnvelope, WriterRunReceiptSourceFile } from "../types";
+import { prepareExecutorCompatibilityBundleSync } from "./executor-compatibility";
 import { ingestWriterRunReceiptsSync } from "./writer-run-receipt-ingestion";
+import { createDefaultWriterRunTransportAdapters } from "./writer-run-transport-registry";
 
 function createReceiptSource(jobId: string, fileName: string, payload: Record<string, unknown>): WriterRunReceiptSourceFile {
   return {
@@ -188,6 +194,8 @@ test("ingestWriterRunReceiptsSync imports matched canonical completed receipts d
   assert.ok(packageBundle);
   assert.ok(transportBundle);
   assert.ok(adapterBundle);
+  const compatibilityBundle = getExecutorCompatibilityBundle("job-rvr-205-aaf-only");
+  assert.ok(compatibilityBundle);
 
   const receiptSources = adapterBundle.dispatchEnvelopes.map((dispatchEnvelope, index) =>
     createReceiptSource(
@@ -204,9 +212,10 @@ test("ingestWriterRunReceiptsSync imports matched canonical completed receipts d
     ),
   );
 
-  const bundle = ingestWriterRunReceiptsSync(packageBundle, transportBundle, adapterBundle, receiptSources);
+  const bundle = ingestWriterRunReceiptsSync(packageBundle, transportBundle, adapterBundle, receiptSources, compatibilityBundle);
 
   assert.equal(bundle.status, "completed");
+  assert.equal(bundle.executorProfileId, "canonical-filesystem-executor-v1");
   assert.equal(bundle.transportReceipt.receiptNormalizedCount, 2);
   assert.equal(bundle.transportReceipt.receiptImportedCount, 2);
   assert.equal(bundle.transportReceipt.completedCount, 2);
@@ -218,12 +227,27 @@ test("ingestWriterRunReceiptsSync imports matched canonical completed receipts d
 
 test("ingestWriterRunReceiptsSync normalizes compatibility receipts and records schema migration", () => {
   const packageBundle = getExternalExecutionPackage("job-rvr-205-aaf-only");
+  const handoffBundle = getDeliveryHandoffBundle("job-rvr-205-aaf-only");
+  const writerAdapterBundle = getWriterAdapterBundle("job-rvr-205-aaf-only");
+  const writerRunBundle = getWriterRunBundle("job-rvr-205-aaf-only");
   const transportBundle = getWriterRunTransportBundle("job-rvr-205-aaf-only");
   const adapterBundle = getWriterRunTransportAdapterBundle("job-rvr-205-aaf-only");
 
   assert.ok(packageBundle);
+  assert.ok(handoffBundle);
+  assert.ok(writerAdapterBundle);
+  assert.ok(writerRunBundle);
   assert.ok(transportBundle);
   assert.ok(adapterBundle);
+  const compatibilityBundle = prepareExecutorCompatibilityBundleSync({
+    packageBundle,
+    handoffBundle,
+    writerAdapterBundle,
+    writerRunBundle,
+    transportBundle,
+    transportAdapters: createDefaultWriterRunTransportAdapters(packageBundle.jobId),
+    preferredProfileId: "compatibility-filesystem-executor-v1",
+  });
   const [firstEnvelope, secondEnvelope] = adapterBundle.dispatchEnvelopes;
   assert.ok(firstEnvelope);
   assert.ok(secondEnvelope);
@@ -253,10 +277,11 @@ test("ingestWriterRunReceiptsSync normalizes compatibility receipts and records 
     ),
   ];
 
-  const bundle = ingestWriterRunReceiptsSync(packageBundle, transportBundle, adapterBundle, receiptSources);
+  const bundle = ingestWriterRunReceiptsSync(packageBundle, transportBundle, adapterBundle, receiptSources, compatibilityBundle);
 
   assert.equal(bundle.transportReceipt.receiptImportedCount, 2);
   assert.equal(bundle.transportReceipt.receiptMigratedCount, 1);
+  assert.equal(bundle.expectedReceiptProfile, "compatibility-filesystem-receipt-v1");
   assert.ok(bundle.results.some((result) => result.compatibilityProfile === "compatibility-filesystem-receipt-v1" && result.normalizationStatus === "normalized"));
   assert.ok(bundle.results.some((result) => result.importStatus === "receipt-migrated" && result.normalizationStatus === "migrated"));
   assert.ok(bundle.auditRecord.events.some((event) => event.eventType === "receipt-migrated"));
@@ -270,6 +295,8 @@ test("ingestWriterRunReceiptsSync handles duplicate, stale, superseded, unmatche
   assert.ok(packageBundle);
   assert.ok(transportBundle);
   assert.ok(adapterBundle);
+  const compatibilityBundle = getExecutorCompatibilityBundle("job-rvr-205-aaf-only");
+  assert.ok(compatibilityBundle);
   const [firstEnvelope, secondEnvelope] = adapterBundle.dispatchEnvelopes;
   assert.ok(firstEnvelope);
   assert.ok(secondEnvelope);
@@ -338,19 +365,69 @@ test("ingestWriterRunReceiptsSync handles duplicate, stale, superseded, unmatche
     },
   ];
 
-  const bundle = ingestWriterRunReceiptsSync(packageBundle, transportBundle, adapterBundle, receiptSources);
+  const bundle = ingestWriterRunReceiptsSync(packageBundle, transportBundle, adapterBundle, receiptSources, compatibilityBundle);
 
   assert.ok(bundle.results.some((result) => result.importStatus === "receipt-imported"));
   assert.ok(bundle.results.some((result) => result.importStatus === "receipt-duplicate"));
   assert.ok(bundle.results.some((result) => result.importStatus === "receipt-stale" && result.signatureMatch === "drifted"));
   assert.ok(bundle.results.some((result) => result.importStatus === "receipt-superseded"));
   assert.ok(bundle.results.some((result) => result.importStatus === "receipt-unmatched"));
-  assert.ok(bundle.results.some((result) => result.importStatus === "receipt-partial" && result.validationStatus === "partially-compatible"));
+  assert.ok(bundle.results.some((result) => result.importStatus === "receipt-incompatible"));
   assert.ok(bundle.results.some((result) => result.importStatus === "receipt-incompatible"));
   assert.ok(bundle.results.some((result) => result.importStatus === "receipt-invalid"));
   assert.ok(bundle.auditRecord.events.some((event) => event.eventType === "superseded"));
   assert.ok(bundle.auditRecord.events.some((event) => event.eventType === "receipt-incompatible"));
   assert.ok(bundle.auditRecord.events.some((event) => event.eventType === "receipt-invalid"));
+});
+
+test("ingestWriterRunReceiptsSync accepts compatibility-profile drift as partial when the executor profile allows it", () => {
+  const packageBundle = getExternalExecutionPackage("job-rvr-205-aaf-only");
+  const handoffBundle = getDeliveryHandoffBundle("job-rvr-205-aaf-only");
+  const writerAdapterBundle = getWriterAdapterBundle("job-rvr-205-aaf-only");
+  const writerRunBundle = getWriterRunBundle("job-rvr-205-aaf-only");
+  const transportBundle = getWriterRunTransportBundle("job-rvr-205-aaf-only");
+  const adapterBundle = getWriterRunTransportAdapterBundle("job-rvr-205-aaf-only");
+
+  assert.ok(packageBundle);
+  assert.ok(handoffBundle);
+  assert.ok(writerAdapterBundle);
+  assert.ok(writerRunBundle);
+  assert.ok(transportBundle);
+  assert.ok(adapterBundle);
+  const compatibilityBundle = prepareExecutorCompatibilityBundleSync({
+    packageBundle,
+    handoffBundle,
+    writerAdapterBundle,
+    writerRunBundle,
+    transportBundle,
+    transportAdapters: createDefaultWriterRunTransportAdapters(packageBundle.jobId),
+    preferredProfileId: "compatibility-filesystem-executor-v1",
+  });
+  const [envelope] = adapterBundle.dispatchEnvelopes;
+  assert.ok(envelope);
+
+  const bundle = ingestWriterRunReceiptsSync(
+    packageBundle,
+    transportBundle,
+    adapterBundle,
+    [
+      createReceiptSource(
+        packageBundle.jobId,
+        "future-placeholder.json",
+        createFuturePlaceholderReceiptPayload(
+          packageBundle.id,
+          packageBundle.sourceSignature,
+          packageBundle.reviewSignature,
+          packageBundle.deliveryPackageSignature,
+          envelope,
+        ),
+      ),
+    ],
+    compatibilityBundle,
+  );
+
+  assert.equal(bundle.expectedReceiptProfile, "compatibility-filesystem-receipt-v1");
+  assert.ok(bundle.results.some((result) => result.importStatus === "receipt-partial" && result.validationStatus === "partially-compatible"));
 });
 
 test("data-source exposes receipt-ingestion bundles for imported jobs", () => {

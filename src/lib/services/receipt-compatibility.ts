@@ -1,6 +1,8 @@
 import type {
+  ExecutorCompatibilityProfileId,
   ExternalExecutionPackage,
   ReceiptNormalizationResult,
+  ReceiptCompatibilityProfile,
   WriterRunAttemptHistory,
   WriterRunDispatchStatus,
   WriterRunReceiptIngestionResult,
@@ -12,6 +14,9 @@ export interface ReceiptCompatibilityContext {
   packageBundle: ExternalExecutionPackage;
   transportBundle: WriterRunTransportBundle;
   adapterBundle: WriterRunTransportAdapterBundle;
+  executorProfileId: ExecutorCompatibilityProfileId;
+  expectedReceiptProfile: ReceiptCompatibilityProfile;
+  acceptedReceiptProfiles: ReceiptCompatibilityProfile[];
   importedCorrelations: Set<string>;
   importedFingerprints: Set<string>;
 }
@@ -22,11 +27,13 @@ export interface ReceiptCompatibilityEvaluation {
   historyItem?: WriterRunAttemptHistory;
 }
 
-function createBaseResult(normalization: ReceiptNormalizationResult): WriterRunReceiptIngestionResult {
+function createBaseResult(context: ReceiptCompatibilityContext, normalization: ReceiptNormalizationResult): WriterRunReceiptIngestionResult {
   return {
     id: `writer-run-receipt-import-${normalization.id}`,
     sourceFileName: normalization.sourceFileName,
     sourcePath: normalization.sourcePath,
+    executorProfileId: context.executorProfileId,
+    expectedReceiptProfile: context.expectedReceiptProfile,
     normalizationStatus: normalization.status,
     compatibilityProfile: normalization.compatibilityProfile,
     payloadSource: normalization.payloadSource,
@@ -86,7 +93,31 @@ export function evaluateReceiptCompatibility(
   context: ReceiptCompatibilityContext,
   normalization: ReceiptNormalizationResult,
 ): ReceiptCompatibilityEvaluation {
-  const result = createBaseResult(normalization);
+  const result = createBaseResult(context, normalization);
+  const receiptProfileAccepted = context.acceptedReceiptProfiles.includes(normalization.compatibilityProfile);
+  const receiptProfileExpected = normalization.compatibilityProfile === context.expectedReceiptProfile;
+
+  if (!receiptProfileAccepted && normalization.status !== "invalid") {
+    result.importStatus = "receipt-incompatible";
+    result.validationStatus = "incompatible";
+    result.dispatchStatus = "incompatible";
+    result.note = `Receipt ${normalization.sourceFileName} uses ${normalization.compatibilityProfile}, which is not accepted by executor profile ${context.executorProfileId}.`;
+    result.errors.push(`Accepted receipt profiles for ${context.executorProfileId}: ${context.acceptedReceiptProfiles.join(", ")}.`);
+    return { result };
+  }
+
+  const partialProfileMatch = receiptProfileAccepted
+    && !receiptProfileExpected
+    && normalization.status !== "invalid"
+    && normalization.status !== "incompatible";
+
+  if (partialProfileMatch) {
+    result.validationStatus = "partially-compatible";
+    result.importStatus = "receipt-partial";
+    result.warnings.push(
+      `Receipt profile ${normalization.compatibilityProfile} was accepted via compatibility rules; ${context.expectedReceiptProfile} remains the preferred profile for ${context.executorProfileId}.`,
+    );
+  }
 
   if (!normalization.envelope) {
     return { result };
@@ -189,7 +220,10 @@ export function evaluateReceiptCompatibility(
   const note = envelope.note || `Imported ${envelope.status} receipt for ${envelope.fileName}.`;
 
   result.dispatchStatus = nextStatus;
-  result.note = note;
+  result.note = partialProfileMatch ? `${note} Accepted through compatibility rules.` : note;
+  if (partialProfileMatch) {
+    result.importStatus = "receipt-partial";
+  }
 
   return {
     result,

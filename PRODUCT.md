@@ -41,6 +41,7 @@ Resolve exports in -> canonical internal model -> planned Nuendo-ready delivery 
 - Transport-adapter packaging in `writer-run-transport-adapters.ts`
 - Receipt compatibility, normalization, and matching in `receipt-schema-registry.ts`, `receipt-normalization.ts`, and `receipt-compatibility.ts`
 - Receipt ingestion in `writer-run-receipt-ingestion.ts`
+- Executor/package compatibility validation in `executor-profile-registry.ts`, `executor-package-validation.ts`, and `executor-compatibility.ts`
 
 Those boundaries must stay separate.
 
@@ -56,10 +57,10 @@ Those boundaries must stay separate.
 - Deterministic staged delivery bundle materialization
 - Deterministic deferred-writer contracts and handoff manifests
 - Deterministic external execution packages with checksums and indexes
-- Deterministic adapter dry runs, runner requests/responses/receipts, transport packaging, filesystem dispatch bundles, and receipt-ingestion audit updates
+- Deterministic adapter dry runs, runner requests/responses/receipts, transport packaging, filesystem dispatch bundles, receipt-ingestion audit updates, and executor compatibility reports
 
 ## Current Status
-- Current phase: `Phase 3I` complete
+- Current phase: `Phase 3J` complete
 - Current real external transport path: filesystem-based only
 - Current real writer path: none
 - Current saved review persistence: browser-local only
@@ -74,10 +75,12 @@ Those boundaries must stay separate.
 - BWF/WAV and MOV/MP4 are classified but not deeply parsed.
 - Deferred binary outputs remain contracts, not generated binaries.
 - Receipt compatibility is currently limited to the defined filesystem-oriented profiles plus a future placeholder profile.
+- Executor compatibility is currently limited to canonical filesystem, compatibility filesystem, and future-placeholder executor profiles.
 - Writer adapters and runners are still reference/no-op or placeholder implementations.
+- Additional transport adapters remain intentionally deferred until a real external executor requires a second deterministic profile.
 
 ## Near-Term Roadmap
-- `Phase 3J`: harden executor/package compatibility rules and optional additional transport adapters without introducing a backend or queue
+- `Phase 3K`: only add executor/profile variants or additional transport adapters when real external executors require them and the current boundaries can stay intact
 - Continue reducing AAF compatibility fallback only when new real containers justify more parser coverage
 - Keep native Nuendo writing deferred until external execution interoperability is stable
 

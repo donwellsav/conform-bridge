@@ -1,8 +1,8 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 3I` complete
-- Next phase: `Phase 3J` external executor compatibility hardening and optional additional transport adapters
+- Current phase: `Phase 3J` complete
+- Next phase: `Phase 3K` external executor/profile expansion only when it preserves the current layered contracts
 - Ongoing parser work: reduce remaining AAF compatibility fallback only when real samples justify broader direct coverage
 
 ## Phase 1
@@ -39,11 +39,12 @@
 - [x] Add a real filesystem transport adapter
 - [x] Add deterministic receipt ingestion
 - [x] Deepen receipt compatibility, normalization, migration, and replay safety
-- [ ] Harden executor/package compatibility rules and optional additional transport adapters without introducing a backend or queue
+- [x] Harden executor/package compatibility rules without introducing a backend or queue
+- [ ] Add optional additional transport adapters or executor profiles only when a real external executor requires them and the current layered contracts remain intact
 - [ ] Keep native Nuendo/session writing out of scope until the external execution boundary is proven stable
 
-## Current Focus For Phase 3J
-- Tighten compatibility rules between packaged output, transport metadata, and inbound receipts
-- Expand transport-adapter support only if new adapters consume the same normalized contracts
-- Keep receipt normalization, transport dispatch, and audit/history as separate layers
+## Current Focus For Phase 3K
+- Keep executor compatibility sample-driven instead of speculative
+- Add new executor or transport profiles only when they consume the current normalized package, handoff, runner, and receipt contracts unchanged
 - Preserve deterministic package/signature matching across source revisions and saved review-state changes
+- Keep filesystem transport as the default real path until another path proves it can stay equally deterministic and testable

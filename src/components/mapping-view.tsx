@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { DeliveryExecutionPreview } from "@/components/delivery-execution-preview";
+import { ExecutorCompatibilityPreview } from "@/components/executor-compatibility-preview";
 import { ExternalExecutionPackagePreview } from "@/components/external-execution-package-preview";
 import { DeliveryHandoffPreview } from "@/components/delivery-handoff-preview";
 import { DeliveryStagingPreview } from "@/components/delivery-staging-preview";
@@ -258,6 +259,9 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
         </div>
         <div className="mt-5 border-t border-border/70 pt-5">
           <ExternalExecutionPackagePreview packageBundle={overlay.previewExternalPackage} />
+        </div>
+        <div className="mt-5 border-t border-border/70 pt-5">
+          <ExecutorCompatibilityPreview bundle={overlay.previewExecutorCompatibility} />
         </div>
         <div className="mt-5 border-t border-border/70 pt-5">
           <WriterAdapterPreview bundle={overlay.previewWriterAdapters} />

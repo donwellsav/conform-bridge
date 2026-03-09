@@ -29,6 +29,7 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.equal(baseOverlay.previewExecution.preparedArtifacts.find((artifact) => artifact.fileRole === "field_recorder_report")?.executionStatus, "generated");
   assert.equal(baseOverlay.previewStaging.unavailableArtifacts.length, 0);
   assert.equal(baseOverlay.previewHandoff.summaryJson.readinessStatus, "ready-for-writer");
+  assert.equal(baseOverlay.previewExecutorCompatibility.status, "compatible-with-warnings");
   assert.equal(baseOverlay.previewWriterAdapters.readiness, "ready");
   assert.equal(baseOverlay.previewWriterRuns.readiness, "ready");
   assert.equal(baseOverlay.previewWriterRuns.response.status, "simulated-noop");
@@ -61,6 +62,8 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.equal(editedOverlay.previewHandoff.summaryJson.readinessStatus, "blocked");
   assert.ok(editedOverlay.previewHandoff.deferredWriterInput.artifacts.every((artifact) => artifact.readinessStatus === "blocked"));
   assert.equal(editedOverlay.previewExternalPackage.status, "blocked");
+  assert.equal(editedOverlay.previewExecutorCompatibility.status, "blocked");
+  assert.ok(editedOverlay.previewExecutorCompatibility.result.issues.some((issue) => issue.code === "blocked_deferred_artifact"));
   assert.equal(editedOverlay.previewWriterAdapters.readiness, "blocked");
   assert.ok(editedOverlay.previewWriterAdapters.artifactMatches.every((match) => match.status === "blocked"));
   assert.equal(editedOverlay.previewWriterRuns.readiness, "blocked");

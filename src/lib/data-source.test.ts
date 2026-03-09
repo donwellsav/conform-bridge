@@ -15,6 +15,7 @@ test("imported fixture data flows through exporter planning into dashboard and j
   const deliveryPackage = dataSource.getDeliveryPackage(job.deliveryPackageId);
   const executionPlan = dataSource.getDeliveryExecutionPlan(job.id);
   const externalExecutionPackage = dataSource.getExternalExecutionPackage(job.id);
+  const executorCompatibilityBundle = dataSource.getExecutorCompatibilityBundle(job.id);
   const writerAdapterBundle = dataSource.getWriterAdapterBundle(job.id);
   const writerRunBundle = dataSource.getWriterRunBundle(job.id);
   const writerRunTransportBundle = dataSource.getWriterRunTransportBundle(job.id);
@@ -30,6 +31,7 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(deliveryPackage);
   assert.ok(executionPlan);
   assert.ok(externalExecutionPackage);
+  assert.ok(executorCompatibilityBundle);
   assert.ok(writerAdapterBundle);
   assert.ok(writerRunBundle);
   assert.ok(writerRunTransportBundle);
@@ -46,6 +48,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(stagingBundle?.entries.some((entry) => entry.kind === "deferred_descriptor"));
   assert.ok(handoffBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/deferred-writer-inputs.json")));
   assert.ok(externalExecutionPackage?.entries.some((entry) => entry.relativePath.endsWith("/package/external-execution-manifest.json")));
+  assert.ok(executorCompatibilityBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/executor-compatibility-report.json")));
+  assert.equal(executorCompatibilityBundle?.profile.id, "canonical-filesystem-executor-v1");
   assert.ok(writerAdapterBundle?.artifactMatches.length);
   assert.ok(writerAdapterBundle?.adapters.some((adapter) => adapter.id === "reference-noop-writer-adapter"));
   assert.ok(writerRunBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-requests.json")));

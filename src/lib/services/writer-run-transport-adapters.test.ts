@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { getExternalExecutionPackage, getWriterRunTransportBundle } from "../data-source";
+import { getExecutorCompatibilityBundle, getExternalExecutionPackage, getWriterRunTransportBundle } from "../data-source";
 import { writeWriterRunTransportAdapterBundleSync } from "./writer-run-transport-adapters-write";
 import { prepareWriterRunTransportAdapterBundleSync } from "./writer-run-transport-adapters";
 
@@ -14,14 +14,18 @@ test("prepareWriterRunTransportAdapterBundleSync prefers the filesystem adapter 
 
   assert.ok(packageBundle);
   assert.ok(transportBundle);
+  const compatibilityBundle = getExecutorCompatibilityBundle("job-rvr-205-aaf-only");
+  assert.ok(compatibilityBundle);
 
-  const bundle = prepareWriterRunTransportAdapterBundleSync(packageBundle, transportBundle);
-  const repeated = prepareWriterRunTransportAdapterBundleSync(packageBundle, transportBundle);
+  const bundle = prepareWriterRunTransportAdapterBundleSync(packageBundle, transportBundle, undefined, compatibilityBundle);
+  const repeated = prepareWriterRunTransportAdapterBundleSync(packageBundle, transportBundle, undefined, compatibilityBundle);
 
   assert.equal(bundle.activeAdapterId, "filesystem-transport-adapter");
   assert.equal(bundle.readiness, "ready");
+  assert.equal(bundle.executorProfileId, "canonical-filesystem-executor-v1");
   assert.equal(bundle.dispatchEnvelopes.length, transportBundle.envelopes.length);
   assert.ok(bundle.dispatchEnvelopes.every((envelope) => envelope.expectedReceiptProfile === "canonical-filesystem-transport-v1"));
+  assert.ok(bundle.dispatchEnvelopes.every((envelope) => envelope.executorProfileId === "canonical-filesystem-executor-v1"));
   assert.ok(bundle.dispatchEnvelopes.every((envelope) => envelope.files.length >= 4));
   assert.ok(bundle.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-transport-adapters.json")));
   assert.ok(bundle.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-receipt-compatibility-profiles.json")));
@@ -38,8 +42,10 @@ test("writeWriterRunTransportAdapterBundleSync materializes deterministic outbou
 
   assert.ok(packageBundle);
   assert.ok(transportBundle);
+  const compatibilityBundle = getExecutorCompatibilityBundle("job-rvr-205-aaf-only");
+  assert.ok(compatibilityBundle);
 
-  const bundle = prepareWriterRunTransportAdapterBundleSync(packageBundle, transportBundle);
+  const bundle = prepareWriterRunTransportAdapterBundleSync(packageBundle, transportBundle, undefined, compatibilityBundle);
   const tempRoot = path.join(os.tmpdir(), `conform-bridge-transport-${process.pid}-${Date.now()}`);
 
   try {
@@ -60,10 +66,13 @@ test("prepareWriterRunTransportAdapterBundleSync keeps blocked envelopes explici
 
   assert.ok(packageBundle);
   assert.ok(transportBundle);
+  const compatibilityBundle = getExecutorCompatibilityBundle("job-rvr-203-r3");
+  assert.ok(compatibilityBundle);
 
-  const bundle = prepareWriterRunTransportAdapterBundleSync(packageBundle, transportBundle);
+  const bundle = prepareWriterRunTransportAdapterBundleSync(packageBundle, transportBundle, undefined, compatibilityBundle);
 
   assert.equal(bundle.activeAdapterId, "filesystem-transport-adapter");
+  assert.equal(bundle.executorReadiness, "blocked");
   assert.equal(bundle.adapters.find((adapter) => adapter.id === "filesystem-transport-adapter")?.validation.readiness, "blocked");
   assert.ok(bundle.dispatchResults.every((result) => result.status !== "dispatched"));
 });

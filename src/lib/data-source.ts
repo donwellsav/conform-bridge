@@ -5,6 +5,7 @@ import { countMappingReviews, getFieldRecorderDecision } from "./mapping-workflo
 import { createImportedReviewSignature, createReviewStateSourceSignature, type ReviewJobContext } from "./review-state";
 import { prepareDeliveryExecutionSync } from "./services/delivery-execution";
 import { prepareExternalExecutionPackageSync } from "./services/external-execution-package";
+import { prepareExecutorCompatibilityBundleSync } from "./services/executor-compatibility";
 import { prepareDeliveryHandoffSync } from "./services/delivery-handoff";
 import { createImportedBaseReviewInfluence, prepareDeliveryStagingSync } from "./services/delivery-staging";
 import { planNuendoDeliverySync } from "./services/exporter";
@@ -12,6 +13,7 @@ import { importFixtureLibrarySync, type ImportedIntakeData } from "./services/im
 import { prepareWriterAdapterBundleSync } from "./services/writer-adapters";
 import { prepareWriterRunBundleSync } from "./services/writer-runner";
 import { prepareWriterRunTransportBundleSync } from "./services/writer-run-transport";
+import { createDefaultWriterRunTransportAdapters } from "./services/writer-run-transport-registry";
 import { prepareWriterRunTransportAdapterBundleSync } from "./services/writer-run-transport-adapters";
 import { readWriterRunReceiptSourcesSync } from "./services/writer-run-receipt-ingestion-read";
 import { ingestWriterRunReceiptsSync } from "./services/writer-run-receipt-ingestion";
@@ -24,6 +26,7 @@ import type {
   DashboardMetric,
   DeliveryArtifact,
   DeliveryExecutionPlan,
+  ExecutorCompatibilityBundle,
   ExternalExecutionPackage,
   DeliveryHandoffBundle,
   DeliveryPackage,
@@ -53,6 +56,7 @@ interface ImportedAppData extends ImportedIntakeData {
   deliveryStagingBundles: DeliveryStagingBundle[];
   deliveryHandoffBundles: DeliveryHandoffBundle[];
   externalExecutionPackages: ExternalExecutionPackage[];
+  executorCompatibilityBundles: ExecutorCompatibilityBundle[];
   writerAdapterBundles: WriterAdapterBundle[];
   writerRunBundles: WriterRunBundle[];
   writerRunTransportBundles: WriterRunTransportBundle[];
@@ -148,6 +152,7 @@ function createImportedAppData(): ImportedAppData {
       deliveryStagingBundles: [],
       deliveryHandoffBundles: [],
       externalExecutionPackages: [],
+      executorCompatibilityBundles: [],
       writerAdapterBundles: [],
       writerRunBundles: [],
       writerRunTransportBundles: [],
@@ -320,9 +325,20 @@ function createImportedAppData(): ImportedAppData {
       writerAdapterBundle,
       writerRunBundle,
     );
+    const transportAdapters = createDefaultWriterRunTransportAdapters(updatedJob.id);
+    const executorCompatibilityBundle = prepareExecutorCompatibilityBundleSync({
+      packageBundle: externalExecutionPackage,
+      handoffBundle,
+      writerAdapterBundle,
+      writerRunBundle,
+      transportBundle: writerRunTransportBundle,
+      transportAdapters,
+    });
     const writerRunTransportAdapterBundle = prepareWriterRunTransportAdapterBundleSync(
       externalExecutionPackage,
       writerRunTransportBundle,
+      transportAdapters,
+      executorCompatibilityBundle,
     );
     const writerRunReceiptSources = readFixtureTransportReceiptSources(updatedJob.id);
     const writerRunReceiptIngestionBundle = ingestWriterRunReceiptsSync(
@@ -330,6 +346,7 @@ function createImportedAppData(): ImportedAppData {
       writerRunTransportBundle,
       writerRunTransportAdapterBundle,
       writerRunReceiptSources,
+      executorCompatibilityBundle,
     );
 
     return {
@@ -342,6 +359,7 @@ function createImportedAppData(): ImportedAppData {
       stagingBundle,
       handoffBundle,
       externalExecutionPackage,
+      executorCompatibilityBundle,
       writerAdapterBundle,
       writerRunBundle,
       writerRunTransportBundle,
@@ -361,6 +379,7 @@ function createImportedAppData(): ImportedAppData {
     deliveryStagingBundles: jobRecords.map((record) => record.stagingBundle),
     deliveryHandoffBundles: jobRecords.map((record) => record.handoffBundle),
     externalExecutionPackages: jobRecords.map((record) => record.externalExecutionPackage),
+    executorCompatibilityBundles: jobRecords.map((record) => record.executorCompatibilityBundle),
     writerAdapterBundles: jobRecords.map((record) => record.writerAdapterBundle),
     writerRunBundles: jobRecords.map((record) => record.writerRunBundle),
     writerRunTransportBundles: jobRecords.map((record) => record.writerRunTransportBundle),
@@ -400,6 +419,7 @@ export const deliveryExecutionPlans = hasImportedBundles ? importedData.delivery
 export const deliveryStagingBundles = hasImportedBundles ? importedData.deliveryStagingBundles : [];
 export const deliveryHandoffBundles = hasImportedBundles ? importedData.deliveryHandoffBundles : [];
 export const externalExecutionPackages = hasImportedBundles ? importedData.externalExecutionPackages : [];
+export const executorCompatibilityBundles = hasImportedBundles ? importedData.executorCompatibilityBundles : [];
 export const writerAdapterBundles = hasImportedBundles ? importedData.writerAdapterBundles : [];
 export const writerRunBundles = hasImportedBundles ? importedData.writerRunBundles : [];
 export const writerRunTransportBundles = hasImportedBundles ? importedData.writerRunTransportBundles : [];
@@ -426,6 +446,7 @@ const deliveryExecutionPlanMap = new Map(deliveryExecutionPlans.map((plan) => [p
 const deliveryStagingBundleMap = new Map(deliveryStagingBundles.map((bundle) => [bundle.jobId, bundle]));
 const deliveryHandoffBundleMap = new Map(deliveryHandoffBundles.map((bundle) => [bundle.jobId, bundle]));
 const externalExecutionPackageMap = new Map(externalExecutionPackages.map((bundle) => [bundle.jobId, bundle]));
+const executorCompatibilityBundleMap = new Map(executorCompatibilityBundles.map((bundle) => [bundle.jobId, bundle]));
 const writerAdapterBundleMap = new Map(writerAdapterBundles.map((bundle) => [bundle.jobId, bundle]));
 const writerRunBundleMap = new Map(writerRunBundles.map((bundle) => [bundle.jobId, bundle]));
 const writerRunTransportBundleMap = new Map(writerRunTransportBundles.map((bundle) => [bundle.jobId, bundle]));
@@ -530,6 +551,10 @@ export function getDeliveryHandoffBundle(jobId: string): DeliveryHandoffBundle |
 
 export function getExternalExecutionPackage(jobId: string): ExternalExecutionPackage | undefined {
   return externalExecutionPackageMap.get(jobId);
+}
+
+export function getExecutorCompatibilityBundle(jobId: string): ExecutorCompatibilityBundle | undefined {
+  return executorCompatibilityBundleMap.get(jobId);
 }
 
 export function getWriterAdapterBundle(jobId: string): WriterAdapterBundle | undefined {

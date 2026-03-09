@@ -1,8 +1,15 @@
 import { joinPath, stableToken } from "./writer-run-audit";
+import { createExecutorTransportProfileId, resolveExecutorCompatibilityProfileId } from "./executor-profile-registry";
 import { listReceiptSchemaDescriptors } from "./receipt-schema-registry";
 import { createDefaultWriterRunTransportAdapters } from "./writer-run-transport-registry";
 import type {
+  ExecutorCompatibilityArtifactResult,
+  ExecutorCompatibilityBundle,
+  ExecutorCompatibilityProfileId,
+  ExecutorPackageReadiness,
   ExternalExecutionPackage,
+  ReceiptCompatibilityProfile,
+  WriterRunBlockedReason,
   WriterRunDispatchEnvelope,
   WriterRunDispatchFile,
   WriterRunDispatchResult,
@@ -31,12 +38,93 @@ function createDispatchId(jobId: string, artifactId: string, correlationId: stri
   return `dispatch-${jobId}-${artifactId}-${stableToken(jobId, artifactId, correlationId)}`;
 }
 
+function defaultExecutorReadiness(packageStatus: ExternalExecutionPackage["status"]): ExecutorPackageReadiness {
+  switch (packageStatus) {
+    case "ready":
+      return "compatible";
+    case "partial":
+      return "partial";
+    case "blocked":
+      return "blocked";
+  }
+}
+
+function sortReceiptProfiles(profiles: ReceiptCompatibilityProfile[]) {
+  return [...profiles].sort((left, right) => left.localeCompare(right));
+}
+
+function sortBlockedReasons(reasons: WriterRunBlockedReason[]) {
+  return [...reasons].sort((left, right) =>
+    `${left.code}:${left.artifactId ?? ""}:${left.message}`.localeCompare(`${right.code}:${right.artifactId ?? ""}:${right.message}`),
+  );
+}
+
+function findArtifactCompatibilityResult(
+  executorCompatibilityBundle: ExecutorCompatibilityBundle | undefined,
+  artifactId: string,
+) {
+  return executorCompatibilityBundle?.result.artifactResults.find((artifact) => artifact.artifactId === artifactId);
+}
+
+function compatibilityDispatchability(
+  executorCompatibilityBundle: ExecutorCompatibilityBundle | undefined,
+  artifactCompatibility: ExecutorCompatibilityArtifactResult | undefined,
+) {
+  if (!executorCompatibilityBundle) {
+    return {
+      dispatchable: true,
+      dispatchReason: undefined,
+      blockedReasons: [] as WriterRunBlockedReason[],
+    };
+  }
+
+  const readiness = artifactCompatibility?.readiness ?? executorCompatibilityBundle.status;
+  if (readiness === "compatible" || readiness === "compatible-with-warnings") {
+    return {
+      dispatchable: true,
+      dispatchReason: undefined,
+      blockedReasons: [] as WriterRunBlockedReason[],
+    };
+  }
+
+  const primaryIssue = artifactCompatibility?.issues.find((issue) => issue.blocking)
+    ?? artifactCompatibility?.issues[0]
+    ?? executorCompatibilityBundle.result.issues.find((issue) => issue.blocking)
+    ?? executorCompatibilityBundle.result.issues[0];
+  const message = primaryIssue?.message
+    ?? (readiness === "partial"
+      ? "Executor compatibility remains partial for this deferred artifact."
+      : "Executor compatibility currently blocks dispatch for this deferred artifact.");
+  const reasonCode: WriterRunBlockedReason["code"] = readiness === "incompatible" || readiness === "unsupported"
+    ? "unsupported_capability"
+    : readiness === "partial"
+      ? "dependency_gap"
+      : "artifact_blocked";
+
+  return {
+    dispatchable: false,
+    dispatchReason: message,
+    blockedReasons: [
+      {
+        code: reasonCode,
+        artifactId: artifactCompatibility?.artifactId,
+        message,
+      },
+    ],
+  };
+}
+
 function createDispatchFiles(
   packageBundle: ExternalExecutionPackage,
   transportBundle: WriterRunTransportBundle,
   envelope: WriterRunTransportBundle["envelopes"][number],
   dispatchId: string,
   relativeOutboundRoot: string,
+  adapterId: WriterRunTransportAdapter["id"],
+  executorProfileId: ExecutorCompatibilityProfileId,
+  executorReadiness: ExecutorPackageReadiness,
+  expectedReceiptProfile: ReceiptCompatibilityProfile,
+  acceptedReceiptProfiles: ReceiptCompatibilityProfile[],
 ): WriterRunDispatchFile[] {
   const packageEntrySummaries = packageBundle.entries
     .map((entry) => ({
@@ -62,7 +150,9 @@ function createDispatchFiles(
   const summary = {
     schemaVersion: 1,
     dispatchId,
-    adapterId: "filesystem-transport-adapter",
+    adapterId,
+    executorProfileId,
+    executorReadiness,
     transportId: envelope.transportId,
     artifactId: envelope.artifactId,
     fileName: envelope.fileName,
@@ -71,17 +161,19 @@ function createDispatchFiles(
     dependencyIds: envelope.dependencyIds,
     blockedReasons: envelope.blockedReasons,
     outboundRoot: relativeOutboundRoot,
-    expectedReceiptProfile: "canonical-filesystem-transport-v1",
-    acceptedReceiptProfiles: ["canonical-filesystem-transport-v1", "compatibility-filesystem-receipt-v1", "future-service-transport-placeholder"],
+    expectedReceiptProfile,
+    acceptedReceiptProfiles,
   };
   const receiptCompatibility = {
     schemaVersion: 1,
     dispatchId,
+    executorProfileId,
+    executorReadiness,
     artifactId: envelope.artifactId,
     fileName: envelope.fileName,
-    expectedReceiptProfile: "canonical-filesystem-transport-v1",
+    expectedReceiptProfile,
     expectedReceiptVersion: 1,
-    acceptedReceiptProfiles: ["canonical-filesystem-transport-v1", "compatibility-filesystem-receipt-v1", "future-service-transport-placeholder"],
+    acceptedReceiptProfiles,
     sourceSignature: envelope.sourceSignature,
     reviewSignature: envelope.reviewSignature,
     deliveryPackageSignature: envelope.deliveryPackageSignature,
@@ -124,16 +216,52 @@ function createDispatchEnvelope(
   transportBundle: WriterRunTransportBundle,
   adapter: WriterRunTransportAdapter,
   envelope: WriterRunTransportBundle["envelopes"][number],
+  executorCompatibilityBundle: ExecutorCompatibilityBundle | undefined,
 ): WriterRunDispatchEnvelope {
   const dispatchId = createDispatchId(packageBundle.jobId, envelope.artifactId, envelope.correlationId);
   const relativeOutboundRoot = joinPath(adapter.endpoint.outboundPath, dispatchId);
-  const files = createDispatchFiles(packageBundle, transportBundle, envelope, dispatchId, relativeOutboundRoot);
-  const dispatchStatus: WriterRunDispatchResultStatus = envelope.dispatchable ? "dispatched" : envelope.envelopeStatus === "cancelled" ? "blocked" : "dispatch-failed";
+  const transportProfile = createExecutorTransportProfileId(adapter.id);
+  const executorProfileId = executorCompatibilityBundle?.profile.id
+    ?? resolveExecutorCompatibilityProfileId(transportProfile);
+  const executorReadiness = executorCompatibilityBundle?.status ?? defaultExecutorReadiness(packageBundle.status);
+  const expectedReceiptProfile = executorCompatibilityBundle?.profileResolution.expectedReceiptProfile ?? "canonical-filesystem-transport-v1";
+  const acceptedReceiptProfiles = sortReceiptProfiles(
+    executorCompatibilityBundle?.profileResolution.acceptedReceiptProfiles ?? adapter.receiptCompatibilityProfiles,
+  );
+  const artifactCompatibility = findArtifactCompatibilityResult(executorCompatibilityBundle, envelope.artifactId);
+  const compatibilityState = compatibilityDispatchability(executorCompatibilityBundle, artifactCompatibility);
+  const dispatchable = envelope.dispatchable && compatibilityState.dispatchable;
+  const blockedReasons = sortBlockedReasons([...envelope.blockedReasons, ...compatibilityState.blockedReasons]);
+  const dispatchReason = compatibilityState.dispatchReason ?? envelope.dispatchReason;
+  const files = createDispatchFiles(
+    packageBundle,
+    transportBundle,
+    {
+      ...envelope,
+      dispatchable,
+      dispatchReason,
+      blockedReasons,
+    },
+    dispatchId,
+    relativeOutboundRoot,
+    adapter.id,
+    executorProfileId,
+    executorReadiness,
+    expectedReceiptProfile,
+    acceptedReceiptProfiles,
+  );
+  const dispatchStatus: WriterRunDispatchResultStatus = dispatchable
+    ? "dispatched"
+    : envelope.envelopeStatus === "cancelled" || executorReadiness === "blocked" || artifactCompatibility?.readiness === "blocked" || artifactCompatibility?.readiness === "partial"
+      ? "blocked"
+      : "dispatch-failed";
 
   return {
     version: 1,
     id: `writer-run-dispatch-envelope-${envelope.artifactId}-${stableToken(dispatchId, envelope.id)}`,
     adapterId: adapter.id,
+    executorProfileId,
+    executorReadiness,
     transportId: envelope.transportId,
     dispatchId,
     correlationId: envelope.correlationId,
@@ -148,8 +276,8 @@ function createDispatchEnvelope(
     fileName: envelope.fileName,
     requestReadiness: envelope.requestReadiness,
     dispatchStatus,
-    dispatchable: envelope.dispatchable,
-    dispatchReason: envelope.dispatchReason,
+    dispatchable,
+    dispatchReason,
     sourceSignature: envelope.sourceSignature,
     reviewSignature: envelope.reviewSignature,
     deliveryPackageSignature: envelope.deliveryPackageSignature,
@@ -158,18 +286,18 @@ function createDispatchEnvelope(
     endpoint: adapter.endpoint,
     outboundRoot: adapter.endpoint.outboundPath,
     relativeOutboundRoot,
-    expectedReceiptProfile: "canonical-filesystem-transport-v1",
-    acceptedReceiptProfiles: [...adapter.receiptCompatibilityProfiles].sort((left, right) => left.localeCompare(right)),
+    expectedReceiptProfile,
+    acceptedReceiptProfiles,
     expectedReceiptVersion: 1,
     dependencyIds: [...envelope.dependencyIds].sort((left, right) => left.localeCompare(right)),
-    blockedReasons: [...envelope.blockedReasons].sort((left, right) =>
-      `${left.code}:${left.artifactId ?? ""}:${left.message}`.localeCompare(`${right.code}:${right.artifactId ?? ""}:${right.message}`),
-    ),
+    blockedReasons,
     payload: {
       ...envelope.payload,
       dispatchId,
       adapterId: adapter.id,
       endpoint: adapter.endpoint,
+      executorProfileId,
+      executorReadiness,
     },
     files,
   };
@@ -179,6 +307,8 @@ function createDispatchResult(envelope: WriterRunDispatchEnvelope): WriterRunDis
   return {
     id: `writer-run-dispatch-result-${envelope.artifactId}-${stableToken(envelope.id, envelope.dispatchStatus)}`,
     adapterId: envelope.adapterId,
+    executorProfileId: envelope.executorProfileId,
+    executorReadiness: envelope.executorReadiness,
     dispatchId: envelope.dispatchId,
     correlationId: envelope.correlationId,
     artifactId: envelope.artifactId,
@@ -218,6 +348,7 @@ export function prepareWriterRunTransportAdapterBundleSync(
   packageBundle: ExternalExecutionPackage,
   transportBundle: WriterRunTransportBundle,
   adapters: WriterRunTransportAdapter[] = createDefaultWriterRunTransportAdapters(packageBundle.jobId),
+  executorCompatibilityBundle?: ExecutorCompatibilityBundle,
 ): WriterRunTransportAdapterBundle {
   const declaredReceiptProfiles = listReceiptSchemaDescriptors();
   const adapterResults = adapters.map((adapter) => ({
@@ -232,10 +363,18 @@ export function prepareWriterRunTransportAdapterBundleSync(
   const activeAdapter = chooseActiveAdapter(adapters);
   const activeAdapterResult = adapterResults.find((adapter) => adapter.id === activeAdapter.id);
   const dispatchEnvelopes = transportBundle.envelopes
-    .map((envelope) => createDispatchEnvelope(packageBundle, transportBundle, activeAdapter, envelope))
+    .map((envelope) => createDispatchEnvelope(packageBundle, transportBundle, activeAdapter, envelope, executorCompatibilityBundle))
     .sort((left, right) => left.fileName.localeCompare(right.fileName));
   const dispatchResults = sortResults(dispatchEnvelopes.map((envelope) => createDispatchResult(envelope)));
   const readiness = activeAdapterResult?.validation.readiness ?? "unsupported";
+  const transportProfile = createExecutorTransportProfileId(activeAdapter.id);
+  const executorProfileId = executorCompatibilityBundle?.profile.id
+    ?? resolveExecutorCompatibilityProfileId(transportProfile);
+  const executorReadiness = executorCompatibilityBundle?.status ?? defaultExecutorReadiness(packageBundle.status);
+  const acceptedReceiptProfiles = sortReceiptProfiles(
+    executorCompatibilityBundle?.profileResolution.acceptedReceiptProfiles ?? activeAdapter.receiptCompatibilityProfiles,
+  );
+  const expectedReceiptProfile = executorCompatibilityBundle?.profileResolution.expectedReceiptProfile ?? acceptedReceiptProfiles[0] ?? "canonical-filesystem-transport-v1";
   const entries: WriterRunTransportAdapterEntry[] = [
     createEntry(
       joinPath(packageBundle.rootRelativePath, "handoff", "writer-run-transport-adapters.json"),
@@ -246,6 +385,8 @@ export function prepareWriterRunTransportAdapterBundleSync(
         packageId: packageBundle.id,
         adapters: adapterResults,
         activeAdapterId: activeAdapter.id,
+        executorProfileId,
+        executorReadiness,
       }, null, 2),
       "Available transport adapters and validation results for the current writer-run transport bundle.",
     ),
@@ -257,6 +398,8 @@ export function prepareWriterRunTransportAdapterBundleSync(
         version: 1,
         packageId: packageBundle.id,
         activeAdapterId: activeAdapter.id,
+        executorProfileId,
+        executorReadiness,
         dispatchEnvelopes,
       }, null, 2),
       "Normalized outbound dispatch envelopes for the active transport adapter.",
@@ -269,6 +412,8 @@ export function prepareWriterRunTransportAdapterBundleSync(
         version: 1,
         packageId: packageBundle.id,
         activeAdapterId: activeAdapter.id,
+        executorProfileId,
+        executorReadiness,
         dispatchResults,
       }, null, 2),
       "Deterministic dispatch results for the active transport adapter.",
@@ -281,6 +426,10 @@ export function prepareWriterRunTransportAdapterBundleSync(
         version: 1,
         packageId: packageBundle.id,
         activeAdapterId: activeAdapter.id,
+        executorProfileId,
+        executorReadiness,
+        expectedReceiptProfile,
+        acceptedReceiptProfiles,
         declaredReceiptProfiles,
       }, null, 2),
       "Declared receipt compatibility profiles and expected schema versions for filesystem dispatch packaging.",
@@ -308,6 +457,8 @@ export function prepareWriterRunTransportAdapterBundleSync(
     sourceSignature: packageBundle.sourceSignature,
     reviewSignature: packageBundle.reviewSignature,
     deliveryPackageSignature: packageBundle.deliveryPackageSignature,
+    executorProfileId,
+    executorReadiness,
     adapters: adapterResults,
     activeAdapterId: activeAdapter.id,
     declaredReceiptProfiles,

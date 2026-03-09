@@ -42,7 +42,7 @@ export function WriterRunTransportAdapterPreview({ bundle }: { bundle: WriterRun
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Active adapter</p>
           <p className="mt-2 text-sm font-semibold text-foreground">{bundle.activeAdapterId}</p>
-          <p className="mt-2 text-xs text-muted">{bundle.declaredReceiptProfiles[0]?.profile ?? "no declared profile"}</p>
+          <p className="mt-2 text-xs text-muted">{bundle.executorProfileId} / {bundle.executorReadiness}</p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Dispatch packages</p>
@@ -92,6 +92,7 @@ export function WriterRunTransportAdapterPreview({ bundle }: { bundle: WriterRun
             </div>
             <p className="mt-2 text-sm text-muted">{result.note}</p>
             <p className="mt-2 text-xs text-muted">correlation {result.correlationId} / adapter {result.adapterId}</p>
+            <p className="mt-2 text-xs text-muted">executor {result.executorProfileId} / {result.executorReadiness} / expected receipt {result.expectedReceiptProfile}</p>
           </div>
         ))}
       </div>

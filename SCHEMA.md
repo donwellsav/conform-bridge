@@ -655,6 +655,8 @@ Adapter that packages outbound dispatch payloads for an external execution envir
 - `sourceSignature`
 - `reviewSignature`
 - `deliveryPackageSignature`
+- `executorProfileId`
+- `executorReadiness`
 - `adapters`
 - `activeAdapterId`
 - `declaredReceiptProfiles`
@@ -719,6 +721,8 @@ Compatibility-aware validation and match result for one receipt import.
 - `id`
 - `sourceFileName`
 - `sourcePath`
+- `executorProfileId`
+- `expectedReceiptProfile`
 - `normalizationStatus`
 - `compatibilityProfile`
 - `payloadSource`
@@ -745,6 +749,9 @@ Aggregate receipt-import view after normalization, compatibility checks, and aud
 - `sourceSignature`
 - `reviewSignature`
 - `deliveryPackageSignature`
+- `executorProfileId`
+- `expectedReceiptProfile`
+- `acceptedReceiptProfiles`
 - `normalizationResults`
 - `compatibilityProfiles`
 - `receipts`
@@ -756,6 +763,79 @@ Aggregate receipt-import view after normalization, compatibility checks, and aud
 - `summary`
 
 ## Orchestration Entity
+
+## Layer 14: Executor Compatibility
+
+### ExecutorCompatibilityProfile
+Executor-facing compatibility contract describing which packaged outputs, transport profiles, receipt profiles, and deferred artifact kinds are acceptable.
+- `id`
+- `version`
+- `label`
+- `description`
+- `capabilityMatrix`
+- `unsupportedReasons`
+
+### ExecutorProfileResolution
+Deterministic selection of executor profile, transport profile, and receipt expectations for one package.
+- `id`
+- `packageId`
+- `selectedProfileId`
+- `selectedTransportProfile`
+- `expectedReceiptProfile`
+- `acceptedReceiptProfiles`
+- `packageVersion`
+- `handoffVersion`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `note`
+
+### ExecutorPackageCompatibilityResult
+Package-level compatibility result for a selected executor profile.
+- `id`
+- `packageId`
+- `jobId`
+- `deliveryPackageId`
+- `profileId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `readiness`
+- `issues`
+- `unsupportedReasons`
+- `artifactResults`
+- `summary`
+
+### ExecutorCompatibilityIssue
+Compatibility finding covering package, handoff, transport, receipt, artifact, or signature mismatches.
+- `id`
+- `code`
+- `severity`
+- `scope`
+- `artifactId`
+- `relativePath`
+- `expected`
+- `actual`
+- `message`
+- `followUp`
+- `blocking`
+
+### ExecutorCompatibilityBundle
+Aggregate executor compatibility view emitted into handoff outputs.
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `rootRelativePath`
+- `packageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `profile`
+- `profileResolution`
+- `result`
+- `entries`
+- `status`
+- `summary`
 
 ### TranslationJob
 Operator-facing record that ties the full workflow together.
@@ -785,7 +865,7 @@ Operator-facing record that ties the full workflow together.
 - One `TranslationJob` references one `SourceBundle`, one `TranslationModel`, one `AnalysisReport`, and one `DeliveryPackage`.
 - One `TranslationModel` contains one or more `NormalizedTimeline` records.
 - Review-state overlays persist decisions against source signatures without duplicating imported canonical data.
-- One `DeliveryPackage` may produce one execution plan, one staging bundle, one handoff bundle, one external execution package, one adapter bundle, one runner bundle, one transport bundle, one transport-adapter bundle, and one receipt-ingestion bundle.
+- One `DeliveryPackage` may produce one execution plan, one staging bundle, one handoff bundle, one external execution package, one executor compatibility bundle, one adapter bundle, one runner bundle, one transport bundle, one transport-adapter bundle, and one receipt-ingestion bundle.
 
 ## Current Repo Rules
 - IDs and seeded dates are deterministic in fixtures and fallback data.

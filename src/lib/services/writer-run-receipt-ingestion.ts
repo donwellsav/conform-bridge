@@ -2,6 +2,7 @@ import { evaluateReceiptCompatibility } from "./receipt-compatibility";
 import { normalizeReceiptSource } from "./receipt-normalization";
 import { aggregateDispatchStatus, joinPath, sortAuditEvents, stableToken } from "./writer-run-audit";
 import type {
+  ExecutorCompatibilityBundle,
   ExternalExecutionPackage,
   ReceiptNormalizationResult,
   WriterRunAuditEvent,
@@ -243,6 +244,7 @@ export function ingestWriterRunReceiptsSync(
   transportBundle: WriterRunTransportBundle,
   adapterBundle: WriterRunTransportAdapterBundle,
   receiptSources: WriterRunReceiptSourceFile[],
+  executorCompatibilityBundle?: ExecutorCompatibilityBundle,
 ): WriterRunReceiptIngestionBundle {
   const sortedSources = sortReceiptSources(receiptSources);
   const normalizationResults = sortedSources.map((source) => normalizeReceiptSource(source));
@@ -263,6 +265,9 @@ export function ingestWriterRunReceiptsSync(
       packageBundle,
       transportBundle,
       adapterBundle,
+      executorProfileId: executorCompatibilityBundle?.profile.id ?? adapterBundle.executorProfileId,
+      expectedReceiptProfile: executorCompatibilityBundle?.profileResolution.expectedReceiptProfile ?? adapterBundle.dispatchEnvelopes[0]?.expectedReceiptProfile ?? "canonical-filesystem-transport-v1",
+      acceptedReceiptProfiles: executorCompatibilityBundle?.profileResolution.acceptedReceiptProfiles ?? adapterBundle.dispatchEnvelopes[0]?.acceptedReceiptProfiles ?? ["canonical-filesystem-transport-v1"],
       importedCorrelations,
       importedFingerprints,
     }, normalization);
@@ -298,6 +303,9 @@ export function ingestWriterRunReceiptsSync(
       JSON.stringify({
         version: 1,
         packageId: packageBundle.id,
+        executorProfileId: executorCompatibilityBundle?.profile.id ?? adapterBundle.executorProfileId,
+        expectedReceiptProfile: executorCompatibilityBundle?.profileResolution.expectedReceiptProfile ?? adapterBundle.dispatchEnvelopes[0]?.expectedReceiptProfile ?? "canonical-filesystem-transport-v1",
+        acceptedReceiptProfiles: executorCompatibilityBundle?.profileResolution.acceptedReceiptProfiles ?? adapterBundle.dispatchEnvelopes[0]?.acceptedReceiptProfiles ?? ["canonical-filesystem-transport-v1"],
         profiles: adapterBundle.declaredReceiptProfiles,
       }, null, 2),
       "Declared receipt compatibility profiles and supported schema versions for inbound receipt ingestion.",
@@ -364,6 +372,9 @@ export function ingestWriterRunReceiptsSync(
     sourceSignature: packageBundle.sourceSignature,
     reviewSignature: packageBundle.reviewSignature,
     deliveryPackageSignature: packageBundle.deliveryPackageSignature,
+    executorProfileId: executorCompatibilityBundle?.profile.id ?? adapterBundle.executorProfileId,
+    expectedReceiptProfile: executorCompatibilityBundle?.profileResolution.expectedReceiptProfile ?? adapterBundle.dispatchEnvelopes[0]?.expectedReceiptProfile ?? "canonical-filesystem-transport-v1",
+    acceptedReceiptProfiles: executorCompatibilityBundle?.profileResolution.acceptedReceiptProfiles ?? adapterBundle.dispatchEnvelopes[0]?.acceptedReceiptProfiles ?? ["canonical-filesystem-transport-v1"],
     normalizationResults,
     compatibilityProfiles: adapterBundle.declaredReceiptProfiles,
     receipts: normalizedReceipts,

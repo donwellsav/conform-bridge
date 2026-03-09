@@ -93,6 +93,7 @@ export type WriterRunDispatchEnvelopeVersion = 1;
 export type WriterRunReceiptEnvelopeVersion = 1;
 export type WriterRunTransportAdapterVersion = 1;
 export type ReceiptCompatibilityVersion = 1;
+export type ExecutorCompatibilityVersion = 1;
 export type WriterRunnerReadiness = "ready" | "partial" | "blocked" | "unsupported";
 export type WriterRunResponseStatus = "simulated-noop" | "partial" | "blocked" | "unsupported";
 export type WriterRunRequestId = string;
@@ -180,6 +181,21 @@ export type ReceiptCompatibilityProfile =
   | "canonical-filesystem-transport-v1"
   | "compatibility-filesystem-receipt-v1"
   | "future-service-transport-placeholder";
+export type ExecutorCompatibilityProfileId =
+  | "canonical-filesystem-executor-v1"
+  | "compatibility-filesystem-executor-v1"
+  | "future-service-executor-placeholder";
+export type ExecutorSupportedArtifactKind = DeferredWriterArtifactKind;
+export type ExecutorSupportedTransportProfile = "filesystem-transport-adapter@1" | "reference-noop-transport-adapter@1";
+export type ExecutorSupportedReceiptProfile = ReceiptCompatibilityProfile;
+export type ExecutorCompatibilitySeverity = "info" | "warning" | "error";
+export type ExecutorPackageReadiness =
+  | "compatible"
+  | "compatible-with-warnings"
+  | "partial"
+  | "incompatible"
+  | "unsupported"
+  | "blocked";
 export type ReceiptPayloadSource = "canonical-json" | "compatibility-json" | "future-placeholder-json" | "unknown-json";
 export type ReceiptSchemaMatchStatus = "matched" | "migrated" | "incompatible" | "unknown-version";
 export type ReceiptSignatureMatchResult = "matched" | "drifted" | "stale" | "superseded" | "unmatched";
@@ -1543,6 +1559,161 @@ export interface WriterRunTransportBundle {
   summary: string;
 }
 
+export interface ExecutorVersionConstraint {
+  supportedVersions: number[];
+  note: string;
+}
+
+export interface ExecutorCapabilityMatrix {
+  packageVersions: ExecutorVersionConstraint;
+  handoffVersions: ExecutorVersionConstraint;
+  transportAdapterVersions: ExecutorVersionConstraint;
+  supportedTransportProfiles: ExecutorSupportedTransportProfile[];
+  supportedReceiptProfiles: ExecutorSupportedReceiptProfile[];
+  expectedReceiptProfile: ExecutorSupportedReceiptProfile;
+  supportedDeferredArtifactKinds: ExecutorSupportedArtifactKind[];
+  requiredPackageMembers: string[];
+  optionalPackageMembers: string[];
+  requiredGeneratedPayloadKinds: GeneratedArtifactPayloadKind[];
+  optionalGeneratedPayloadKinds: GeneratedArtifactPayloadKind[];
+}
+
+export interface ExecutorCompatibilityProfile {
+  id: ExecutorCompatibilityProfileId;
+  version: ExecutorCompatibilityVersion;
+  label: string;
+  description: string;
+  capabilityMatrix: ExecutorCapabilityMatrix;
+  unsupportedReasons: string[];
+}
+
+export interface ExecutorCompatibilityIssue {
+  id: string;
+  code:
+    | "unsupported_package_version"
+    | "unsupported_handoff_version"
+    | "unsupported_transport_profile"
+    | "unsupported_receipt_profile"
+    | "missing_required_package_member"
+    | "missing_required_generated_payload"
+    | "unsupported_deferred_artifact_kind"
+    | "blocked_deferred_artifact"
+    | "partial_deferred_artifact"
+    | "package_status_blocked"
+    | "package_status_partial"
+    | "signature_mismatch"
+    | "adapter_readiness_gap"
+    | "runner_readiness_gap"
+    | "receipt_profile_warning"
+    | "optional_member_missing";
+  severity: ExecutorCompatibilitySeverity;
+  scope: "package" | "handoff" | "transport" | "receipt" | "artifact" | "signature";
+  artifactId?: string;
+  relativePath?: string;
+  expected?: string;
+  actual?: string;
+  message: string;
+  followUp: string;
+  blocking: boolean;
+}
+
+export interface ExecutorPackageUnsupportedReason {
+  code:
+    | "profile_not_supported"
+    | "transport_profile_not_supported"
+    | "receipt_profile_not_supported"
+    | "artifact_kind_not_supported"
+    | "version_not_supported";
+  message: string;
+  artifactId?: string;
+}
+
+export interface ExecutorCompatibilityArtifactResult {
+  artifactId: string;
+  fileName: string;
+  artifactKind: DeferredWriterArtifactKind;
+  requiredWriterCapability: WriterCapability;
+  readiness: ExecutorPackageReadiness;
+  issues: ExecutorCompatibilityIssue[];
+  warnings: string[];
+}
+
+export interface ExecutorProfileResolution {
+  id: string;
+  packageId: string;
+  selectedProfileId: ExecutorCompatibilityProfileId;
+  selectedTransportProfile: ExecutorSupportedTransportProfile;
+  expectedReceiptProfile: ExecutorSupportedReceiptProfile;
+  acceptedReceiptProfiles: ExecutorSupportedReceiptProfile[];
+  packageVersion: ExternalExecutionPackageVersion;
+  handoffVersion: DeferredWriterInputVersion;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  note: string;
+}
+
+export interface ExecutorCompatibilitySummary {
+  compatibleArtifactCount: number;
+  warningArtifactCount: number;
+  partialArtifactCount: number;
+  incompatibleArtifactCount: number;
+  blockedArtifactCount: number;
+  issueCount: number;
+  warningCount: number;
+  blockingCount: number;
+  note: string;
+}
+
+export interface ExecutorPackageCompatibilityResult {
+  id: string;
+  packageId: string;
+  jobId: string;
+  deliveryPackageId: string;
+  profileId: ExecutorCompatibilityProfileId;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  readiness: ExecutorPackageReadiness;
+  issues: ExecutorCompatibilityIssue[];
+  unsupportedReasons: ExecutorPackageUnsupportedReason[];
+  artifactResults: ExecutorCompatibilityArtifactResult[];
+  summary: ExecutorCompatibilitySummary;
+}
+
+export interface ExecutorCompatibilityEntry {
+  kind: "executor_compatibility_entry";
+  relativePath: string;
+  fileName:
+    | "executor-profile-resolution.json"
+    | "executor-compatibility-report.json"
+    | "executor-compatibility-summary.json";
+  payloadKind:
+    | "executor_profile_resolution"
+    | "executor_compatibility_report"
+    | "executor_compatibility_summary";
+  mimeType: "application/json";
+  content: string;
+  summary: string;
+}
+
+export interface ExecutorCompatibilityBundle {
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  rootRelativePath: string;
+  packageId: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  profile: ExecutorCompatibilityProfile;
+  profileResolution: ExecutorProfileResolution;
+  result: ExecutorPackageCompatibilityResult;
+  entries: ExecutorCompatibilityEntry[];
+  status: ExecutorPackageReadiness;
+  summary: string;
+}
+
 export interface WriterRunTransportEndpoint {
   kind: "filesystem";
   label: string;
@@ -1634,6 +1805,8 @@ export interface WriterRunDispatchEnvelope {
   version: WriterRunDispatchEnvelopeVersion;
   id: string;
   adapterId: WriterRunTransportAdapterId;
+  executorProfileId: ExecutorCompatibilityProfileId;
+  executorReadiness: ExecutorPackageReadiness;
   transportId: WriterRunTransportId;
   dispatchId: string;
   correlationId: WriterRunCorrelationId;
@@ -1670,6 +1843,8 @@ export interface WriterRunDispatchEnvelope {
 export interface WriterRunDispatchResult {
   id: string;
   adapterId: WriterRunTransportAdapterId;
+  executorProfileId: ExecutorCompatibilityProfileId;
+  executorReadiness: ExecutorPackageReadiness;
   dispatchId: string;
   correlationId: WriterRunCorrelationId;
   artifactId: string;
@@ -1727,6 +1902,8 @@ export interface WriterRunTransportAdapterBundle {
   sourceSignature: DeliverySourceSignature;
   reviewSignature: DeliveryReviewSignature;
   deliveryPackageSignature: string;
+  executorProfileId: ExecutorCompatibilityProfileId;
+  executorReadiness: ExecutorPackageReadiness;
   adapters: WriterRunTransportAdapterResult[];
   activeAdapterId: WriterRunTransportAdapterId;
   declaredReceiptProfiles: ReceiptSchemaDescriptor[];
@@ -1774,6 +1951,8 @@ export interface WriterRunReceiptIngestionResult {
   id: string;
   sourceFileName: string;
   sourcePath?: string;
+  executorProfileId: ExecutorCompatibilityProfileId;
+  expectedReceiptProfile: ReceiptCompatibilityProfile;
   normalizationStatus: ReceiptNormalizationStatus;
   compatibilityProfile: ReceiptCompatibilityProfile;
   payloadSource: ReceiptPayloadSource;
@@ -1823,6 +2002,9 @@ export interface WriterRunReceiptIngestionBundle {
   sourceSignature: DeliverySourceSignature;
   reviewSignature: DeliveryReviewSignature;
   deliveryPackageSignature: string;
+  executorProfileId: ExecutorCompatibilityProfileId;
+  expectedReceiptProfile: ReceiptCompatibilityProfile;
+  acceptedReceiptProfiles: ReceiptCompatibilityProfile[];
   normalizationResults: ReceiptNormalizationResult[];
   compatibilityProfiles: ReceiptSchemaDescriptor[];
   receipts: WriterRunReceiptEnvelope[];

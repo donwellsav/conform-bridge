@@ -103,6 +103,7 @@ After planning, delivery artifacts may also appear in these deterministic forms:
 7. Transport envelopes, dispatch records, audit logs, and history
 8. Filesystem transport dispatch bundles
 9. Receipt compatibility metadata, normalized receipt envelopes, and receipt-ingestion audit/history outputs
+10. Executor profile resolution, package compatibility reports, and executor compatibility summaries
 
 These are derived layers, not replacements for the delivery package model.
 
@@ -142,6 +143,11 @@ Filesystem transport currently emits deterministic outbound dispatch bundles und
 
 Receipt ingestion currently reads deterministic inbound receipt JSON from:
 - `transport/<job>/inbound/*.json`
+
+Executor compatibility currently emits deterministic handoff-side reports such as:
+- `handoff/executor-profile-resolution.json`
+- `handoff/executor-compatibility-report.json`
+- `handoff/executor-compatibility-summary.json`
 
 ## Shared File Kinds
 
@@ -215,6 +221,8 @@ Timeline precedence:
 - Browser-local review persistence is single-machine only.
 - Some AAF layouts still require compatibility fallback payloads.
 - Only the filesystem transport adapter is real.
+- Executor compatibility currently targets canonical filesystem, compatibility filesystem, and future-placeholder executor profiles.
+- No additional transport adapter/profile was added in the current phase because the existing filesystem path already preserves the layered contract cleanly.
 - Receipt compatibility is currently limited to the defined filesystem-oriented profiles plus a future placeholder profile.
 - No backend, queue, or service transport exists.
 

@@ -83,7 +83,7 @@ export function WriterRunReceiptIngestionPreview({ bundle }: { bundle: WriterRun
           source signature {bundle.sourceSignature} / review signature {bundle.reviewSignature}
         </p>
         <p className="mt-2 text-xs text-muted">
-          profiles {bundle.compatibilityProfiles.map((profile) => profile.profile).join(" / ")}
+          executor {bundle.executorProfileId} / expected {bundle.expectedReceiptProfile} / accepted {bundle.acceptedReceiptProfiles.join(" / ")}
         </p>
       </div>
 
@@ -98,6 +98,9 @@ export function WriterRunReceiptIngestionPreview({ bundle }: { bundle: WriterRun
               </div>
             </div>
             <p className="mt-2 text-sm text-muted">{result.note}</p>
+            <p className="mt-2 text-xs text-muted">
+              executor {result.executorProfileId} / expected {result.expectedReceiptProfile}
+            </p>
             <p className="mt-2 text-xs text-muted">
               profile {result.compatibilityProfile} / normalization {result.normalizationStatus} / validation {result.validationStatus}
             </p>
