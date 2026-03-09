@@ -1,95 +1,101 @@
-import type { WriterRunDispatchStatus, WriterRunTransportBundle } from "@/lib/types";
+import type { WriterRunDispatchStatus, WriterRunReceiptImportStatus, WriterRunReceiptIngestionBundle } from "@/lib/types";
 
 import { Badge } from "@/components/ui/badge";
 
 function statusVariant(status: WriterRunDispatchStatus) {
   switch (status) {
-    case "ready-to-dispatch":
-    case "dispatched":
+    case "completed":
+    case "receipt-imported":
     case "acknowledged":
     case "runner-complete":
     case "receipt-recorded":
-    case "receipt-imported":
-    case "completed":
       return "accent" as const;
     case "partial":
     case "duplicate":
     case "stale":
       return "warning" as const;
-    case "runner-blocked":
     case "failed":
     case "invalid":
     case "unmatched":
-      return "danger" as const;
     case "transport-failed":
-      return "warning" as const;
+    case "runner-blocked":
+      return "danger" as const;
+    case "ready-to-dispatch":
+    case "dispatched":
     case "cancelled":
       return "neutral" as const;
   }
 }
 
-export function WriterRunTransportPreview({ bundle }: { bundle: WriterRunTransportBundle }) {
-  const dispatchableCount = bundle.envelopes.filter((envelope) => envelope.dispatchable).length;
-  const blockedCount = bundle.history.filter((item) => item.currentStatus === "runner-blocked").length;
-  const receiptRecordedCount = bundle.history.filter((item) => item.currentStatus === "receipt-recorded").length;
+function importVariant(status: WriterRunReceiptImportStatus) {
+  switch (status) {
+    case "receipt-imported":
+      return "accent" as const;
+    case "receipt-duplicate":
+    case "receipt-stale":
+      return "warning" as const;
+    case "receipt-unmatched":
+    case "receipt-invalid":
+      return "danger" as const;
+  }
+}
 
+export function WriterRunReceiptIngestionPreview({ bundle }: { bundle: WriterRunReceiptIngestionBundle }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-4">
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Transport status</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Receipt state</p>
           <div className="mt-2">
             <Badge variant={statusVariant(bundle.status)}>{bundle.status}</Badge>
           </div>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Dispatchable</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{dispatchableCount}</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Imported</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{bundle.transportReceipt.receiptImportedCount}</p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Blocked</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{blockedCount}</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Completed</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{bundle.transportReceipt.completedCount}</p>
         </div>
         <div className="rounded-2xl border border-border/70 bg-panel p-3">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Receipt recorded</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{receiptRecordedCount}</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Stale or invalid</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{bundle.transportReceipt.staleCount + bundle.transportReceipt.invalidCount}</p>
         </div>
       </div>
 
       <div className="rounded-2xl border border-border/70 bg-panel p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-foreground">Writer-run transport summary</p>
+          <p className="text-sm font-semibold text-foreground">Receipt ingestion summary</p>
           <Badge variant={statusVariant(bundle.transportReceipt.status)}>{bundle.transportReceipt.status}</Badge>
         </div>
         <p className="mt-2 text-sm text-muted">{bundle.summary}</p>
         <p className="mt-2 text-xs text-muted">
-          transport {bundle.transportId} / source signature {bundle.sourceSignature} / review signature {bundle.reviewSignature}
+          source signature {bundle.sourceSignature} / review signature {bundle.reviewSignature}
         </p>
       </div>
 
       <div className="space-y-3">
-        {bundle.history.map((item) => (
-          <div key={item.correlationId} className="rounded-2xl border border-border/70 bg-panel p-4">
+        {bundle.results.map((result) => (
+          <div key={result.id} className="rounded-2xl border border-border/70 bg-panel p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-mono text-xs text-muted">{item.fileName}</p>
+              <p className="font-mono text-xs text-muted">{result.sourceFileName}</p>
               <div className="flex flex-wrap gap-2">
-                <Badge variant={statusVariant(item.currentStatus)}>{item.currentStatus}</Badge>
-                <Badge variant={item.dispatchable ? "accent" : "neutral"}>{item.dispatchable ? "dispatchable" : "not dispatchable"}</Badge>
+                <Badge variant={importVariant(result.importStatus)}>{result.importStatus}</Badge>
+                <Badge variant={statusVariant(result.dispatchStatus)}>{result.dispatchStatus}</Badge>
               </div>
             </div>
-            <p className="mt-2 text-sm text-muted">{item.note}</p>
+            <p className="mt-2 text-sm text-muted">{result.note}</p>
             <p className="mt-2 text-xs text-muted">
-              correlation {item.correlationId} / adapter {item.adapterId ?? "none"} / runner {item.runnerId ?? "none"}
+              correlation {result.correlationId ?? "none"} / artifact {result.artifactId ?? "none"}
             </p>
-            <p className="mt-2 text-xs text-muted">
-              retry {item.retryState.mode} / cancel {item.cancellationState.mode}
-            </p>
-            {item.failure ? (
-              <p className="mt-2 text-xs text-muted">
-                failure {item.failure.code}: {item.failure.message}
-              </p>
+            {result.errors.length > 0 ? (
+              <div className="mt-2 space-y-1 text-xs text-muted">
+                {result.errors.map((error) => (
+                  <p key={`${result.id}-${error}`}>{error}</p>
+                ))}
+              </div>
             ) : null}
-            <p className="mt-2 text-xs text-muted">status trail {item.statusTrail.join(" -> ")}</p>
           </div>
         ))}
       </div>

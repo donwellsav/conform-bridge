@@ -30,12 +30,15 @@ This repository is a frontend-only internal operator application for Resolve to 
 - Writer-adapter validation, capability matching, and dry-run planning exist in `writer-adapters.ts` and `writer-adapter-registry.ts`.
 - Writer-runner request, response, and receipt contracts exist in `writer-runner.ts` and `writer-runner-registry.ts`.
 - Writer-run transport envelopes, dispatch records, audit logs, and history exist in `writer-run-transport.ts` and `writer-run-audit.ts`.
+- Real filesystem transport adapter packaging exists in `writer-run-transport-adapters.ts` and `writer-run-transport-registry.ts`.
+- Deterministic receipt ingestion exists in `writer-run-receipt-ingestion.ts`.
 - Operator review persistence exists as browser-local review deltas keyed by job plus source signature.
 
 ## Ongoing Scope Rules
 - No real Nuendo export writer.
 - No auth, billing, database, or marketing pages.
 - No AI chat UI.
+- No backend, queue, or server-side execution service for transport/receipt handling.
 - Do not collapse planning, execution prep, staging, handoff, external package export, writer-adapter dry runs, writer-runner contracts, writer-run transport/audit contracts, and future writer execution into one layer.
 
 ## Mock Data Rules
@@ -56,4 +59,4 @@ The scaffold must include:
 ## Review Standard
 Reject work that hides hydration problems with client-only wrappers, uses browser APIs on first render, or introduces backend-looking abstractions for features that do not exist yet.
 Reject wording that implies the repo is still scaffold-only or mock-only when describing the current implementation state.
-Reject wording that implies browser-local review persistence, staged bundle output, deferred writer contracts, external execution packaging, writer-adapter dry runs, writer-runner receipts, or writer-run transport/audit output do not exist.
+Reject wording that implies browser-local review persistence, staged bundle output, deferred writer contracts, external execution packaging, writer-adapter dry runs, writer-runner receipts, writer-run transport/audit output, filesystem transport adapter packaging, or receipt-ingestion flow do not exist.

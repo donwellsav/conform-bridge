@@ -56,6 +56,50 @@ export function aggregateDispatchStatus(statuses: WriterRunDispatchStatus[]): Wr
     return "runner-blocked";
   }
 
+  if (statuses.some((status) => status === "invalid")) {
+    return "invalid";
+  }
+
+  if (statuses.some((status) => status === "unmatched")) {
+    return "unmatched";
+  }
+
+  if (statuses.some((status) => status === "stale")) {
+    return "stale";
+  }
+
+  if (statuses.some((status) => status === "duplicate")) {
+    return "duplicate";
+  }
+
+  if (statuses.some((status) => status === "failed")) {
+    return "failed";
+  }
+
+  if (statuses.some((status) => status === "partial")) {
+    return "partial";
+  }
+
+  if (statuses.every((status) => status === "completed")) {
+    return "completed";
+  }
+
+  if (
+    statuses.some((status) => status === "completed")
+    && statuses.every((status) =>
+      status === "completed"
+      || status === "receipt-recorded"
+      || status === "runner-complete"
+      || status === "acknowledged",
+    )
+  ) {
+    return statuses.every((status) => status === "completed") ? "completed" : "partial";
+  }
+
+  if (statuses.some((status) => status === "receipt-imported")) {
+    return "receipt-imported";
+  }
+
   if (statuses.some((status) => status === "transport-failed")) {
     return "transport-failed";
   }

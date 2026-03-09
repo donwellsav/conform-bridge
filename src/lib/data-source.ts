@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import * as fallback from "./mock-data";
 import { countMappingReviews, getFieldRecorderDecision } from "./mapping-workflow";
 import { createImportedReviewSignature, createReviewStateSourceSignature, type ReviewJobContext } from "./review-state";
@@ -10,6 +12,9 @@ import { importFixtureLibrarySync, type ImportedIntakeData } from "./services/im
 import { prepareWriterAdapterBundleSync } from "./services/writer-adapters";
 import { prepareWriterRunBundleSync } from "./services/writer-runner";
 import { prepareWriterRunTransportBundleSync } from "./services/writer-run-transport";
+import { prepareWriterRunTransportAdapterBundleSync } from "./services/writer-run-transport-adapters";
+import { readWriterRunReceiptSourcesSync } from "./services/writer-run-receipt-ingestion-read";
+import { ingestWriterRunReceiptsSync } from "./services/writer-run-receipt-ingestion";
 import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
 import type {
   ActivityItem,
@@ -34,7 +39,10 @@ import type {
   TranslationJob,
   TranslationModel,
   WriterAdapterBundle,
+  WriterRunReceiptIngestionBundle,
+  WriterRunReceiptSourceFile,
   WriterRunBundle,
+  WriterRunTransportAdapterBundle,
   WriterRunTransportBundle,
 } from "./types";
 
@@ -48,8 +56,16 @@ interface ImportedAppData extends ImportedIntakeData {
   writerAdapterBundles: WriterAdapterBundle[];
   writerRunBundles: WriterRunBundle[];
   writerRunTransportBundles: WriterRunTransportBundle[];
+  writerRunTransportAdapterBundles: WriterRunTransportAdapterBundle[];
+  writerRunReceiptIngestionBundles: WriterRunReceiptIngestionBundle[];
+  writerRunReceiptSources: WriterRunReceiptSourceFile[];
   dashboardMetrics: DashboardMetric[];
   activityFeed: ActivityItem[];
+}
+
+function readFixtureTransportReceiptSources(jobId: string) {
+  const inboundRoot = path.join(process.cwd(), "fixtures", "transport", jobId, "inbound");
+  return readWriterRunReceiptSourcesSync(inboundRoot, jobId);
 }
 
 function slugify(value: string) {
@@ -135,6 +151,9 @@ function createImportedAppData(): ImportedAppData {
       writerAdapterBundles: [],
       writerRunBundles: [],
       writerRunTransportBundles: [],
+      writerRunTransportAdapterBundles: [],
+      writerRunReceiptIngestionBundles: [],
+      writerRunReceiptSources: [],
       dashboardMetrics: [],
       activityFeed: [],
     };
@@ -301,6 +320,17 @@ function createImportedAppData(): ImportedAppData {
       writerAdapterBundle,
       writerRunBundle,
     );
+    const writerRunTransportAdapterBundle = prepareWriterRunTransportAdapterBundleSync(
+      externalExecutionPackage,
+      writerRunTransportBundle,
+    );
+    const writerRunReceiptSources = readFixtureTransportReceiptSources(updatedJob.id);
+    const writerRunReceiptIngestionBundle = ingestWriterRunReceiptsSync(
+      externalExecutionPackage,
+      writerRunTransportBundle,
+      writerRunTransportAdapterBundle,
+      writerRunReceiptSources,
+    );
 
     return {
       job: updatedJob,
@@ -315,6 +345,9 @@ function createImportedAppData(): ImportedAppData {
       writerAdapterBundle,
       writerRunBundle,
       writerRunTransportBundle,
+      writerRunTransportAdapterBundle,
+      writerRunReceiptIngestionBundle,
+      writerRunReceiptSources,
     };
   });
 
@@ -331,6 +364,9 @@ function createImportedAppData(): ImportedAppData {
     writerAdapterBundles: jobRecords.map((record) => record.writerAdapterBundle),
     writerRunBundles: jobRecords.map((record) => record.writerRunBundle),
     writerRunTransportBundles: jobRecords.map((record) => record.writerRunTransportBundle),
+    writerRunTransportAdapterBundles: jobRecords.map((record) => record.writerRunTransportAdapterBundle),
+    writerRunReceiptIngestionBundles: jobRecords.map((record) => record.writerRunReceiptIngestionBundle),
+    writerRunReceiptSources: jobRecords.flatMap((record) => record.writerRunReceiptSources),
     jobs: jobRecords.map((record) => record.job),
     dashboardMetrics: [],
     activityFeed: [],
@@ -367,6 +403,9 @@ export const externalExecutionPackages = hasImportedBundles ? importedData.exter
 export const writerAdapterBundles = hasImportedBundles ? importedData.writerAdapterBundles : [];
 export const writerRunBundles = hasImportedBundles ? importedData.writerRunBundles : [];
 export const writerRunTransportBundles = hasImportedBundles ? importedData.writerRunTransportBundles : [];
+export const writerRunTransportAdapterBundles = hasImportedBundles ? importedData.writerRunTransportAdapterBundles : [];
+export const writerRunReceiptIngestionBundles = hasImportedBundles ? importedData.writerRunReceiptIngestionBundles : [];
+export const writerRunReceiptSources = hasImportedBundles ? importedData.writerRunReceiptSources : [];
 export const mappingProfiles = hasImportedBundles ? importedData.mappingProfiles : fallback.mappingProfiles;
 export const mappingRules = hasImportedBundles ? importedData.mappingRules : fallback.mappingRules;
 export const fieldRecorderCandidates = hasImportedBundles ? importedData.fieldRecorderCandidates : fallback.fieldRecorderCandidates;
@@ -390,6 +429,8 @@ const externalExecutionPackageMap = new Map(externalExecutionPackages.map((bundl
 const writerAdapterBundleMap = new Map(writerAdapterBundles.map((bundle) => [bundle.jobId, bundle]));
 const writerRunBundleMap = new Map(writerRunBundles.map((bundle) => [bundle.jobId, bundle]));
 const writerRunTransportBundleMap = new Map(writerRunTransportBundles.map((bundle) => [bundle.jobId, bundle]));
+const writerRunTransportAdapterBundleMap = new Map(writerRunTransportAdapterBundles.map((bundle) => [bundle.jobId, bundle]));
+const writerRunReceiptIngestionBundleMap = new Map(writerRunReceiptIngestionBundles.map((bundle) => [bundle.jobId, bundle]));
 const jobMap = new Map(jobs.map((job) => [job.id, job]));
 const translationModelMap = new Map(translationModels.map((model) => [model.id, model]));
 
@@ -503,6 +544,14 @@ export function getWriterRunTransportBundle(jobId: string): WriterRunTransportBu
   return writerRunTransportBundleMap.get(jobId);
 }
 
+export function getWriterRunTransportAdapterBundle(jobId: string): WriterRunTransportAdapterBundle | undefined {
+  return writerRunTransportAdapterBundleMap.get(jobId);
+}
+
+export function getWriterRunReceiptIngestionBundle(jobId: string): WriterRunReceiptIngestionBundle | undefined {
+  return writerRunReceiptIngestionBundleMap.get(jobId);
+}
+
 export function getAnalysisReportForJob(jobId: string): AnalysisReport | undefined {
   const job = getJob(jobId);
   return job ? getReport(job.analysisReportId) : undefined;
@@ -558,6 +607,7 @@ export function getJobReviewContext(jobId: string): ReviewJobContext | undefined
     preservationIssues: getPreservationIssues(job.id),
     conformChangeEvents: getConformChangeEvents(job.id),
     tracks: trackSetForJob(job.id),
+    writerRunReceiptSources: writerRunReceiptSources.filter((source) => source.jobId === job.id),
   };
 }
 

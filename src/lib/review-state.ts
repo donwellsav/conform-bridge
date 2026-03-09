@@ -13,6 +13,8 @@ import { planNuendoDeliverySync } from "./services/exporter";
 import { prepareWriterAdapterBundleSync } from "./services/writer-adapters";
 import { prepareWriterRunBundleSync } from "./services/writer-runner";
 import { prepareWriterRunTransportBundleSync } from "./services/writer-run-transport";
+import { prepareWriterRunTransportAdapterBundleSync } from "./services/writer-run-transport-adapters";
+import { ingestWriterRunReceiptsSync } from "./services/writer-run-receipt-ingestion";
 import type {
   AnalysisReport,
   ClipEvent,
@@ -43,7 +45,10 @@ import type {
   ValidationAcknowledgement,
   ValidationReviewStatus,
   WriterAdapterBundle,
+  WriterRunReceiptIngestionBundle,
+  WriterRunReceiptSourceFile,
   WriterRunBundle,
+  WriterRunTransportAdapterBundle,
   WriterRunTransportBundle,
 } from "./types";
 import { buildOperatorValidationIssues, rebuildAnalysisReport } from "./validation";
@@ -65,6 +70,7 @@ export interface ReviewJobContext {
   outputPreset: OutputPreset;
   preservationIssues: PreservationIssue[];
   conformChangeEvents: ConformChangeEvent[];
+  writerRunReceiptSources: WriterRunReceiptSourceFile[];
 }
 
 export interface ValidationReviewItem {
@@ -100,6 +106,8 @@ export interface ReviewOverlayResult {
   previewWriterAdapters: WriterAdapterBundle;
   previewWriterRuns: WriterRunBundle;
   previewWriterRunTransport: WriterRunTransportBundle;
+  previewWriterRunTransportAdapters: WriterRunTransportAdapterBundle;
+  previewWriterRunReceipts: WriterRunReceiptIngestionBundle;
   reconformItems: ReconformReviewItem[];
   reviewCounts: {
     mappingOpenCount: number;
@@ -808,6 +816,16 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewWriterAdapters,
     previewWriterRuns,
   );
+  const previewWriterRunTransportAdapters = prepareWriterRunTransportAdapterBundleSync(
+    previewExternalPackage,
+    previewWriterRunTransport,
+  );
+  const previewWriterRunReceipts = ingestWriterRunReceiptsSync(
+    previewExternalPackage,
+    previewWriterRunTransport,
+    previewWriterRunTransportAdapters,
+    context.writerRunReceiptSources,
+  );
 
   return {
     reviewState,
@@ -825,6 +843,8 @@ export function buildReviewOverlay(context: ReviewJobContext, reviewState: Revie
     previewWriterAdapters,
     previewWriterRuns,
     previewWriterRunTransport,
+    previewWriterRunTransportAdapters,
+    previewWriterRunReceipts,
     reconformItems,
     reviewCounts: {
       mappingOpenCount: mappingReviewSummary.total,

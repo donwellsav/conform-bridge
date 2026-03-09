@@ -1,8 +1,8 @@
 # Tasklist
 
 ## Current Roadmap Position
-- Current phase: `Phase 3G` complete.
-- Next phase: `Phase 3H` real external transport adapters and receipt-ingestion flow on top of transport/audit contracts.
+- Current phase: `Phase 3H` complete.
+- Next phase: `Phase 3I` deepen external execution interoperability and receipt compatibility on top of filesystem transport and deterministic receipt-ingestion contracts.
 - Ongoing compatibility work: keep shrinking remaining AAF fallback cases when new production samples justify it.
 
 ## Phase 1 Scaffold
@@ -41,5 +41,6 @@
 - [x] Formalize writer adapter interfaces that consume the current external execution package and deferred writer-input contracts.
 - [x] Define writer-runner request/response and receipt contracts on top of writer-adapter dry runs.
 - [x] Formalize external runner transport and execution audit flow on top of writer-runner contracts.
-- [ ] Formalize real external transport adapters and receipt-ingestion flow on top of transport/audit contracts.
+- [x] Formalize real external transport adapters and receipt-ingestion flow on top of transport/audit contracts.
+- [ ] Deepen external execution interoperability and receipt compatibility on top of filesystem transport and deterministic receipt-ingestion contracts.
 - [ ] Implement real Nuendo/session writing only after staged delivery execution is proven stable.

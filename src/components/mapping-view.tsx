@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { WriterAdapterPreview } from "@/components/writer-adapter-preview";
 import { WriterRunnerPreview } from "@/components/writer-runner-preview";
 import { WriterRunTransportPreview } from "@/components/writer-run-transport-preview";
+import { WriterRunTransportAdapterPreview } from "@/components/writer-run-transport-adapter-preview";
+import { WriterRunReceiptIngestionPreview } from "@/components/writer-run-receipt-ingestion-preview";
 import { createEmptyReviewStateStore, readStoredReviewStateStore, resolveStoredReviewState, subscribeToReviewStates, clearStoredReviewState, writeStoredReviewState } from "@/lib/local-review-state";
 import { getFieldRecorderDecision, getMarkerAction } from "@/lib/mapping-workflow";
 import {
@@ -265,6 +267,12 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
         </div>
         <div className="mt-5 border-t border-border/70 pt-5">
           <WriterRunTransportPreview bundle={overlay.previewWriterRunTransport} />
+        </div>
+        <div className="mt-5 border-t border-border/70 pt-5">
+          <WriterRunTransportAdapterPreview bundle={overlay.previewWriterRunTransportAdapters} />
+        </div>
+        <div className="mt-5 border-t border-border/70 pt-5">
+          <WriterRunReceiptIngestionPreview bundle={overlay.previewWriterRunReceipts} />
         </div>
       </SectionCard>
 

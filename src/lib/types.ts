@@ -89,10 +89,14 @@ export type WriterRunReceiptVersion = 1;
 export type WriterRunTransportEnvelopeVersion = 1;
 export type WriterRunTransportResponseVersion = 1;
 export type WriterRunTransportReceiptVersion = 1;
+export type WriterRunDispatchEnvelopeVersion = 1;
+export type WriterRunReceiptEnvelopeVersion = 1;
+export type WriterRunTransportAdapterVersion = 1;
 export type WriterRunnerReadiness = "ready" | "partial" | "blocked" | "unsupported";
 export type WriterRunResponseStatus = "simulated-noop" | "partial" | "blocked" | "unsupported";
 export type WriterRunRequestId = string;
 export type WriterRunTransportId = "reference-noop-transport";
+export type WriterRunTransportAdapterId = "reference-noop-transport-adapter" | "filesystem-transport-adapter";
 export type WriterRunCorrelationId = string;
 export type WriterRunBlockedReasonCode =
   | "adapter_not_ready"
@@ -110,7 +114,15 @@ export type WriterRunDispatchStatus =
   | "runner-blocked"
   | "runner-complete"
   | "receipt-recorded"
-  | "cancelled";
+  | "cancelled"
+  | "receipt-imported"
+  | "completed"
+  | "partial"
+  | "failed"
+  | "stale"
+  | "duplicate"
+  | "unmatched"
+  | "invalid";
 export type WriterRunAuditEventType =
   | "envelope-generated"
   | "dispatch-created"
@@ -118,6 +130,15 @@ export type WriterRunAuditEventType =
   | "dispatch-blocked"
   | "runner-complete"
   | "receipt-recorded"
+  | "receipt-imported"
+  | "receipt-duplicate"
+  | "receipt-stale"
+  | "receipt-unmatched"
+  | "receipt-invalid"
+  | "dispatch-failed"
+  | "completed"
+  | "partial"
+  | "failed"
   | "transport-failed"
   | "retry-marked"
   | "cancelled"
@@ -134,6 +155,25 @@ export type WriterRunTransportFailureCode =
   | "superseded";
 export type WriterRunRetryMode = "not-needed" | "retryable" | "non-retryable" | "retry-deferred";
 export type WriterRunCancellationMode = "active" | "cancelled" | "timed-out" | "expired" | "superseded";
+export type WriterRunTransportCapability = "reference_noop_dispatch" | "filesystem_dispatch" | "receipt_ingestion";
+export type WriterRunTransportAdapterReadiness = "ready" | "partial" | "blocked" | "unsupported";
+export type WriterRunTransportAdapterUnsupportedCode =
+  | "dispatch_not_supported"
+  | "capability_not_supported"
+  | "adapter_not_implemented"
+  | "missing_endpoint"
+  | "artifact_not_dispatchable";
+export type WriterRunDispatchResultStatus = "dispatched" | "dispatch-failed" | "blocked";
+export type WriterRunReceiptMatchStatus = "matched" | "duplicate" | "stale" | "unmatched";
+export type WriterRunReceiptValidationStatus = "valid" | "invalid" | "signature-mismatch" | "version-mismatch";
+export type WriterRunReceiptSource = "filesystem-inbound";
+export type WriterRunReceiptImportStatus =
+  | "receipt-imported"
+  | "receipt-duplicate"
+  | "receipt-stale"
+  | "receipt-unmatched"
+  | "receipt-invalid";
+export type WriterRunReceiptOutcomeStatus = "completed" | "failed" | "partial";
 
 export interface SourceSnapshot {
   sequenceName: string;
@@ -1420,6 +1460,13 @@ export interface WriterRunTransportReceipt {
   failedCount: number;
   cancelledCount: number;
   receiptRecordedCount: number;
+  receiptImportedCount: number;
+  completedCount: number;
+  partialCount: number;
+  staleCount: number;
+  duplicateCount: number;
+  unmatchedCount: number;
+  invalidCount: number;
   note: string;
 }
 
@@ -1458,6 +1505,218 @@ export interface WriterRunTransportBundle {
   history: WriterRunAttemptHistory[];
   entries: WriterRunTransportEntry[];
   status: WriterRunDispatchStatus;
+  summary: string;
+}
+
+export interface WriterRunTransportEndpoint {
+  kind: "filesystem";
+  label: string;
+  rootPath: string;
+  outboundPath: string;
+  inboundPath: string;
+}
+
+export interface WriterRunTransportAdapterUnsupportedReason {
+  code: WriterRunTransportAdapterUnsupportedCode;
+  artifactId?: string;
+  capability?: WriterRunTransportCapability;
+  message: string;
+}
+
+export interface WriterRunTransportAdapterValidationResult {
+  adapterId: WriterRunTransportAdapterId;
+  readiness: WriterRunTransportAdapterReadiness;
+  diagnostics: string[];
+  supportedArtifactIds: string[];
+  unsupportedReasons: WriterRunTransportAdapterUnsupportedReason[];
+}
+
+export interface WriterRunDispatchFile {
+  relativePath: string;
+  fileName: string;
+  mimeType: string;
+  content: string;
+  summary: string;
+}
+
+export interface WriterRunDispatchEnvelope {
+  version: WriterRunDispatchEnvelopeVersion;
+  id: string;
+  adapterId: WriterRunTransportAdapterId;
+  transportId: WriterRunTransportId;
+  dispatchId: string;
+  correlationId: WriterRunCorrelationId;
+  jobId: string;
+  deliveryPackageId: string;
+  packageId: string;
+  requestId: WriterRunRequestId;
+  requestArtifactId: string;
+  responseId: string;
+  receiptId: string;
+  artifactId: string;
+  fileName: string;
+  requestReadiness: WriterRunnerReadiness;
+  dispatchStatus: WriterRunDispatchResultStatus;
+  dispatchable: boolean;
+  dispatchReason: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  adapterIdUsed?: WriterAdapterId;
+  runnerId?: WriterRunnerId;
+  endpoint: WriterRunTransportEndpoint;
+  outboundRoot: string;
+  relativeOutboundRoot: string;
+  dependencyIds: string[];
+  blockedReasons: WriterRunBlockedReason[];
+  payload: Record<string, unknown>;
+  files: WriterRunDispatchFile[];
+}
+
+export interface WriterRunDispatchResult {
+  id: string;
+  adapterId: WriterRunTransportAdapterId;
+  dispatchId: string;
+  correlationId: WriterRunCorrelationId;
+  artifactId: string;
+  fileName: string;
+  status: WriterRunDispatchResultStatus;
+  endpoint: WriterRunTransportEndpoint;
+  outboundRoot: string;
+  relativeOutboundRoot: string;
+  filePaths: string[];
+  note: string;
+}
+
+export interface WriterRunTransportAdapter {
+  id: WriterRunTransportAdapterId;
+  version: WriterRunTransportAdapterVersion;
+  label: string;
+  capabilities: WriterRunTransportCapability[];
+  endpoint: WriterRunTransportEndpoint;
+  validate(bundle: WriterRunTransportBundle): WriterRunTransportAdapterValidationResult;
+}
+
+export interface WriterRunTransportAdapterResult {
+  id: WriterRunTransportAdapterId;
+  version: WriterRunTransportAdapterVersion;
+  label: string;
+  capabilities: WriterRunTransportCapability[];
+  endpoint: WriterRunTransportEndpoint;
+  validation: WriterRunTransportAdapterValidationResult;
+}
+
+export interface WriterRunTransportAdapterEntry {
+  kind: "writer_run_transport_adapter_entry" | "writer_run_dispatch_file_entry";
+  relativePath: string;
+  fileName: string;
+  payloadKind:
+    | "writer_run_transport_adapters"
+    | "writer_run_dispatch_envelopes"
+    | "writer_run_dispatch_results"
+    | "writer_run_dispatch_payload";
+  mimeType: "application/json";
+  content: string;
+  summary: string;
+}
+
+export interface WriterRunTransportAdapterBundle {
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  rootRelativePath: string;
+  packageId: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  adapters: WriterRunTransportAdapterResult[];
+  activeAdapterId: WriterRunTransportAdapterId;
+  dispatchEnvelopes: WriterRunDispatchEnvelope[];
+  dispatchResults: WriterRunDispatchResult[];
+  readiness: WriterRunTransportAdapterReadiness;
+  entries: WriterRunTransportAdapterEntry[];
+  summary: string;
+}
+
+export interface WriterRunReceiptSourceFile {
+  id: string;
+  jobId: string;
+  fileName: string;
+  absolutePath?: string;
+  source: WriterRunReceiptSource;
+  content: string;
+}
+
+export interface WriterRunReceiptEnvelope {
+  version: WriterRunReceiptEnvelopeVersion;
+  id: string;
+  adapterId: WriterRunTransportAdapterId;
+  transportId: WriterRunTransportId;
+  dispatchId: string;
+  correlationId: WriterRunCorrelationId;
+  packageId: string;
+  requestId: WriterRunRequestId;
+  artifactId: string;
+  fileName: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  source: WriterRunReceiptSource;
+  receiptSequence: number;
+  status: WriterRunReceiptOutcomeStatus;
+  note: string;
+  payload: Record<string, unknown>;
+}
+
+export interface WriterRunReceiptIngestionResult {
+  id: string;
+  sourceFileName: string;
+  sourcePath?: string;
+  importStatus: WriterRunReceiptImportStatus;
+  matchStatus: WriterRunReceiptMatchStatus;
+  validationStatus: WriterRunReceiptValidationStatus;
+  dispatchStatus: WriterRunDispatchStatus;
+  correlationId?: WriterRunCorrelationId;
+  dispatchId?: string;
+  artifactId?: string;
+  note: string;
+  errors: string[];
+}
+
+export interface WriterRunReceiptIngestionEntry {
+  kind: "writer_run_receipt_ingestion_entry";
+  relativePath: string;
+  fileName:
+    | "writer-run-receipt-envelopes.json"
+    | "writer-run-receipt-import-results.json"
+    | "writer-run-receipt-audit-log.json"
+    | "writer-run-receipt-history.json";
+  payloadKind:
+    | "writer_run_receipt_envelopes"
+    | "writer_run_receipt_import_results"
+    | "writer_run_receipt_audit_log"
+    | "writer_run_receipt_history";
+  mimeType: "application/json";
+  content: string;
+  summary: string;
+}
+
+export interface WriterRunReceiptIngestionBundle {
+  id: string;
+  jobId: string;
+  deliveryPackageId: string;
+  rootRelativePath: string;
+  packageId: string;
+  sourceSignature: DeliverySourceSignature;
+  reviewSignature: DeliveryReviewSignature;
+  deliveryPackageSignature: string;
+  receipts: WriterRunReceiptEnvelope[];
+  results: WriterRunReceiptIngestionResult[];
+  auditRecord: WriterRunAuditRecord;
+  history: WriterRunAttemptHistory[];
+  transportReceipt: WriterRunTransportReceipt;
+  status: WriterRunDispatchStatus;
+  entries: WriterRunReceiptIngestionEntry[];
   summary: string;
 }
 

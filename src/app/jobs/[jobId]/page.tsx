@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { WriterAdapterPreview } from "@/components/writer-adapter-preview";
 import { WriterRunnerPreview } from "@/components/writer-runner-preview";
 import { WriterRunTransportPreview } from "@/components/writer-run-transport-preview";
+import { WriterRunTransportAdapterPreview } from "@/components/writer-run-transport-adapter-preview";
+import { WriterRunReceiptIngestionPreview } from "@/components/writer-run-receipt-ingestion-preview";
 import {
   getBundle,
   getDeliveryExecutionPlan,
@@ -27,6 +29,8 @@ import {
   getReport,
   getWriterAdapterBundle,
   getWriterRunBundle,
+  getWriterRunReceiptIngestionBundle,
+  getWriterRunTransportAdapterBundle,
   getWriterRunTransportBundle,
   jobs,
 } from "@/lib/data-source";
@@ -54,9 +58,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
   const writerAdapterBundle = getWriterAdapterBundle(job.id);
   const writerRunBundle = getWriterRunBundle(job.id);
   const writerRunTransportBundle = getWriterRunTransportBundle(job.id);
+  const writerRunTransportAdapterBundle = getWriterRunTransportAdapterBundle(job.id);
+  const writerRunReceiptIngestionBundle = getWriterRunReceiptIngestionBundle(job.id);
   const reviewContext = getJobReviewContext(job.id);
 
-  if (!bundle || !report || !outputPreset || !reviewContext || !executionPlan || !stagingBundle || !handoffBundle || !externalExecutionPackage || !writerAdapterBundle || !writerRunBundle || !writerRunTransportBundle) {
+  if (!bundle || !report || !outputPreset || !reviewContext || !executionPlan || !stagingBundle || !handoffBundle || !externalExecutionPackage || !writerAdapterBundle || !writerRunBundle || !writerRunTransportBundle || !writerRunTransportAdapterBundle || !writerRunReceiptIngestionBundle) {
     notFound();
   }
 
@@ -157,6 +163,12 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
             </div>
             <div className="mt-5 border-t border-border/70 pt-5">
               <WriterRunTransportPreview bundle={writerRunTransportBundle} />
+            </div>
+            <div className="mt-5 border-t border-border/70 pt-5">
+              <WriterRunTransportAdapterPreview bundle={writerRunTransportAdapterBundle} />
+            </div>
+            <div className="mt-5 border-t border-border/70 pt-5">
+              <WriterRunReceiptIngestionPreview bundle={writerRunReceiptIngestionBundle} />
             </div>
           </SectionCard>
           <MappingView context={reviewContext} />

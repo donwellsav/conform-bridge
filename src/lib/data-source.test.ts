@@ -18,6 +18,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   const writerAdapterBundle = dataSource.getWriterAdapterBundle(job.id);
   const writerRunBundle = dataSource.getWriterRunBundle(job.id);
   const writerRunTransportBundle = dataSource.getWriterRunTransportBundle(job.id);
+  const writerRunTransportAdapterBundle = dataSource.getWriterRunTransportAdapterBundle(job.id);
+  const writerRunReceiptIngestionBundle = dataSource.getWriterRunReceiptIngestionBundle(job.id);
   const readyTransportBundle = dataSource.getWriterRunTransportBundle("job-rvr-205-aaf-only");
   const handoffBundle = dataSource.getDeliveryHandoffBundle(job.id);
   const stagingBundle = dataSource.getDeliveryStagingBundle(job.id);
@@ -31,6 +33,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(writerAdapterBundle);
   assert.ok(writerRunBundle);
   assert.ok(writerRunTransportBundle);
+  assert.ok(writerRunTransportAdapterBundle);
+  assert.ok(writerRunReceiptIngestionBundle);
   assert.ok(readyTransportBundle);
   assert.ok(handoffBundle);
   assert.ok(stagingBundle);
@@ -49,6 +53,8 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(writerRunBundle?.receipt.summary.simulatedCount >= 0);
   assert.ok(writerRunTransportBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-transport-envelopes.json")));
   assert.ok(writerRunTransportBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-audit-log.json")));
+  assert.ok(writerRunTransportAdapterBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-dispatch-results.json")));
+  assert.ok(writerRunReceiptIngestionBundle?.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-receipt-import-results.json")));
   assert.equal(readyTransportBundle?.status, "receipt-recorded");
   assert.equal(externalExecutionPackage?.status === "ready" || externalExecutionPackage?.status === "partial" || externalExecutionPackage?.status === "blocked", true);
   assert.ok(handoffBundle?.deferredWriterInput.artifacts.length);

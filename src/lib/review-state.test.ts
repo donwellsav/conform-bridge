@@ -11,6 +11,7 @@ import {
   createEmptyReviewState,
   createReviewStateSourceSignature,
 } from "./review-state";
+import type { WriterRunReceiptSourceFile } from "./types";
 
 test("review-state overlay applies saved mapping deltas and updates delivery planning", () => {
   const context = getJobReviewContext("job-rvr-205-aaf-only");
@@ -33,6 +34,8 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.equal(baseOverlay.previewWriterRuns.response.status, "simulated-noop");
   assert.equal(baseOverlay.previewWriterRunTransport.status, "receipt-recorded");
   assert.equal(baseOverlay.previewWriterRunTransport.transportResponse.status, "acknowledged");
+  assert.equal(baseOverlay.previewWriterRunTransportAdapters.activeAdapterId, "filesystem-transport-adapter");
+  assert.ok(baseOverlay.previewWriterRunReceipts.entries.some((entry) => entry.relativePath.endsWith("/handoff/writer-run-receipt-history.json")));
 
   const editedState = applyFieldRecorderReviewDecision(
     applyTrackOverride(baseState, context.mappingProfile, track.id, {
@@ -65,6 +68,8 @@ test("review-state overlay applies saved mapping deltas and updates delivery pla
   assert.ok(editedOverlay.previewWriterRuns.receipt.artifacts.every((artifact) => artifact.responseStatus === "blocked"));
   assert.equal(editedOverlay.previewWriterRunTransport.status, "runner-blocked");
   assert.ok(editedOverlay.previewWriterRunTransport.history.every((item) => item.currentStatus === "runner-blocked"));
+  assert.equal(editedOverlay.previewWriterRunTransportAdapters.activeAdapterId, "filesystem-transport-adapter");
+  assert.equal(editedOverlay.previewWriterRunReceipts.status, "runner-blocked");
   assert.match(
     editedOverlay.previewExecution.preparedArtifacts.find((artifact) => artifact.payloadKind === "metadata_csv" && artifact.executionStatus === "generated")?.content ?? "",
     /DX REVIEW A/,
@@ -122,4 +127,58 @@ test("reconform review decisions persist in the overlay and change unresolved co
   assert.equal(overlay.reviewCounts.reconformOpenCount, baseOverlay.reviewCounts.reconformOpenCount - 1);
   assert.equal(reviewedItem?.status, "acknowledged");
   assert.equal(reviewedItem?.note, "Reviewed against picture lock compare.");
+});
+
+test("saved review-state changes can stale previously matched receipt sources", () => {
+  const context = getJobReviewContext("job-rvr-205-aaf-only");
+  assert.ok(context);
+
+  const sourceSignature = createReviewStateSourceSignature(context.job, context.bundle, context.timeline);
+  const baseState = createEmptyReviewState(context.job.id, sourceSignature);
+  const baseOverlay = buildReviewOverlay(context, baseState);
+  const syntheticReceiptSources: WriterRunReceiptSourceFile[] = baseOverlay.previewWriterRunTransportAdapters.dispatchEnvelopes.map((dispatchEnvelope, index) => ({
+    id: `synthetic-receipt-${index + 1}`,
+    jobId: context.job.id,
+    fileName: `synthetic-${index + 1}.json`,
+    source: "filesystem-inbound",
+    content: JSON.stringify({
+      version: 1,
+      id: `synthetic-envelope-${dispatchEnvelope.artifactId}`,
+      adapterId: dispatchEnvelope.adapterId,
+      transportId: dispatchEnvelope.transportId,
+      dispatchId: dispatchEnvelope.dispatchId,
+      correlationId: dispatchEnvelope.correlationId,
+      packageId: baseOverlay.previewExternalPackage.id,
+      requestId: dispatchEnvelope.requestId,
+      artifactId: dispatchEnvelope.artifactId,
+      fileName: dispatchEnvelope.fileName,
+      sourceSignature: baseOverlay.previewExternalPackage.sourceSignature,
+      reviewSignature: baseOverlay.previewExternalPackage.reviewSignature,
+      deliveryPackageSignature: baseOverlay.previewExternalPackage.deliveryPackageSignature,
+      source: "filesystem-inbound",
+      receiptSequence: index + 1,
+      status: "completed",
+      note: "Synthetic matched receipt.",
+      payload: {
+        dispatchId: dispatchEnvelope.dispatchId,
+      },
+    }, null, 2),
+  }));
+  const receiptContext = {
+    ...context,
+    writerRunReceiptSources: syntheticReceiptSources,
+  };
+  const matchedOverlay = buildReviewOverlay(receiptContext, baseState);
+  const editedOverlay = buildReviewOverlay(
+    receiptContext,
+    applyTrackOverride(baseState, context.mappingProfile, context.mappingProfile.trackMappings[0]!.id, {
+      targetLane: "DX RECEIPT REVIEW",
+      action: "remap",
+    }),
+  );
+
+  assert.equal(matchedOverlay.previewWriterRunReceipts.transportReceipt.receiptImportedCount, syntheticReceiptSources.length);
+  assert.equal(matchedOverlay.previewWriterRunReceipts.status, "completed");
+  assert.ok(editedOverlay.previewWriterRunReceipts.results.every((result) => result.importStatus === "receipt-stale"));
+  assert.equal(editedOverlay.previewWriterRunReceipts.status, "stale");
 });

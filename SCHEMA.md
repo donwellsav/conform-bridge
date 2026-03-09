@@ -751,6 +751,13 @@ Aggregate history summary for the current transport bundle.
 - `failedCount`
 - `cancelledCount`
 - `receiptRecordedCount`
+- `receiptImportedCount`
+- `completedCount`
+- `partialCount`
+- `staleCount`
+- `duplicateCount`
+- `unmatchedCount`
+- `invalidCount`
 - `note`
 
 ### WriterRunTransportBundle
@@ -771,6 +778,145 @@ Aggregate transport and audit view for one packaged delivery handoff.
 - `history`
 - `entries`
 - `status`
+- `summary`
+
+## Layer 9: Transport Adapter And Receipt-Ingestion Contracts
+
+### WriterRunTransportAdapter
+Post-transport boundary that packages deterministic outbound dispatch payloads for external execution.
+- `id`
+- `version`
+- `label`
+- `capabilities`
+- `endpoint`
+- `validate(bundle)`
+
+### WriterRunTransportAdapterValidationResult
+Adapter readiness and unsupported-reason summary for one transport bundle.
+- `adapterId`
+- `readiness`
+- `diagnostics`
+- `supportedArtifactIds`
+- `unsupportedReasons`
+
+### WriterRunDispatchEnvelope
+Deterministic outbound dispatch package contract for one transport envelope.
+- `version`
+- `id`
+- `adapterId`
+- `transportId`
+- `dispatchId`
+- `correlationId`
+- `jobId`
+- `deliveryPackageId`
+- `packageId`
+- `requestId`
+- `requestArtifactId`
+- `responseId`
+- `receiptId`
+- `artifactId`
+- `fileName`
+- `requestReadiness`
+- `dispatchStatus`
+- `dispatchable`
+- `dispatchReason`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `endpoint`
+- `outboundRoot`
+- `relativeOutboundRoot`
+- `dependencyIds`
+- `blockedReasons`
+- `payload`
+- `files`
+
+### WriterRunDispatchResult
+Deterministic dispatch outcome for one outbound adapter package.
+- `id`
+- `adapterId`
+- `dispatchId`
+- `correlationId`
+- `artifactId`
+- `fileName`
+- `status`
+- `endpoint`
+- `outboundRoot`
+- `relativeOutboundRoot`
+- `filePaths`
+- `note`
+
+### WriterRunTransportAdapterBundle
+Aggregate adapter view for outbound dispatch packaging.
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `rootRelativePath`
+- `packageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `adapters`
+- `activeAdapterId`
+- `dispatchEnvelopes`
+- `dispatchResults`
+- `readiness`
+- `entries`
+- `summary`
+
+### WriterRunReceiptEnvelope
+Normalized inbound receipt contract imported from an external transport folder.
+- `version`
+- `id`
+- `adapterId`
+- `transportId`
+- `dispatchId`
+- `correlationId`
+- `packageId`
+- `requestId`
+- `artifactId`
+- `fileName`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `source`
+- `receiptSequence`
+- `status`
+- `note`
+- `payload`
+
+### WriterRunReceiptIngestionResult
+Validation and match result for one imported inbound receipt file.
+- `id`
+- `sourceFileName`
+- `sourcePath`
+- `importStatus`
+- `matchStatus`
+- `validationStatus`
+- `dispatchStatus`
+- `correlationId`
+- `dispatchId`
+- `artifactId`
+- `note`
+- `errors`
+
+### WriterRunReceiptIngestionBundle
+Aggregate post-dispatch receipt-import view that updates audit/history deterministically.
+- `id`
+- `jobId`
+- `deliveryPackageId`
+- `rootRelativePath`
+- `packageId`
+- `sourceSignature`
+- `reviewSignature`
+- `deliveryPackageSignature`
+- `receipts`
+- `results`
+- `auditRecord`
+- `history`
+- `transportReceipt`
+- `status`
+- `entries`
 - `summary`
 
 ## Orchestration Entity
@@ -815,6 +961,8 @@ Operator-facing record that ties the three layers together.
 - One `WriterAdapterBundle` contains many `WriterAdapterDryRunResult` records and many `WriterAdapterArtifactMatch` records.
 - One `WriterAdapterBundle` may produce one `WriterRunnerInput`, one `WriterRunRequest`, one `WriterRunResponse`, and one `WriterRunReceipt` in the downstream runner layer.
 - One `WriterRunBundle` may produce many `WriterRunTransportEnvelope` records, many `WriterRunDispatchRecord` records, one `WriterRunTransportResponse`, one `WriterRunAuditRecord`, many `WriterRunAttemptHistory` records, and one `WriterRunTransportReceipt` in the downstream transport/audit layer.
+- One `WriterRunTransportBundle` may be consumed by one or more `WriterRunTransportAdapter` records and one `WriterRunTransportAdapterBundle` in the downstream adapter-packaging layer.
+- One `WriterRunTransportAdapterBundle` may consume many inbound `WriterRunReceiptEnvelope` records and produce one `WriterRunReceiptIngestionBundle` in the downstream receipt-ingestion layer.
 - One `TranslationJob` may contain many `ConformChangeEvent` records.
 
 ## Current Repo Rules
@@ -823,4 +971,4 @@ Operator-facing record that ties the three layers together.
 - The repo prefers real fixture imports and falls back to deterministic mock data only when the fixture library is absent.
 - Canonical timeline precedence is `fcpxml/xml -> aaf -> edl -> metadata-only`.
 - Operator mapping editors persist browser-local review deltas keyed by job plus source signature.
-- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, external execution packaging, writer-adapter dry runs, writer-runner requests/responses/receipts, and writer-run transport/audit contracts without implying that a Nuendo writer already exists.
+- Types must support real intake analysis, canonical review, delivery planning, execution prep, staging, handoff, external execution packaging, writer-adapter dry runs, writer-runner requests/responses/receipts, writer-run transport/audit contracts, transport-adapter packaging, and receipt-ingestion contracts without implying that a Nuendo writer already exists.
