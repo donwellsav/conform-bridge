@@ -1,7 +1,7 @@
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
 import * as importerModule from "./importer";
@@ -82,13 +82,21 @@ function readJsonFixture<T>(fileName: string) {
 
 function createLightweightSampleCopy() {
   const tempRoot = mkdtempSync(join(tmpdir(), "conform-bridge-r2n-test-1-"));
-  cpSync(realResolveFixtureRoot, tempRoot, { recursive: true });
+  const inventory = readJsonFixture<{
+    tier1Committed: Array<{
+      fileName: string;
+    }>;
+  }>("inventory.json");
+  const committedFiles = [
+    "README.md",
+    ...inventory.tier1Committed.map((entry) => entry.fileName),
+  ];
 
-  for (const fileName of privateSampleFileNames) {
-    const filePath = resolve(tempRoot, fileName);
-    if (existsSync(filePath)) {
-      unlinkSync(filePath);
-    }
+  for (const relativeFileName of committedFiles) {
+    const sourcePath = resolve(realResolveFixtureRoot, relativeFileName);
+    const targetPath = resolve(tempRoot, relativeFileName);
+    mkdirSync(dirname(targetPath), { recursive: true });
+    copyFileSync(sourcePath, targetPath);
   }
 
   return tempRoot;
