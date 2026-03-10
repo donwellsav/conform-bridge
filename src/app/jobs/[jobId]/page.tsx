@@ -69,6 +69,28 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     notFound();
   }
 
+  const productionAudioAssets = bundle.assets.filter((asset) => asset.fileRole === "production_audio" && asset.status === "present");
+  const structuredIssueCount = report.groups
+    .flatMap((group) => group.findings)
+    .filter((finding) =>
+      finding.code === "SECONDARY_TIMELINE_SOURCE_MISMATCH"
+      || finding.code === "TIMELINE_METADATA_MISMATCH"
+      || finding.code === "TIMELINE_EDL_MISMATCH"
+      || finding.code.startsWith("AAF_"),
+    ).length;
+  const fieldRecorderCounts = reviewContext.fieldRecorderCandidates.reduce(
+    (counts, candidate) => {
+      counts[candidate.status] += 1;
+      return counts;
+    },
+    {
+      linked: 0,
+      candidate: 0,
+      insufficient_metadata: 0,
+      missing: 0,
+    },
+  );
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -113,6 +135,34 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         </div>
       </section>
 
+      <section className="grid gap-4 xl:grid-cols-5">
+        <div className="rounded-2xl border border-border/80 bg-panel p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Acceptance counts</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{reviewContext.tracks.length} tracks / {reviewContext.clipEvents.length} clips / {reviewContext.markers.length} markers</p>
+          <p className="mt-2 text-xs text-muted">Hydrated from the preferred structured timeline source, then reconciled against the rest of the intake.</p>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-panel p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Structured reconciliation</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{structuredIssueCount} warnings</p>
+          <p className="mt-2 text-xs text-muted">Cross-checks currently cover `fcpxml/xml`, `aaf`, `edl`, metadata CSV, and marker data.</p>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-panel p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Production audio pass</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{productionAudioAssets.length} rolls / {productionAudioAssets.filter((asset) => asset.hasBwf).length} BWF / {productionAudioAssets.filter((asset) => asset.hasIXml).length} iXML</p>
+          <p className="mt-2 text-xs text-muted">Direct WAV inspection supplements editorial CSV metadata when BWF/LIST/iXML data is present.</p>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-panel p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Field recorder quality</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{fieldRecorderCounts.linked} linked / {fieldRecorderCounts.candidate} candidate</p>
+          <p className="mt-2 text-xs text-muted">{fieldRecorderCounts.insufficient_metadata} insufficient metadata / {fieldRecorderCounts.missing} no match</p>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-panel p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Generated safely now</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{executionPlan.generatedCount} generated / {executionPlan.deferredCount} deferred</p>
+          <p className="mt-2 text-xs text-muted">Native Nuendo writing remains deferred; binary artifacts stay in staged and handoff contracts only.</p>
+        </div>
+      </section>
+
       <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
         <div className="space-y-5">
           <SectionCard eyebrow="Intake Package" title="Resolve and editorial handoff" description="Inbound assets are listed separately from canonical analysis and delivery planning.">
@@ -124,6 +174,16 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                     <Badge variant={asset.status === "missing" ? "danger" : asset.status === "placeholder" ? "warning" : "accent"}>{asset.status}</Badge>
                   </div>
                   <p className="mt-2 text-xs uppercase tracking-[0.16em] text-muted">{asset.fileRole.replaceAll("_", " ")} / {asset.fileKind} / {asset.origin}</p>
+                  {asset.fileRole === "production_audio" ? (
+                    <div className="mt-2 space-y-1 text-xs text-muted">
+                      <p>
+                        {asset.sampleRate ?? "unknown"} Hz / {asset.bitDepth ? `${asset.bitDepth}-bit` : "bit depth unknown"} / {asset.channelCount ?? "unknown"} ch / {asset.channelLayout ?? "layout unknown"}
+                      </p>
+                      <p>
+                        scene {asset.scene ?? "<missing>"} / take {asset.take ?? "<missing>"} / source TC {asset.startTimecode ?? "<missing>"}-{asset.endTimecode ?? "<missing>"}
+                      </p>
+                    </div>
+                  ) : null}
                   <p className="mt-2 text-sm leading-6 text-muted">{asset.note}</p>
                 </div>
               ))}

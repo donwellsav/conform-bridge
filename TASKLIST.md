@@ -4,6 +4,7 @@
 
 - Current phase: `Phase 3J` complete
 - Next phase: `Phase 3K`
+- Current Phase `3K` driver: `fixtures/intake/r2n-test-1`
 - Current real transport path: `filesystem-transport-adapter` only
 - Current persistence model: browser-local review-state deltas only
 - Ongoing parser focus: reduce remaining AAF compatibility fallback only when
@@ -63,6 +64,18 @@
 
 ## Current Focus For Phase 3K
 
+- [x] Add `r2n-test-1` as a first-class real local intake fixture
+- [x] Run the full importer pipeline against `r2n-test-1`
+- [x] Add a first direct WAV/BWF metadata pass for production-audio assets
+- [x] Split `r2n-test-1` into committed lightweight fixtures plus local
+  private sample companions
+- [x] Keep normal repo verification independent of the private sample
+- [x] Add committed expectation snapshots for lightweight and local-private
+  `r2n-test-1` outcomes
+- [x] Keep OTIO, OTIOZ, and DRT auxiliary until explicit parser support is
+  justified
+- [ ] Validate the same field-recorder and reconciliation logic against at
+  least one more real turnover sample before calling Phase `3K` closed
 - Keep executor compatibility sample-driven instead of speculative
 - Add new executor or transport profiles only when they consume the current
   normalized package, handoff, runner, and receipt contracts unchanged

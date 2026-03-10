@@ -54,6 +54,19 @@ function overrideVariant(status: FieldRecorderOverrideStatus) {
   }
 }
 
+function candidateStatusVariant(status: ReviewJobContext["fieldRecorderCandidates"][number]["status"]) {
+  switch (status) {
+    case "linked":
+      return "accent" as const;
+    case "candidate":
+      return "warning" as const;
+    case "insufficient_metadata":
+      return "warning" as const;
+    case "missing":
+      return "danger" as const;
+  }
+}
+
 function issueVariant(issue: PreservationIssue) {
   switch (issue.severity) {
     case "critical":
@@ -516,11 +529,15 @@ export function MappingView({ context }: { context: ReviewJobContext }) {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-semibold text-foreground">{clip?.clipName ?? candidate.clipEventId}</p>
+                      <Badge variant={candidateStatusVariant(candidate.status)}>{candidate.status.replaceAll("_", " ")}</Badge>
                       <Badge variant={overrideVariant(decision)}>{decision}</Badge>
                       <Badge variant={reviewBadgeVariant(isEdited)}>{isEdited ? "Operator-edited" : "Imported base"}</Badge>
                     </div>
                     <p className="mt-1 font-mono text-xs text-muted">{candidate.candidateAssetName}</p>
                     <p className="mt-2 text-sm text-muted">{candidate.note}</p>
+                    <p className="mt-2 text-xs text-muted">
+                      source TC {clip?.sourceIn ?? "unknown"}-{clip?.sourceOut ?? "unknown"} / record {clip?.recordIn ?? "unknown"}-{clip?.recordOut ?? "unknown"}
+                    </p>
                     <p className="mt-2 text-xs text-muted">
                       reel {candidate.matchKeys.reel ?? "<missing>"} / tape {candidate.matchKeys.tape ?? "<missing>"} / scene {candidate.matchKeys.scene ?? "<missing>"} / take {candidate.matchKeys.take ?? "<missing>"}
                     </p>

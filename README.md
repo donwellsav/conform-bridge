@@ -18,6 +18,7 @@ Native Nuendo writing is still intentionally out of scope.
 
 - Current phase: `Phase 3J` complete
 - Next phase: `Phase 3K`
+- Current Phase `3K` driver: `fixtures/intake/r2n-test-1`
 - Current real transport path: `filesystem-transport-adapter` only
 - Current persistence model: browser-local review-state deltas only
 - Current real writer path: none
@@ -62,6 +63,7 @@ Structured intake parsing exists for:
 - metadata CSV
 - marker CSV
 - `manifest.json`
+- direct WAV/BWF metadata inspection for format, BWF/LIST, and iXML fields
 
 Importer precedence is:
 
@@ -79,10 +81,12 @@ AAF notes:
 - Direct parsing is primary for most bundled AAF fixtures, but not for all
   real-world AAF shapes.
 
-Classified but not deeply parsed:
+Auxiliary or partially parsed:
 
-- `bwf` / `wav`
-- `mov` / `mp4`
+- `wav` / `bwf`: direct metadata inspection exists, but explicit source
+  timecode is only trusted when the container exposes it clearly
+- `mov` / `mp4`: classified as reference video, not deeply parsed
+- `otio` / `otioz` / `drt`: preserved as auxiliary reference artifacts only
 
 ## Operator Workflow
 
@@ -144,6 +148,7 @@ Deferred behind a future writer:
 
 The repo currently includes these intake fixtures:
 
+- `fixtures/intake/r2n-test-1`
 - `fixtures/intake/rvr-203-r3`
 - `fixtures/intake/rvr-204-edl-only`
 - `fixtures/intake/rvr-205-aaf-only`
@@ -154,6 +159,8 @@ The repo currently includes these intake fixtures:
 
 These fixtures exercise:
 
+- a real Resolve sample with XML-primary timeline hydration and direct WAV
+  metadata enrichment
 - FCPXML-first timeline hydration
 - EDL fallback hydration
 - direct AAF parsing
@@ -164,6 +171,21 @@ These fixtures exercise:
 
 Imported fixture data is primary when available. Deterministic mock data is
 only fallback when the fixture library is absent.
+
+### `r2n-test-1` Fixture Strategy
+
+`r2n-test-1` now uses a two-tier fixture model:
+
+- Tier 1: committed lightweight editorial turnover files plus committed
+  expectations under `fixtures/expectations/r2n-test-1`
+- Tier 2: local private companions, currently the large WAV files, reference
+  MP4, and `otioz`
+
+Tier 1 is enough for normal importer, delivery-planning, execution-prep,
+staging, package-export, and contract-layer verification. Tier 2 stays local
+by default so the repo remains lightweight and shareable while still allowing
+deeper local regression coverage for production-audio metadata and the first
+real field-recorder pass.
 
 ## Running Locally
 
@@ -185,6 +207,14 @@ Verify:
 npm test
 npm run lint
 npm run build
+```
+
+Extended local sample regression, only when the private `r2n-test-1` assets
+are present:
+
+```powershell
+$env:CONFORM_BRIDGE_RUN_PRIVATE_SAMPLE='1'
+npm test
 ```
 
 ## Phase History
@@ -239,6 +269,9 @@ fallback.
 - No backend, queue, auth, billing, or database exists.
 - Browser-local review persistence is single-machine only.
 - Some AAF layouts still require compatibility fallback payloads.
+- The `r2n-test-1` WAV files provide useful BWF/LIST/iXML metadata, but not a
+  trustworthy explicit source timecode string from the container alone.
+- OTIO, OTIOZ, and DRT are still auxiliary reference artifacts only.
 - Receipt compatibility currently covers canonical filesystem receipts,
   compatibility filesystem receipts, and a future-placeholder profile only.
 - Only the filesystem transport adapter is real. Other transport paths remain
@@ -253,6 +286,9 @@ fallback.
 
 `Phase 3K` should stay sample-driven:
 
+- keep using real turnover samples such as `r2n-test-1` to tighten XML, WAV,
+  and field-recorder behavior before adding any new transport or executor
+  variant
 - add executor or transport variants only when a real external executor
   requires them
 - keep filesystem transport as the primary deterministic path unless a new

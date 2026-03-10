@@ -1,0 +1,76 @@
+{
+  "timeline": {
+    "name": "Timeline 1 (Resolve)",
+    "fps": "23.976",
+    "startTimecode": "01:00:00:00",
+    "durationTimecode": "00:00:30:08",
+    "trackCount": 7,
+    "clipCount": 8,
+    "markerCount": 6
+  },
+  "markers": [
+    {
+      "timecode": "01:00:00:00",
+      "name": "Marker 3"
+    },
+    {
+      "timecode": "01:00:02:17",
+      "name": "Marker 2"
+    },
+    {
+      "timecode": "01:00:10:12",
+      "name": "Marker 4"
+    },
+    {
+      "timecode": "01:00:13:01",
+      "name": "Marker 1"
+    },
+    {
+      "timecode": "01:00:19:23",
+      "name": "marker 5"
+    },
+    {
+      "timecode": "01:00:30:09",
+      "name": "Marker 6"
+    }
+  ],
+  "issueCodes": [
+    "AAF_DIRECT_PARSE_UNSUPPORTED",
+    "DELIVERY_ARTIFACT_BLOCKED",
+    "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+    "SOURCE_FILE_MISSING_FROM_INTAKE",
+    "UNRESOLVED_METADATA"
+  ],
+  "fieldRecorder": {
+    "counts": {
+      "missing": 5
+    },
+    "candidates": [
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "00030.MTS"
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Car Banging.M.wav"
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Car Roof Door Hits.M.wav"
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Skateboard Hit Roll.M.wav"
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Tranquility MAY 31 2017 instr.wav"
+      }
+    ]
+  }
+}

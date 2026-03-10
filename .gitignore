@@ -7,3 +7,12 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .DS_Store
+
+# Local-only private assets for the full r2n-test-1 turnover.
+# The lightweight editorial fixture stays committed. These larger files remain
+# available for richer local regression coverage when present on disk.
+fixtures/intake/r2n-test-1/230407_002.WAV
+fixtures/intake/r2n-test-1/F2-BT_002.WAV
+fixtures/intake/r2n-test-1/F2_002.WAV
+fixtures/intake/r2n-test-1/Timeline 1.mp4
+fixtures/intake/r2n-test-1/Timeline 1.otioz

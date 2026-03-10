@@ -3,6 +3,7 @@ import { basename, extname, join, relative, resolve } from "node:path";
 
 import { extractAafFromFileSync } from "../adapters/aaf-file";
 import { parseFcpxmlText } from "../parsers/fcpxml";
+import { parseWavMetadataSync } from "../parsers/wav";
 import type {
   AnalysisGroup,
   AnalysisReport,
@@ -50,6 +51,7 @@ const SUPPORTED_EXTENSIONS = new Set([
   ".txt",
   ".otio",
   ".otioz",
+  ".drt",
 ]);
 
 interface ParsedManifest {
@@ -71,6 +73,7 @@ interface ParsedManifest {
 }
 
 interface ParsedMetadataRow {
+  kind?: "timeline" | "asset" | "clip";
   timelineName?: string;
   trackIndex?: number;
   trackName?: string;
@@ -87,6 +90,13 @@ interface ParsedMetadataRow {
   sourceIn?: string;
   sourceOut?: string;
   channelCount?: number;
+  sampleRate?: number;
+  bitDepth?: number;
+  frameRate?: string;
+  durationTimecode?: string;
+  soundRoll?: string;
+  recordingDevice?: string;
+  hasSourceTimecode?: boolean;
   isPolyWav?: boolean;
   hasBwf?: boolean;
   hasIXml?: boolean;
@@ -115,6 +125,21 @@ interface ParsedEdlEvent {
   sourceIn: string;
   sourceOut: string;
   clipName?: string;
+}
+
+interface ParsedMetadataSummary {
+  timelineName?: string;
+  fps?: FrameRate;
+  startTimecode?: string;
+  durationTimecode?: string;
+  sampleRate?: SampleRate;
+  bitDepth?: number;
+}
+
+interface ParsedEdlSource {
+  asset: IntakeAsset;
+  events: ParsedEdlEvent[];
+  markers: ParsedMarkerRow[];
 }
 
 export interface IntakeImportResult {
@@ -188,6 +213,28 @@ function parseInteger(value?: string) {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function decodeTextBuffer(buffer: Buffer) {
+  if (buffer.length >= 2 && buffer[0] === 0xFF && buffer[1] === 0xFE) {
+    return buffer.toString("utf16le").replace(/^\uFEFF/, "");
+  }
+
+  if (buffer.length >= 2 && buffer[0] === 0xFE && buffer[1] === 0xFF) {
+    const swapped = Buffer.from(buffer);
+    for (let index = 0; index + 1 < swapped.length; index += 2) {
+      const left = swapped[index];
+      swapped[index] = swapped[index + 1];
+      swapped[index + 1] = left;
+    }
+    return swapped.toString("utf16le").replace(/^\uFEFF/, "");
+  }
+
+  return buffer.toString("utf8").replace(/^\uFEFF/, "");
+}
+
+function readTextFile(filePath: string) {
+  return decodeTextBuffer(readFileSync(filePath));
+}
+
 function coerceFrameRate(value?: string): FrameRate {
   switch (value?.trim()) {
     case "23.976":
@@ -200,6 +247,29 @@ function coerceFrameRate(value?: string): FrameRate {
       return "29.97";
     default:
       return "24";
+  }
+}
+
+function coerceFrameRateFromSpeed(value?: string): FrameRate | undefined {
+  const normalized = value?.trim().replace(/nd$/i, "");
+  if (!normalized) {
+    return undefined;
+  }
+
+  switch (normalized) {
+    case "23.976":
+      return "23.976";
+    case "24.000":
+    case "24":
+      return "24";
+    case "25.000":
+    case "25":
+      return "25";
+    case "29.970":
+    case "29.97":
+      return "29.97";
+    default:
+      return undefined;
   }
 }
 
@@ -290,6 +360,8 @@ function inferFileKind(fileName: string): FileKind | null {
       return "otio";
     case ".otioz":
       return "otioz";
+    case ".drt":
+      return "drt";
     default:
       return null;
   }
@@ -336,7 +408,13 @@ function inferOrigin(relativePath: string, fileKind: FileKind, fileRole: FileRol
     return "production-audio";
   }
 
-  if (normalizedPath.includes("resolve/") || fileKind === "aaf" || fileKind === "fcpxml" || fileKind === "xml") {
+  if (
+    normalizedPath.includes("resolve/")
+    || fileKind === "aaf"
+    || fileKind === "fcpxml"
+    || fileKind === "xml"
+    || fileKind === "drt"
+  ) {
     return "resolve";
   }
 
@@ -491,36 +569,109 @@ function parseCsvRecords(text: string) {
   });
 }
 
+function getRowValue(row: Record<string, string>, ...keys: string[]) {
+  for (const key of keys) {
+    const exact = row[key];
+    if (exact && exact.trim().length > 0) {
+      return exact.trim();
+    }
+
+    const matchingKey = Object.keys(row).find((candidate) => candidate.toLowerCase() === key.toLowerCase());
+    if (matchingKey) {
+      const value = row[matchingKey];
+      if (value && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+  }
+
+  return undefined;
+}
+
+function parseTaggedMetadataBlock(value?: string) {
+  if (!value) {
+    return {} as Record<string, string>;
+  }
+
+  return value.split(/\r?\n/).reduce<Record<string, string>>((collection, line) => {
+    const match = line.trim().match(/^z([A-Z0-9_]+)=(.*)$/);
+    if (match) {
+      collection[match[1]] = match[2].trim();
+    }
+    return collection;
+  }, {});
+}
+
+function normalizeMetadataFileName(value?: string) {
+  return value?.trim().replace(/^file:\/\//i, "").split(/[\\/]/).pop();
+}
+
 export function parseMetadataCsvText(text: string): ParsedMetadataRow[] {
-  return parseCsvRecords(text).map((row) => ({
-    timelineName: row.timelineName || row.timeline_name || undefined,
-    trackIndex: parseInteger(row.trackIndex || row.track_index),
-    trackName: row.trackName || row.track_name || undefined,
-    role: inferSourceRole(row.role),
-    channelLayout: inferChannelLayout(row.channelLayout || row.channel_layout),
-    clipName: row.clipName || row.clip_name || undefined,
-    sourceFileName: row.sourceFileName || row.source_file_name || undefined,
-    reel: row.reel || undefined,
-    tape: row.tape || undefined,
-    scene: row.scene || undefined,
-    take: row.take || undefined,
-    recordIn: row.recordIn || row.record_in || undefined,
-    recordOut: row.recordOut || row.record_out || undefined,
-    sourceIn: row.sourceIn || row.source_in || undefined,
-    sourceOut: row.sourceOut || row.source_out || undefined,
-    channelCount: parseInteger(row.channelCount || row.channel_count),
-    isPolyWav: parseBoolean(row.isPolyWav || row.is_poly_wav),
-    hasBwf: parseBoolean(row.hasBwf || row.has_bwf),
-    hasIXml: parseBoolean(row.hasIXml || row.has_ixml),
-    isOffline: parseBoolean(row.isOffline || row.is_offline),
-    isNested: parseBoolean(row.isNested || row.is_nested),
-    isFlattened: parseBoolean(row.isFlattened || row.is_flattened),
-    hasSpeedEffect: parseBoolean(row.hasSpeedEffect || row.has_speed_effect),
-    hasFadeIn: parseBoolean(row.hasFadeIn || row.has_fade_in),
-    hasFadeOut: parseBoolean(row.hasFadeOut || row.has_fade_out),
-    eventDescription: row.eventDescription || row.event_description || undefined,
-    clipNotes: row.clipNotes || row.clip_notes || undefined,
-  }));
+  return parseCsvRecords(text).map((row) => {
+    const fileName = normalizeMetadataFileName(
+      getRowValue(row, "sourceFileName", "source_file_name", "clipName", "clip_name", "File Name"),
+    );
+    const description = getRowValue(row, "Description");
+    const taggedMetadata = parseTaggedMetadataBlock(description);
+    const trackIndex = parseInteger(getRowValue(row, "trackIndex", "track_index"));
+    const trackName = getRowValue(row, "trackName", "track_name");
+    const channelCount = parseInteger(getRowValue(row, "channelCount", "channel_count", "Audio Channels"));
+    const soundRoll = getRowValue(row, "Sound Roll #");
+    const scene = getRowValue(row, "scene", "Scene") ?? taggedMetadata.SCENE;
+    const take = getRowValue(row, "take", "Take") ?? taggedMetadata.TAKE;
+    const tape = getRowValue(row, "tape", "Tape") ?? taggedMetadata.TAPE;
+    const sampleRate = parseInteger(getRowValue(row, "Audio Sample Rate"));
+    const durationTimecode = getRowValue(row, "Duration TC");
+    const fps = getRowValue(row, "Shot Frame Rate") ?? taggedMetadata.SPEED;
+    const startTimecode = getRowValue(row, "Start TC");
+    const endTimecode = getRowValue(row, "End TC");
+    const timelineLike = Boolean(fileName && !extname(fileName));
+
+    return {
+      kind: timelineLike ? "timeline" : trackIndex !== undefined ? "clip" : "asset",
+      timelineName: getRowValue(row, "timelineName", "timeline_name") ?? (timelineLike ? fileName : undefined),
+      trackIndex,
+      trackName,
+      role: inferSourceRole(getRowValue(row, "role") ?? trackName),
+      channelLayout: inferChannelLayout(getRowValue(row, "channelLayout", "channel_layout"))
+        ?? (channelCount ? (channelCount > 1 ? "stereo" : "mono") : undefined),
+      clipName: getRowValue(row, "clipName", "clip_name") ?? (timelineLike ? undefined : fileName),
+      sourceFileName: timelineLike ? undefined : fileName,
+      reel: getRowValue(row, "reel") ?? soundRoll,
+      tape,
+      scene,
+      take,
+      recordIn: getRowValue(row, "recordIn", "record_in") ?? (timelineLike ? startTimecode : undefined),
+      recordOut: getRowValue(row, "recordOut", "record_out") ?? (timelineLike ? endTimecode : undefined),
+      sourceIn: getRowValue(row, "sourceIn", "source_in") ?? startTimecode,
+      sourceOut: getRowValue(row, "sourceOut", "source_out") ?? endTimecode,
+      channelCount,
+      sampleRate,
+      bitDepth: parseInteger(getRowValue(row, "Audio Bit Depth", "Bit Depth")),
+      frameRate: fps,
+      durationTimecode,
+      soundRoll,
+      recordingDevice: getRowValue(row, "Camera #"),
+      hasSourceTimecode: Boolean(startTimecode && endTimecode),
+      isPolyWav: parseBoolean(getRowValue(row, "isPolyWav", "is_poly_wav")) || (channelCount !== undefined && channelCount > 2),
+      hasBwf: parseBoolean(getRowValue(row, "hasBwf", "has_bwf")),
+      hasIXml: parseBoolean(getRowValue(row, "hasIXml", "has_ixml")),
+      isOffline: parseBoolean(getRowValue(row, "isOffline", "is_offline")),
+      isNested: parseBoolean(getRowValue(row, "isNested", "is_nested")),
+      isFlattened: parseBoolean(getRowValue(row, "isFlattened", "is_flattened")) || trackIndex === undefined,
+      hasSpeedEffect: parseBoolean(getRowValue(row, "hasSpeedEffect", "has_speed_effect")),
+      hasFadeIn: parseBoolean(getRowValue(row, "hasFadeIn", "has_fade_in")),
+      hasFadeOut: parseBoolean(getRowValue(row, "hasFadeOut", "has_fade_out")),
+      eventDescription: getRowValue(row, "eventDescription", "event_description")
+        ?? (
+          [durationTimecode, fps ? `${fps} fps` : undefined, getRowValue(row, "Audio Codec"), getRowValue(row, "Camera #")]
+            .filter((value): value is string => Boolean(value))
+            .join(" / ")
+          || undefined
+        ),
+      clipNotes: getRowValue(row, "clipNotes", "clip_notes") ?? description,
+    };
+  });
 }
 
 export function parseMarkerCsvText(text: string): ParsedMarkerRow[] {
@@ -605,6 +756,21 @@ export function parseSimpleEdlText(text: string): { events: ParsedEdlEvent[]; ma
         name,
         note: note ?? "",
       });
+      continue;
+    }
+
+    const resolveMarkerMatch = currentEvent
+      ? line.match(/^(.*?)\s+\|C:([^|]+)\s+\|M:([^|]+)\s+\|D:(.+)$/i)
+      : null;
+
+    if (resolveMarkerMatch && currentEvent) {
+      const colorToken = resolveMarkerMatch[2].trim().replace(/^ResolveColor/i, "");
+      markers.push({
+        timecode: currentEvent.recordIn,
+        color: inferMarkerColor(colorToken),
+        name: resolveMarkerMatch[3].trim(),
+        note: resolveMarkerMatch[1].trim(),
+      });
     }
   }
 
@@ -635,7 +801,9 @@ function createIntakeAsset(bundleId: string, folderPath: string, filePath: strin
     name: fileName,
     sizeLabel: formatSizeLabel(stats.size),
     status: "present",
-    note: `Scanned from ${relativePath}.`,
+    note: fileKind === "otio" || fileKind === "otioz" || fileKind === "drt"
+      ? `Scanned from ${relativePath}. Treated as an auxiliary reference artifact because this repo does not parse ${fileKind.toUpperCase()} into the canonical model yet.`
+      : `Scanned from ${relativePath}.`,
   };
 }
 
@@ -655,6 +823,99 @@ function createMissingAsset(bundleId: string, fileName: string): IntakeAsset {
     sizeLabel: "Missing",
     status: "missing",
     note: "Expected by the intake package description but not found in the turnover folder.",
+  };
+}
+
+function summarizeProductionAudioNote(asset: IntakeAsset) {
+  const summaryParts = [
+    asset.sampleRate ? `${asset.sampleRate} Hz` : undefined,
+    asset.bitDepth ? `${asset.bitDepth}-bit` : undefined,
+    asset.channelCount ? `${asset.channelCount} ch` : undefined,
+    asset.startTimecode && asset.endTimecode ? `source TC ${asset.startTimecode}-${asset.endTimecode}` : undefined,
+    asset.soundRoll ? `sound roll ${asset.soundRoll}` : undefined,
+    asset.scene ? `scene ${asset.scene}` : undefined,
+    asset.take ? `take ${asset.take}` : undefined,
+    asset.hasBwf ? "bext detected" : undefined,
+    asset.hasIXml ? "iXML detected" : undefined,
+  ].filter((value): value is string => Boolean(value));
+
+  if (summaryParts.length === 0) {
+    return asset.note;
+  }
+
+  return `${summaryParts.join(" / ")}. ${asset.note}`.trim();
+}
+
+function buildMetadataSummary(rows: ParsedMetadataRow[]): ParsedMetadataSummary {
+  const timelineRow = rows.find((row) => row.kind === "timeline");
+
+  return {
+    timelineName: timelineRow?.timelineName,
+    fps: coerceFrameRateFromSpeed(timelineRow?.frameRate) ?? (timelineRow?.frameRate ? coerceFrameRate(timelineRow.frameRate) : undefined),
+    startTimecode: timelineRow?.recordIn,
+    durationTimecode: timelineRow?.durationTimecode,
+    sampleRate: timelineRow?.sampleRate ? coerceSampleRate(timelineRow.sampleRate) : undefined,
+    bitDepth: timelineRow?.bitDepth,
+  };
+}
+
+function chooseTimelineExchange(
+  fcpxmlParsed: ReturnType<typeof parseFcpxmlText> | null,
+  xmlParsed: ReturnType<typeof parseFcpxmlText> | null,
+) {
+  const candidates = [fcpxmlParsed, xmlParsed].filter((candidate): candidate is NonNullable<typeof fcpxmlParsed> => Boolean(candidate));
+
+  if (candidates.length === 0) {
+    return {
+      primary: null,
+      secondary: null,
+    };
+  }
+
+  const score = (candidate: NonNullable<typeof fcpxmlParsed>) => (
+    candidate.tracks.length * 100
+    + candidate.clipEvents.length * 10
+    + candidate.markers.length
+    + (candidate.timeline.startTimecode !== UNKNOWN_TIMECODE ? 1 : 0)
+  );
+
+  const [primary, secondary] = [...candidates].sort((left, right) => {
+    const scoreDifference = score(right) - score(left);
+    if (scoreDifference !== 0) {
+      return scoreDifference;
+    }
+
+    if (left.source === right.source) {
+      return 0;
+    }
+
+    return left.source === "fcpxml" ? -1 : 1;
+  });
+
+  return {
+    primary,
+    secondary: secondary ?? null,
+  };
+}
+
+function selectEdlSources(folderPath: string, assets: IntakeAsset[]) {
+  const edlSources = assets
+    .filter((asset) => asset.fileKind === "edl")
+    .map((asset): ParsedEdlSource => ({
+      asset,
+      ...parseSimpleEdlText(readTextFile(join(folderPath, asset.relativePath ?? asset.name))),
+    }));
+
+  const timelineEdl = edlSources.find((source) => /cmx3600/i.test(source.asset.name))
+    ?? edlSources.find((source) => source.events.length > 0 && source.markers.length === 0)
+    ?? edlSources.find((source) => source.events.length > 0)
+    ?? null;
+  const markerSources = edlSources.filter((source) => source.markers.length > 0);
+
+  return {
+    edlSources,
+    timelineEdl,
+    markerSources,
   };
 }
 
@@ -787,6 +1048,42 @@ function groupIssuesByScope(issues: PreservationIssue[]) {
   }));
 }
 
+function timecodeRangesOverlap(
+  leftStart: string | undefined,
+  leftEnd: string | undefined,
+  rightStart: string | undefined,
+  rightEnd: string | undefined,
+) {
+  if (!leftStart || !leftEnd || !rightStart || !rightEnd) {
+    return false;
+  }
+
+  return leftStart <= rightEnd && rightStart <= leftEnd;
+}
+
+function isFieldRecorderEligibleClip(clipEvent: ClipEvent, assets: IntakeAsset[]) {
+  const sourceAsset = findAssetByName(assets, clipEvent.sourceFileName);
+  const normalizedFileName = clipEvent.sourceFileName.toLowerCase();
+
+  if (sourceAsset?.fileRole === "production_audio") {
+    return true;
+  }
+
+  if (normalizedFileName.endsWith(".mts") || normalizedFileName.endsWith(".mov") || normalizedFileName.endsWith(".mp4")) {
+    return true;
+  }
+
+  return clipEvent.sourceIn !== UNKNOWN_TIMECODE || clipEvent.sourceOut !== UNKNOWN_TIMECODE;
+}
+
+function fieldRecorderEvaluationKey(clipEvent: ClipEvent) {
+  return [
+    clipEvent.sourceFileName.toLowerCase(),
+    clipEvent.recordIn,
+    clipEvent.recordOut,
+  ].join("|");
+}
+
 function createMappingProfile(
   jobId: string,
   tracks: Track[],
@@ -829,7 +1126,7 @@ function createMappingProfile(
           matchField: "timecode",
           sourceValue: unresolvedCandidate.matchKeys.timecode ?? "<missing>",
           targetValue: unresolvedCandidate.candidateAssetName,
-          status: unresolvedCandidate.status === "missing" ? "unresolved" : "linked",
+          status: unresolvedCandidate.status === "linked" ? "linked" : "unresolved",
         }]
       : [],
   } satisfies MappingProfile;
@@ -857,8 +1154,8 @@ function createMappingRules(jobId: string, tracks: Track[], fieldRecorderCandida
       scope: "field_recorder",
       source: candidate.matchKeys.timecode ?? candidate.clipEventId,
       target: candidate.candidateAssetName,
-      action: candidate.status === "missing" ? "preserve" : "remap",
-      status: candidate.status === "missing" ? "issue" : "review",
+      action: candidate.status === "candidate" ? "remap" : "preserve",
+      status: candidate.status === "candidate" ? "review" : "issue",
       note: candidate.note,
     }));
 
@@ -866,32 +1163,93 @@ function createMappingRules(jobId: string, tracks: Track[], fieldRecorderCandida
 }
 
 function createFieldRecorderCandidates(jobId: string, clipEvents: ClipEvent[], assets: IntakeAsset[]) {
-  return clipEvents
-    .filter((clipEvent) => clipEvent.sourceFileName.toLowerCase().endsWith(".bwf") || clipEvent.sourceFileName.toLowerCase().endsWith(".wav"))
-    .map((clipEvent, index): FieldRecorderCandidate => {
-      const asset = findAssetByName(assets, clipEvent.sourceFileName);
-      const missingMetadata = !clipEvent.reel || !clipEvent.tape || !clipEvent.scene || !clipEvent.take || !clipEvent.hasBwf || !clipEvent.hasIXml;
-      const missingAsset = !asset || asset.status === "missing" || clipEvent.isOffline;
+  const productionAudioAssets = assets.filter((asset) => asset.fileRole === "production_audio");
+  const seenEvaluationKeys = new Set<string>();
 
-      return {
+  return clipEvents
+    .filter((clipEvent) => {
+      if (!isFieldRecorderEligibleClip(clipEvent, assets)) {
+        return false;
+      }
+
+      const evaluationKey = fieldRecorderEvaluationKey(clipEvent);
+      if (seenEvaluationKeys.has(evaluationKey)) {
+        return false;
+      }
+
+      seenEvaluationKeys.add(evaluationKey);
+      return true;
+    })
+    .flatMap((clipEvent, index) => {
+      const exactAsset = productionAudioAssets.find((asset) => asset.name.toLowerCase() === clipEvent.sourceFileName.toLowerCase());
+      const overlappingAssets = productionAudioAssets.filter((asset) =>
+        timecodeRangesOverlap(clipEvent.sourceIn, clipEvent.sourceOut, asset.startTimecode, asset.endTimecode),
+      );
+      const baseMatchKeys = {
+        reel: clipEvent.reel,
+        tape: clipEvent.tape,
+        scene: clipEvent.scene,
+        take: clipEvent.take,
+        timecode: clipEvent.sourceIn !== UNKNOWN_TIMECODE ? clipEvent.sourceIn : clipEvent.recordIn,
+      } satisfies Partial<Record<"tape" | "reel" | "scene" | "take" | "timecode", string>>;
+
+      if (exactAsset) {
+        const confident = Boolean(
+          exactAsset.hasBwf
+          || exactAsset.hasIXml
+          || (exactAsset.scene && exactAsset.take)
+          || exactAsset.hasSourceTimecode,
+        );
+
+        return [{
+          id: `frc-${slugify(jobId)}-${index + 1}`,
+          jobId,
+          clipEventId: clipEvent.id,
+          matchKeys: {
+            ...baseMatchKeys,
+            sound_roll: exactAsset.soundRoll ?? exactAsset.name,
+          },
+          status: confident ? "linked" : "insufficient_metadata",
+          candidateAssetName: exactAsset.name,
+          note: confident
+            ? "Source clip identity already resolves to a bundled production-audio roll with usable BWF/iXML or slate metadata."
+            : "A bundled production-audio roll matches by file identity, but direct WAV metadata is still not sufficient for a confident field recorder relink.",
+        } satisfies FieldRecorderCandidate];
+      }
+
+      if (overlappingAssets.length > 0) {
+        return overlappingAssets.map((asset, overlapIndex): FieldRecorderCandidate => ({
+          id: `frc-${slugify(jobId)}-${index + 1}-${overlapIndex + 1}`,
+          jobId,
+          clipEventId: clipEvent.id,
+          matchKeys: {
+            ...baseMatchKeys,
+            sound_roll: asset.soundRoll ?? asset.name,
+          },
+          status: "candidate",
+          candidateAssetName: asset.name,
+          note: "Source timecode overlaps a bundled production-audio roll, but the clip lacks enough matching slate metadata to promote this candidate beyond manual review.",
+        }));
+      }
+
+      const insufficientMetadata = clipEvent.sourceIn === UNKNOWN_TIMECODE
+        && clipEvent.sourceOut === UNKNOWN_TIMECODE
+        && !clipEvent.reel
+        && !clipEvent.tape
+        && !clipEvent.scene
+        && !clipEvent.take;
+
+      return [{
         id: `frc-${slugify(jobId)}-${index + 1}`,
         jobId,
         clipEventId: clipEvent.id,
-        matchKeys: {
-          reel: clipEvent.reel,
-          tape: clipEvent.tape,
-          scene: clipEvent.scene,
-          take: clipEvent.take,
-          timecode: clipEvent.recordIn,
-        },
-        status: missingAsset ? "missing" : missingMetadata ? "candidate" : "linked",
-        candidateAssetName: clipEvent.sourceFileName,
-        note: missingAsset
-          ? "Production roll is referenced by imported metadata but not present in the turnover folder."
-          : missingMetadata
-            ? "Production audio exists, but reel, tape, scene, take, or BWF metadata remain incomplete."
-            : "Production audio metadata is sufficient for first-pass field recorder planning.",
-      };
+        matchKeys: baseMatchKeys,
+        status: insufficientMetadata ? "insufficient_metadata" : "missing",
+        candidateAssetName: insufficientMetadata ? "<insufficient source metadata>" : "<no matching production roll>",
+        note: insufficientMetadata
+          ? "The canonical clip does not carry enough reel, slate, or source-timecode metadata to evaluate field recorder relink candidates."
+          : "No bundled production-audio roll currently overlaps or matches this clip event.",
+      } satisfies FieldRecorderCandidate];
     });
 }
 
@@ -1432,6 +1790,113 @@ function createReconciliationIssues(
   return issues;
 }
 
+function createTimelineAgreementIssues(
+  jobId: string,
+  primarySource: PrimaryTimelineSource,
+  timeline: Timeline,
+  tracks: Track[],
+  clipEvents: ClipEvent[],
+  secondarySource: PrimaryTimelineSource | null,
+  secondaryTimeline: PrimaryHydrationResult["timeline"] | null,
+  secondaryTracks: Track[],
+  secondaryClipEvents: ClipEvent[],
+  metadataSummary: ParsedMetadataSummary,
+  parsedEdl: { events: ParsedEdlEvent[] },
+) {
+  const issues: PreservationIssue[] = [];
+  const primaryLabel = describeStructuredSource(primarySource);
+
+  if (secondaryTimeline) {
+    const secondaryLabel = secondarySource ? describeStructuredSource(secondarySource) : "secondary structured source";
+    const disagreements: string[] = [];
+
+    if (secondaryTimeline.startTimecode !== timeline.startTimecode) {
+      disagreements.push(`start ${primaryLabel}=${timeline.startTimecode} vs ${secondaryLabel}=${secondaryTimeline.startTimecode}`);
+    }
+
+    if (secondaryTimeline.durationTimecode !== timeline.durationTimecode) {
+      disagreements.push(`duration ${primaryLabel}=${timeline.durationTimecode} vs ${secondaryLabel}=${secondaryTimeline.durationTimecode}`);
+    }
+
+    if (secondaryTracks.length !== tracks.length) {
+      disagreements.push(`tracks ${primaryLabel}=${tracks.length} vs ${secondaryLabel}=${secondaryTracks.length}`);
+    }
+
+    if (secondaryClipEvents.length !== clipEvents.length) {
+      disagreements.push(`clips ${primaryLabel}=${clipEvents.length} vs ${secondaryLabel}=${secondaryClipEvents.length}`);
+    }
+
+    if (disagreements.length > 0) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-secondary-structured-source`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "timeline",
+        code: "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+        title: "Structured timeline sources disagree",
+        description: "Both FCPXML and XML were available, but the secondary structured source disagrees with the primary canonical timeline on timing or layout.",
+        sourceLocation: `${primaryLabel} vs secondary structured source`,
+        impact: "Operators should review start timecode, duration, and track coverage before trusting the turnover without manual sign-off.",
+        recommendedAction: "Keep the richer structured source primary and review the disagreement against editorial exports.",
+        requiresDecision: false,
+        affectedItems: disagreements,
+      });
+    }
+  }
+
+  if (metadataSummary.startTimecode && metadataSummary.startTimecode !== timeline.startTimecode) {
+    issues.push({
+      id: `issue-${slugify(jobId)}-metadata-timeline-start`,
+      jobId,
+      category: "manual-review",
+      severity: "warning",
+      scope: "timeline",
+      code: "TIMELINE_METADATA_MISMATCH",
+      title: "Metadata CSV timeline timing disagrees with the canonical timeline",
+      description: "The editorial metadata summary row disagrees with the structured primary timeline timing.",
+      sourceLocation: "metadata CSV timeline summary",
+      impact: "Timeline start or duration may need operator confirmation before sign-off.",
+      recommendedAction: "Compare the metadata summary against the preferred structured timeline source and confirm which value should drive handoff.",
+      requiresDecision: false,
+      affectedItems: [
+        `start canonical=${timeline.startTimecode}`,
+        `start metadata=${metadataSummary.startTimecode}`,
+        metadataSummary.durationTimecode ? `duration metadata=${metadataSummary.durationTimecode}` : "duration metadata=<missing>",
+      ],
+    });
+  }
+
+  if (parsedEdl.events.length > 0) {
+    const edlStart = parsedEdl.events[0]?.recordIn;
+    const edlEnd = parsedEdl.events[parsedEdl.events.length - 1]?.recordOut;
+
+    if (edlStart && edlStart !== timeline.startTimecode) {
+      issues.push({
+        id: `issue-${slugify(jobId)}-edl-timeline-start`,
+        jobId,
+        category: "manual-review",
+        severity: "warning",
+        scope: "timeline",
+        code: "TIMELINE_EDL_MISMATCH",
+        title: "Timeline EDL timing disagrees with the canonical timeline",
+        description: "The CMX timeline EDL disagrees with the canonical primary timeline start timecode.",
+        sourceLocation: "timeline EDL",
+        impact: "Reconform and timing review remain necessary before handoff.",
+        recommendedAction: "Review the CMX timeline EDL against the primary structured source before turnover sign-off.",
+        requiresDecision: false,
+        affectedItems: [
+          `start canonical=${timeline.startTimecode}`,
+          `start edl=${edlStart}`,
+          edlEnd ? `end edl=${edlEnd}` : "end edl=<missing>",
+        ],
+      });
+    }
+  }
+
+  return issues;
+}
+
 function createAafReconciliationIssues(
   jobId: string,
   primarySource: PrimaryTimelineSource,
@@ -1772,17 +2237,24 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
 
   const scannedAssets = readAllFiles(folderPath).map((filePath) => createIntakeAsset(bundleId, folderPath, filePath));
   const manifestAsset = scannedAssets.find((asset) => asset.fileRole === "intake_manifest");
-  const manifest = manifestAsset ? parseManifestText(readFileSync(join(folderPath, manifestAsset.relativePath ?? manifestAsset.name), "utf8")) : undefined;
+  const manifest = manifestAsset ? parseManifestText(readTextFile(join(folderPath, manifestAsset.relativePath ?? manifestAsset.name))) : undefined;
   const metadataAssets = scannedAssets.filter((asset) => asset.fileRole === "metadata_export" && asset.fileKind === "csv");
   const markerAsset = scannedAssets.find((asset) => asset.fileRole === "marker_export" && asset.fileKind === "csv");
-  const edlAsset = scannedAssets.find((asset) => asset.fileKind === "edl");
-  const fcpxmlAsset = scannedAssets.find((asset) => asset.fileKind === "fcpxml") ?? scannedAssets.find((asset) => asset.fileKind === "xml");
+  const { timelineEdl, markerSources } = selectEdlSources(folderPath, scannedAssets);
+  const fcpxmlAsset = scannedAssets.find((asset) => asset.fileKind === "fcpxml");
+  const xmlAsset = scannedAssets.find((asset) => asset.fileKind === "xml");
   const aafAsset = scannedAssets.find((asset) => asset.fileKind === "aaf");
-  const metadataRows = metadataAssets.flatMap((asset) => parseMetadataCsvText(readFileSync(join(folderPath, asset.relativePath ?? asset.name), "utf8")));
-  const parsedEdl = edlAsset ? parseSimpleEdlText(readFileSync(join(folderPath, edlAsset.relativePath ?? edlAsset.name), "utf8")) : { events: [], markers: [] };
+  const metadataRows = metadataAssets.flatMap((asset) => parseMetadataCsvText(readTextFile(join(folderPath, asset.relativePath ?? asset.name))));
+  const metadataSummary = buildMetadataSummary(metadataRows);
+  const parsedEdl = timelineEdl
+    ? {
+        events: timelineEdl.events,
+        markers: timelineEdl.markers,
+      }
+    : { events: [], markers: [] };
   const markerRows = markerAsset
-    ? parseMarkerCsvText(readFileSync(join(folderPath, markerAsset.relativePath ?? markerAsset.name), "utf8"))
-    : parsedEdl.markers;
+    ? parseMarkerCsvText(readTextFile(join(folderPath, markerAsset.relativePath ?? markerAsset.name)))
+    : markerSources.flatMap((source) => source.markers);
 
   const expectedFileNames = [...new Set([...(manifest?.expectedFiles ?? []), ...(manifest?.expectedProductionRolls ?? [])])];
   const missingExpectedAssets = expectedFileNames
@@ -1795,30 +2267,61 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     }
 
     const row = metadataRows.find((candidate) => candidate.sourceFileName?.toLowerCase() === asset.name.toLowerCase());
-    return {
+    const wavMetadata = asset.status === "present" && asset.relativePath
+      ? parseWavMetadataSync(join(folderPath, asset.relativePath))
+      : null;
+
+    const enrichedAsset: IntakeAsset = {
       ...asset,
-      channelCount: row?.channelCount,
-      channelLayout: row?.channelLayout,
-      sampleRate: 48000,
-      isPolyWav: row?.isPolyWav,
-      hasBwf: row?.hasBwf,
-      hasIXml: row?.hasIXml,
+      channelCount: wavMetadata?.channelCount ?? row?.channelCount,
+      channelLayout: wavMetadata?.channelLayout ?? row?.channelLayout,
+      durationTimecode: row?.durationTimecode,
+      sampleRate: wavMetadata?.sampleRate ?? (row?.sampleRate ? coerceSampleRate(row.sampleRate) : undefined),
+      bitDepth: wavMetadata?.bitDepth ?? row?.bitDepth,
+      startTimecode: row?.sourceIn,
+      endTimecode: row?.sourceOut,
+      reel: row?.reel,
+      tape: row?.tape,
+      scene: wavMetadata?.scene ?? row?.scene,
+      take: wavMetadata?.take ?? row?.take,
+      soundRoll: row?.soundRoll ?? asset.name,
+      recordingDevice: wavMetadata?.recordingDevice ?? row?.recordingDevice,
+      hasSourceTimecode: Boolean(row?.hasSourceTimecode),
+      isPolyWav: wavMetadata ? (wavMetadata.channelCount ?? 0) > 2 : row?.isPolyWav,
+      hasBwf: wavMetadata?.hasBwf ?? row?.hasBwf,
+      hasIXml: wavMetadata?.hasIXml ?? row?.hasIXml,
+    };
+
+    return {
+      ...enrichedAsset,
+      note: summarizeProductionAudioNote({
+        ...enrichedAsset,
+        note: [
+          wavMetadata
+            ? `Direct WAV scan${wavMetadata.hasSourceTimecode ? " found explicit source timecode metadata" : " found BWF/LIST metadata but no explicit source timecode string"}.`
+            : undefined,
+          row?.sourceIn && row?.sourceOut
+            ? `Editorial metadata CSV supplies source TC ${row.sourceIn}-${row.sourceOut}.`
+            : undefined,
+          asset.note,
+        ].filter((value): value is string => Boolean(value)).join(" "),
+      }),
     } satisfies IntakeAsset;
   });
 
-  const fps = coerceFrameRate(manifest?.fps);
-  const sampleRate = coerceSampleRate(manifest?.sampleRate);
-  const sequenceName = manifest?.sequenceName ?? metadataRows[0]?.timelineName ?? folderName.toUpperCase();
+  const fps = coerceFrameRate(manifest?.fps ?? metadataSummary.fps);
+  const sampleRate = coerceSampleRate(manifest?.sampleRate ?? metadataSummary.sampleRate);
+  const sequenceName = manifest?.sequenceName ?? metadataSummary.timelineName ?? folderName.toUpperCase();
   const bundleName = manifest?.bundleName ?? `${sequenceName}_TURNOVER`;
-  const startTimecode = manifest?.startTimecode ?? metadataRows[0]?.recordIn ?? parsedEdl.events[0]?.recordIn ?? UNKNOWN_TIMECODE;
-  const parsedTimelineExchange = fcpxmlAsset
+  const startTimecode = manifest?.startTimecode ?? metadataSummary.startTimecode ?? parsedEdl.events[0]?.recordIn ?? UNKNOWN_TIMECODE;
+  const parsedFcpxml = fcpxmlAsset
     ? parseFcpxmlText(
-        readFileSync(join(folderPath, fcpxmlAsset.relativePath ?? fcpxmlAsset.name), "utf8"),
+        readTextFile(join(folderPath, fcpxmlAsset.relativePath ?? fcpxmlAsset.name)),
         {
           bundleId,
           translationModelId,
           timelineId,
-          fileKind: fcpxmlAsset.fileKind === "xml" ? "xml" : "fcpxml",
+          fileKind: "fcpxml",
           assets,
           fallbackName: sequenceName,
           fallbackFps: fps,
@@ -1828,6 +2331,26 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
         },
       )
     : null;
+  const parsedXmlTimeline = xmlAsset
+    ? parseFcpxmlText(
+        readTextFile(join(folderPath, xmlAsset.relativePath ?? xmlAsset.name)),
+        {
+          bundleId,
+          translationModelId,
+          timelineId,
+          fileKind: "xml",
+          assets,
+          fallbackName: sequenceName,
+          fallbackFps: fps,
+          fallbackSampleRate: sampleRate,
+          fallbackStartTimecode: startTimecode,
+          fallbackDropFrame: manifest?.dropFrame ?? false,
+        },
+      )
+    : null;
+  const parsedTimelineExchangeSelection = chooseTimelineExchange(parsedFcpxml, parsedXmlTimeline);
+  const parsedTimelineExchange = parsedTimelineExchangeSelection.primary;
+  const secondaryTimelineExchange = parsedTimelineExchangeSelection.secondary;
   const extractedAaf = aafAsset
     ? extractAafFromFileSync(
         join(folderPath, aafAsset.relativePath ?? aafAsset.name),
@@ -1845,7 +2368,8 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       )
     : null;
   const parsedAaf = extractedAaf?.parsed ?? null;
-  const metadataHydration = metadataRows.length > 0 ? hydrateFromMetadataRows(bundleId, timelineId, fps, metadataRows, assets) : null;
+  const clipMetadataRows = metadataRows.filter((row) => row.kind === "clip");
+  const metadataHydration = clipMetadataRows.length > 0 ? hydrateFromMetadataRows(bundleId, timelineId, fps, clipMetadataRows, assets) : null;
   const edlHydration = parsedEdl.events.length > 0 ? createFallbackClipsFromEdl(bundleId, timelineId, fps, parsedEdl.events, assets) : null;
 
   let primaryHydration: PrimaryHydrationResult;
@@ -1858,7 +2382,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     const structuredMarkers = parsedTimelineExchange.markers.length === 0 && parsedAaf && parsedAaf.markers.length > 0
       ? parsedAaf.markers
       : parsedTimelineExchange.markers;
-    const enrichedTracks = enrichTracksFromMetadata(aafEnrichedTracks, metadataRows);
+    const enrichedTracks = enrichTracksFromMetadata(aafEnrichedTracks, clipMetadataRows);
     const enrichedClipEvents = enrichClipEventsFromMetadata(bundleId, aafEnrichedClipEvents, metadataRows, assets);
     const mergedMarkers = mergeMarkersWithRows(structuredMarkers, markerRows, parsedTimelineExchange.timeline.fps, timelineId);
 
@@ -1882,7 +2406,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       markers: mergedMarkers,
     };
   } else if (parsedAaf) {
-    const enrichedTracks = enrichTracksFromMetadata(parsedAaf.tracks, metadataRows);
+    const enrichedTracks = enrichTracksFromMetadata(parsedAaf.tracks, clipMetadataRows);
     const enrichedClipEvents = enrichClipEventsFromMetadata(bundleId, parsedAaf.clipEvents, metadataRows, assets);
     const mergedMarkers = mergeMarkersWithRows(parsedAaf.markers, markerRows, parsedAaf.timeline.fps, timelineId);
 
@@ -1922,7 +2446,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
         enrichedClipEvents,
         createMarkers(fps, timelineId, markerRows),
       ),
-      tracks: enrichTracksFromMetadata(edlHydration.tracks, metadataRows),
+      tracks: enrichTracksFromMetadata(edlHydration.tracks, clipMetadataRows),
       clipEvents: enrichedClipEvents,
       markers: createMarkers(fps, timelineId, markerRows),
     };
@@ -1974,9 +2498,22 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     primaryHydration.tracks,
     primaryHydration.clipEvents,
     primaryHydration.markers,
-    metadataRows,
+    clipMetadataRows,
     markerRows,
     assets,
+  );
+  const timelineAgreementIssues = createTimelineAgreementIssues(
+    jobId,
+    primaryHydration.primarySource,
+    primaryHydration.timeline,
+    primaryHydration.tracks,
+    primaryHydration.clipEvents,
+    secondaryTimelineExchange?.source ?? null,
+    secondaryTimelineExchange?.timeline ?? null,
+    secondaryTimelineExchange?.tracks ?? [],
+    secondaryTimelineExchange?.clipEvents ?? [],
+    metadataSummary,
+    parsedEdl,
   );
   const aafReconciliationIssues = createAafReconciliationIssues(
     jobId,
@@ -2033,7 +2570,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     fieldRecorderBlocked,
     manifest?.expectedFiles ?? [],
     manifest?.expectedProductionRolls ?? [],
-    [...reconciliationIssues, ...aafReconciliationIssues, ...aafDiagnosticIssues],
+    [...reconciliationIssues, ...timelineAgreementIssues, ...aafReconciliationIssues, ...aafDiagnosticIssues],
   );
 
   const translationModel = {
@@ -2149,7 +2686,11 @@ export function importFixtureLibrarySync(rootPath = FIXTURE_ROOT): ImportedIntak
           id: `watch-${slugify(candidate.id)}`,
           clip: item.clipEvents.find((clipEvent) => clipEvent.id === candidate.clipEventId)?.clipName ?? candidate.clipEventId,
           issue: candidate.note,
-          fallback: candidate.status === "missing" ? "Keep delivery blocked until the referenced roll exists." : "Manual review remains necessary before field recorder relink can be trusted.",
+          fallback: candidate.status === "missing"
+            ? "Keep delivery blocked until the referenced roll exists."
+            : candidate.status === "insufficient_metadata"
+              ? "Direct production-audio metadata is still too weak for a confident relink. Keep this in manual review."
+              : "Manual review remains necessary before field recorder relink can be trusted.",
         })),
     ),
   };

@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync } from "node:fs";
 import assert from "node:assert/strict";
-import { resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import * as importerModule from "./importer";
@@ -12,9 +13,151 @@ const aafVsFcpxmlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr
 const aafMissingMediaFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-207-aaf-missing-media");
 const broaderAafGraphFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-208-aaf-mob-graph");
 const partialFallbackAafFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-209-aaf-partial-fallback");
+const realResolveFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "r2n-test-1");
+const r2nExpectationRoot = resolve(process.cwd(), "fixtures", "expectations", "r2n-test-1");
 const manifestPath = resolve(fcpxmlFixtureRoot, "editorial", "manifest.json");
 const metadataPath = resolve(fcpxmlFixtureRoot, "editorial", "RVR_203_METADATA.csv");
 const importer = ("default" in importerModule ? importerModule.default : importerModule) as typeof importerModule;
+const privateSampleFileNames = [
+  "230407_002.WAV",
+  "F2-BT_002.WAV",
+  "F2_002.WAV",
+  "Timeline 1.mp4",
+  "Timeline 1.otioz",
+];
+const privateAudioFileNames = [
+  "230407_002.WAV",
+  "F2-BT_002.WAV",
+  "F2_002.WAV",
+];
+const runPrivateSample = process.env.CONFORM_BRIDGE_RUN_PRIVATE_SAMPLE === "1";
+const privateSamplePresent = privateSampleFileNames.every((fileName) => existsSync(resolve(realResolveFixtureRoot, fileName)));
+const privateSampleReason = privateSamplePresent
+  ? "set CONFORM_BRIDGE_RUN_PRIVATE_SAMPLE=1 to include the private r2n-test-1 regression assets"
+  : "private r2n-test-1 regression assets are not present on disk";
+
+type SampleExpectation = {
+  timeline: {
+    name: string;
+    fps: string;
+    startTimecode: string;
+    durationTimecode: string;
+    trackCount: number;
+    clipCount: number;
+    markerCount: number;
+  };
+  markers?: Array<{
+    timecode: string;
+    name: string;
+  }>;
+  issueCodes: string[];
+  productionAudio?: Array<{
+    name: string;
+    sampleRate: number;
+    bitDepth: number;
+    channelCount: number;
+    channelLayout: string;
+    scene: string;
+    take: string;
+    startTimecode: string;
+    endTimecode: string;
+    hasBwf: boolean;
+    hasIXml: boolean;
+    hasSourceTimecode: boolean;
+    recordingDevice: string;
+  }>;
+  fieldRecorder: {
+    counts: Record<string, number>;
+    candidates: Array<{
+      status: string;
+      candidateAssetName: string;
+      clipName: string;
+    }>;
+  };
+};
+
+function readJsonFixture<T>(fileName: string) {
+  return JSON.parse(readFileSync(resolve(r2nExpectationRoot, fileName), "utf8")) as T;
+}
+
+function createLightweightSampleCopy() {
+  const tempRoot = mkdtempSync(join(tmpdir(), "conform-bridge-r2n-test-1-"));
+  cpSync(realResolveFixtureRoot, tempRoot, { recursive: true });
+
+  for (const fileName of privateSampleFileNames) {
+    const filePath = resolve(tempRoot, fileName);
+    if (existsSync(filePath)) {
+      unlinkSync(filePath);
+    }
+  }
+
+  return tempRoot;
+}
+
+function summarizeFieldRecorderCandidates(result: importerModule.IntakeImportResult) {
+  const counts = result.fieldRecorderCandidates.reduce<Record<string, number>>((totals, candidate) => {
+    totals[candidate.status] = (totals[candidate.status] ?? 0) + 1;
+    return totals;
+  }, {});
+
+  const candidates = result.fieldRecorderCandidates
+    .map((candidate) => ({
+      status: candidate.status,
+      candidateAssetName: candidate.candidateAssetName,
+      clipName: result.clipEvents.find((clipEvent) => clipEvent.id === candidate.clipEventId)?.clipName ?? candidate.clipEventId,
+    }))
+    .sort((left, right) =>
+      left.clipName.localeCompare(right.clipName)
+      || left.status.localeCompare(right.status)
+      || left.candidateAssetName.localeCompare(right.candidateAssetName),
+    );
+
+  return { counts, candidates };
+}
+
+function summarizeProductionAudio(result: importerModule.IntakeImportResult) {
+  return result.sourceBundle.assets
+    .filter((asset) => asset.fileRole === "production_audio" && asset.status === "present" && privateAudioFileNames.includes(asset.name))
+    .map((asset) => ({
+      name: asset.name,
+      sampleRate: asset.sampleRate ?? 0,
+      bitDepth: asset.bitDepth ?? 0,
+      channelCount: asset.channelCount ?? 0,
+      channelLayout: asset.channelLayout ?? "unknown",
+      scene: asset.scene ?? "",
+      take: asset.take ?? "",
+      startTimecode: asset.startTimecode ?? "",
+      endTimecode: asset.endTimecode ?? "",
+      hasBwf: Boolean(asset.hasBwf),
+      hasIXml: Boolean(asset.hasIXml),
+      hasSourceTimecode: Boolean(asset.hasSourceTimecode),
+      recordingDevice: asset.recordingDevice ?? "",
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function summarizeRealSample(result: importerModule.IntakeImportResult): SampleExpectation {
+  const issueCodes = [...new Set(result.analysisReport.groups.flatMap((group) => group.findings.map((finding) => finding.code)))].sort();
+  const markers = result.markers
+    .map((marker) => ({ timecode: marker.timecode, name: marker.name }))
+    .sort((left, right) => left.timecode.localeCompare(right.timecode) || left.name.localeCompare(right.name));
+
+  return {
+    timeline: {
+      name: result.timeline.name,
+      fps: result.timeline.fps,
+      startTimecode: result.timeline.startTimecode,
+      durationTimecode: result.timeline.durationTimecode,
+      trackCount: result.tracks.length,
+      clipCount: result.clipEvents.length,
+      markerCount: result.markers.length,
+    },
+    markers,
+    issueCodes,
+    productionAudio: summarizeProductionAudio(result),
+    fieldRecorder: summarizeFieldRecorderCandidates(result),
+  };
+}
 
 test("parseManifestText reads intake expectations from manifest.json", () => {
   const manifest = importer.parseManifestText(readFileSync(manifestPath, "utf8"));
@@ -73,7 +216,7 @@ test("importTurnoverFolderSync prefers FCPXML over metadata and EDL, then record
   assert.equal(result.analysisReport.totals.markerCount, 1);
   assert.equal(result.analysisReport.totals.offlineAssetCount, 1);
   assert.equal(result.analysisReport.highRiskCount, 2);
-  assert.equal(result.analysisReport.warningCount, 6);
+  assert.equal(result.analysisReport.warningCount, 7);
   assert.equal(result.analysisReport.blockedCount, 1);
 
   const issueCodes = result.analysisReport.groups.flatMap((group) => group.findings.map((finding) => finding.code));
@@ -83,6 +226,7 @@ test("importTurnoverFolderSync prefers FCPXML over metadata and EDL, then record
   assert.ok(issueCodes.includes("CLIP_TIMECODE_MISMATCH"));
   assert.ok(issueCodes.includes("MARKER_COUNT_MISMATCH"));
   assert.ok(issueCodes.includes("SOURCE_FILE_MISSING_FROM_INTAKE"));
+  assert.ok(issueCodes.includes("TIMELINE_EDL_MISMATCH"));
   assert.ok(issueCodes.includes("UNRESOLVED_METADATA"));
   assert.ok(issueCodes.includes("DELIVERY_ARTIFACT_BLOCKED"));
   assert.ok(!("deliveryPackage" in result));
@@ -213,3 +357,45 @@ test("importTurnoverFolderSync directly traverses broader AAF mob graphs and pre
   assert.match(locatorMarker?.note ?? "", /Check lav rustle/);
   assert.ok(!issueCodes.includes("AAF_ADAPTER_FALLBACK"));
 });
+
+test("importTurnoverFolderSync succeeds on the shareable r2n-test-1 fixture tier and matches the committed lightweight expectation", () => {
+  const lightweightRoot = createLightweightSampleCopy();
+
+  try {
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+    const expectation = readJsonFixture<SampleExpectation>("expected-lightweight.json");
+    const summary = summarizeRealSample(result);
+    const otioAsset = result.sourceBundle.assets.find((asset) => asset.name === "Timeline 1.otio");
+    const drtAsset = result.sourceBundle.assets.find((asset) => asset.name === "Timeline 1.drt");
+
+    assert.deepEqual(summary, {
+      ...expectation,
+      productionAudio: [],
+    });
+    assert.equal(result.sourceBundle.sampleRate, 48000);
+    assert.match(otioAsset?.note ?? "", /auxiliary reference artifact/i);
+    assert.match(drtAsset?.note ?? "", /auxiliary reference artifact/i);
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+if (privateSamplePresent && runPrivateSample) {
+  test("importTurnoverFolderSync enriches r2n-test-1 from local private sample assets and matches the committed local-private expectation", () => {
+    const result = importer.importTurnoverFolderSync(realResolveFixtureRoot);
+    const expectation = readJsonFixture<SampleExpectation>("expected-local-private.json");
+    const summary = summarizeRealSample(result);
+    const stereoRoll = result.sourceBundle.assets.find((asset) => asset.name === "230407_002.WAV");
+
+    assert.deepEqual(summary.issueCodes, expectation.issueCodes);
+    assert.deepEqual(summary.timeline, expectation.timeline);
+    assert.deepEqual(summary.productionAudio, expectation.productionAudio);
+    assert.deepEqual(summary.fieldRecorder, expectation.fieldRecorder);
+    assert.match(stereoRoll?.note ?? "", /Direct WAV scan found BWF\/LIST metadata but no explicit source timecode string/i);
+    assert.match(stereoRoll?.note ?? "", /Editorial metadata CSV supplies source TC/i);
+  });
+} else {
+  test("importTurnoverFolderSync enriches r2n-test-1 from local private sample assets and matches the committed local-private expectation", {
+    skip: privateSampleReason,
+  }, () => {});
+}

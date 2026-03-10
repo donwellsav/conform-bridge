@@ -1,0 +1,114 @@
+{
+  "fixtureId": "r2n-test-1",
+  "projectName": "r2n test 1",
+  "timelineName": "Timeline 1",
+  "frameRate": "23.976",
+  "startTimecode": "01:00:00:00",
+  "sampleRate": 48000,
+  "bitDepth": 32,
+  "committedExpectations": [
+    "fixtures/expectations/r2n-test-1/expected-lightweight.json",
+    "fixtures/expectations/r2n-test-1/expected-local-private.json"
+  ],
+  "tier1Committed": [
+    {
+      "fileName": "Timeline 1.fcpxml",
+      "kind": "fcpxml",
+      "purpose": "primary structured timeline source candidate",
+      "sizeBytes": 3676,
+      "sha256": "DDDC466E4C80A81B551F91EBA96F70138573EFEEC4CF36FAEFD47297F3A2846D"
+    },
+    {
+      "fileName": "Timeline 1.xml",
+      "kind": "xml",
+      "purpose": "alternate structured timeline source candidate",
+      "sizeBytes": 36249,
+      "sha256": "7F1D6443D4B53DBBAAECB3A3A5BB6AB6B943D4A96C933C21088B81B02C4FE5BB"
+    },
+    {
+      "fileName": "Timeline 1.aaf",
+      "kind": "aaf",
+      "purpose": "secondary structured reconciliation source",
+      "sizeBytes": 352256,
+      "sha256": "8A246D3F4F895003E3112D9EF5BEEDDD7F111DF7FBCA30BD4C134BF2365C06E6"
+    },
+    {
+      "fileName": "Timeline 1 cmx3600.edl",
+      "kind": "edl",
+      "purpose": "timeline EDL fallback and reconciliation source",
+      "sizeBytes": 153,
+      "sha256": "E12DF234E61CDCBFC3F50B0A4543507120DDB07E66A254357C8499FDB2DE9E04"
+    },
+    {
+      "fileName": "Timeline 1.edl",
+      "kind": "edl",
+      "purpose": "marker EDL source",
+      "sizeBytes": 901,
+      "sha256": "69186246FC9D1C2450AD8D8098E5B697E53C2BB34647E2DA5000DF75E57B52BE"
+    },
+    {
+      "fileName": "r2n test 1 Media Metadata.csv",
+      "kind": "csv",
+      "purpose": "editorial metadata snapshot",
+      "sizeBytes": 34868,
+      "sha256": "29E30DAA982E894ACC96E31A05D449A6C9CD19328523F6A475F034264B34CEDC"
+    },
+    {
+      "fileName": "Timeline 1.otio",
+      "kind": "otio",
+      "purpose": "auxiliary reference artifact only",
+      "sizeBytes": 121911,
+      "sha256": "7140AFE3020643C6C3668F1E57557F6DEEF93B321D97DDA1C3C8E5B7D5F27FFC"
+    },
+    {
+      "fileName": "Timeline 1.drt",
+      "kind": "drt",
+      "purpose": "auxiliary reference artifact only",
+      "sizeBytes": 39784,
+      "sha256": "4E4C3A60871B5CCBB4D3D271A7B01169F1F80986D2569CFAD3F166CF978C3A4A"
+    }
+  ],
+  "tier2LocalPrivate": [
+    {
+      "fileName": "230407_002.WAV",
+      "kind": "wav",
+      "purpose": "production-audio metadata and field-recorder candidate coverage",
+      "sizeBytes": 1802881697,
+      "fingerprint": "wav|1802881697|230407_002.WAV"
+    },
+    {
+      "fileName": "F2_002.WAV",
+      "kind": "wav",
+      "purpose": "production-audio metadata and field-recorder candidate coverage",
+      "sizeBytes": 1151560034,
+      "fingerprint": "wav|1151560034|F2_002.WAV"
+    },
+    {
+      "fileName": "F2-BT_002.WAV",
+      "kind": "wav",
+      "purpose": "production-audio metadata and field-recorder candidate coverage",
+      "sizeBytes": 1113716580,
+      "fingerprint": "wav|1113716580|F2-BT_002.WAV"
+    },
+    {
+      "fileName": "Timeline 1.mp4",
+      "kind": "mp4",
+      "purpose": "reference video companion",
+      "sizeBytes": 40331980,
+      "fingerprint": "mp4|40331980|Timeline 1.mp4"
+    },
+    {
+      "fileName": "Timeline 1.otioz",
+      "kind": "otioz",
+      "purpose": "auxiliary reference artifact only",
+      "sizeBytes": 244252292,
+      "fingerprint": "otioz|244252292|Timeline 1.otioz"
+    }
+  ],
+  "notes": [
+    "Tier 1 is committed to GitHub and is sufficient for shareable importer, delivery-planning, execution-prep, staging, and package-contract regression coverage.",
+    "Tier 2 stays local-only by default because the raw turnover is too large and too private for normal git history.",
+    "Expected lightweight and local-private outputs are committed separately under fixtures/expectations/r2n-test-1.",
+    "Normal repo verification uses Tier 1 expectations. Extended local sample assertions run only when the private sample files are present and CONFORM_BRIDGE_RUN_PRIVATE_SAMPLE=1."
+  ]
+}

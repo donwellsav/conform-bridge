@@ -7,7 +7,7 @@ import { planNuendoDeliverySync } from "./services/exporter";
 
 test("imported fixture data flows through exporter planning into dashboard and job selectors", () => {
   assert.equal(dataSource.dataMode, "imported");
-  assert.equal(dataSource.jobs.length, 7);
+  assert.ok(dataSource.jobs.length >= 8);
 
   const job = dataSource.jobs[0];
   assert.ok(job);
@@ -76,6 +76,27 @@ test("imported fixture data flows through exporter planning into dashboard and j
   assert.ok(broaderDirectAafJob);
   const partialFallbackJob = dataSource.jobs.find((candidate) => candidate.id === "job-rvr-209-aaf-partial-fallback");
   assert.ok(partialFallbackJob);
+  const realSampleJob = dataSource.jobs.find((candidate) => candidate.id === "job-r2n-test-1");
+  const realSampleExecutionPlan = dataSource.getDeliveryExecutionPlan("job-r2n-test-1");
+  const realSampleExternalPackage = dataSource.getExternalExecutionPackage("job-r2n-test-1");
+  const realSampleBundle = realSampleJob ? dataSource.getBundle(realSampleJob.sourceBundleId) : undefined;
+  assert.ok(realSampleJob);
+  assert.ok(realSampleExecutionPlan);
+  assert.ok(realSampleExternalPackage);
+  assert.equal(realSampleBundle?.sequenceName, "Timeline 1 (Resolve)");
+  assert.ok(realSampleExecutionPlan?.preparedArtifacts.some((artifact) => artifact.executionStatus === "generated"));
+  assert.ok(realSampleExternalPackage?.entries.some((entry) => entry.relativePath.endsWith("/package/external-execution-summary.json")));
+  const productionAudioAssets = realSampleBundle?.assets.filter((asset) => asset.fileRole === "production_audio" && asset.status === "present") ?? [];
+  if (productionAudioAssets.length > 0) {
+    assert.ok(
+      productionAudioAssets.some((asset) =>
+        (asset.name === "230407_002.WAV" && asset.hasIXml)
+        || ((asset.name === "F2_002.WAV" || asset.name === "F2-BT_002.WAV") && asset.hasBwf),
+      ),
+    );
+  } else {
+    assert.ok(!realSampleBundle?.assets.some((asset) => asset.fileRole === "production_audio"));
+  }
   const mappingMetric = dataSource.dashboardMetrics.find((metric) => metric.label === "Mapping reviews");
   assert.ok(mappingMetric);
 });

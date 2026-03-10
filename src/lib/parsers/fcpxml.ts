@@ -187,6 +187,15 @@ function framesToTimecode(frames: number, fps: FrameRate) {
   return [hours, minutes, seconds, frameRemainder].map((token) => token.toString().padStart(2, "0")).join(":");
 }
 
+function timecodeToFrames(timecode: string | undefined, fps: FrameRate) {
+  if (!timecode || !/^\d{2}:\d{2}:\d{2}:\d{2}$/.test(timecode)) {
+    return UNKNOWN_FRAME;
+  }
+
+  const [hours, minutes, seconds, frames] = timecode.split(":").map((token) => Number.parseInt(token, 10));
+  return (((hours * 60) + minutes) * 60 + seconds) * nominalFramesPerSecond(fps) + frames;
+}
+
 function inferLayout(channelCount: number): ChannelLayout {
   if (channelCount <= 1) {
     return "mono";
@@ -251,8 +260,293 @@ function findAssetByName(assets: IntakeAsset[], fileName: string | undefined) {
   return assets.find((asset) => asset.name.toLowerCase() === fileName.toLowerCase());
 }
 
+function parseFrameRateFromXmeml(rateBlock: string | undefined, fallbackFps: FrameRate) {
+  if (!rateBlock) {
+    return fallbackFps;
+  }
+
+  const timebase = rateBlock.match(/<timebase>(\d+)<\/timebase>/i)?.[1];
+  const ntsc = rateBlock.match(/<ntsc>(TRUE|FALSE)<\/ntsc>/i)?.[1]?.toUpperCase() === "TRUE";
+
+  if (timebase === "24" && ntsc) {
+    return "23.976";
+  }
+
+  if (timebase === "24") {
+    return "24";
+  }
+
+  if (timebase === "25") {
+    return "25";
+  }
+
+  if (timebase === "30" && ntsc) {
+    return "29.97";
+  }
+
+  return fallbackFps;
+}
+
+function firstTagText(text: string, tagName: string) {
+  return text.match(new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`, "i"))?.[1]?.trim();
+}
+
+function tagBlocks(text: string, tagName: string) {
+  return [...text.matchAll(new RegExp(`<${tagName}\\b[^>]*>([\\s\\S]*?)</${tagName}>`, "gi"))].map((match) => match[1] ?? "");
+}
+
+function extractXmlBlock(text: string, tagName: string, searchStart = 0) {
+  const tagPattern = new RegExp(`<(/?)${tagName}\\b[^>]*>`, "gi");
+  tagPattern.lastIndex = searchStart;
+
+  let depth = 0;
+  let blockStart = -1;
+  let contentStart = -1;
+
+  for (const match of text.matchAll(tagPattern)) {
+    const matchIndex = match.index ?? 0;
+    const isClosing = match[1] === "/";
+    const raw = match[0] ?? "";
+    const isSelfClosing = !isClosing && raw.endsWith("/>");
+
+    if (!isClosing) {
+      if (depth === 0) {
+        blockStart = matchIndex;
+        contentStart = matchIndex + raw.length;
+      }
+
+      if (!isSelfClosing) {
+        depth += 1;
+      }
+    } else if (depth > 0) {
+      depth -= 1;
+
+      if (depth === 0 && blockStart >= 0 && contentStart >= 0) {
+        return {
+          content: text.slice(contentStart, matchIndex),
+          nextIndex: matchIndex + raw.length,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractAllXmlBlocks(text: string, tagName: string) {
+  const blocks: string[] = [];
+  let searchStart = 0;
+
+  while (searchStart < text.length) {
+    const block = extractXmlBlock(text, tagName, searchStart);
+    if (!block) {
+      break;
+    }
+
+    blocks.push(block.content);
+    searchStart = block.nextIndex;
+  }
+
+  return blocks;
+}
+
+function selectStructuralXmlBlock(blocks: string[]) {
+  if (blocks.length === 0) {
+    return "";
+  }
+
+  return [...blocks].sort((left, right) => {
+    const leftTrackCount = (left.match(/<track>/g) ?? []).length;
+    const rightTrackCount = (right.match(/<track>/g) ?? []).length;
+
+    if (rightTrackCount !== leftTrackCount) {
+      return rightTrackCount - leftTrackCount;
+    }
+
+    const leftClipCount = (left.match(/<clipitem\b/gi) ?? []).length;
+    const rightClipCount = (right.match(/<clipitem\b/gi) ?? []).length;
+
+    if (rightClipCount !== leftClipCount) {
+      return rightClipCount - leftClipCount;
+    }
+
+    return right.length - left.length;
+  })[0] ?? "";
+}
+
+function parseXmemlTrackBlocks(
+  sectionText: string,
+  mediaType: "video" | "audio",
+  context: ParseFcpxmlContext,
+  fps: FrameRate,
+  timelineStartFrame: number,
+  startIndex: number,
+) {
+  const tracks: Track[] = [];
+  const clipEvents: ClipEvent[] = [];
+  const trackBlocks = extractAllXmlBlocks(sectionText, "track");
+
+  trackBlocks.forEach((trackBlock, trackOffset) => {
+    const clipBlocks = tagBlocks(trackBlock, "clipitem");
+    if (clipBlocks.length === 0) {
+      return;
+    }
+
+    const trackIndex = startIndex + trackOffset;
+    const fallbackClipName = firstTagText(clipBlocks[0] ?? "", "name");
+    const trackName = mediaType === "video"
+      ? `Video ${trackIndex}`
+      : `Audio ${trackIndex}`;
+    const trackRole = mediaType === "video"
+      ? "guide"
+      : inferRole(fallbackClipName ?? trackName);
+    const trackId = `track-${slugify(context.bundleId)}-xml-${trackIndex}`;
+    const clipEventIds: string[] = [];
+
+    clipBlocks.forEach((clipBlock, clipOffset) => {
+      const clipEventId = `clip-${slugify(context.bundleId)}-xml-${trackIndex}-${clipOffset + 1}`;
+      const fileBlock = extractXmlBlock(clipBlock, "file")?.content ?? "";
+      const sourceFileName = firstTagText(fileBlock, "name")
+        ?? firstTagText(clipBlock, "name")
+        ?? "unknown";
+      const clipName = firstTagText(clipBlock, "name") ?? sourceFileName;
+      const clipStart = Number.parseInt(firstTagText(clipBlock, "start") ?? "", 10);
+      const clipEnd = Number.parseInt(firstTagText(clipBlock, "end") ?? "", 10);
+      const clipIn = Number.parseInt(firstTagText(clipBlock, "in") ?? "", 10);
+      const clipOut = Number.parseInt(firstTagText(clipBlock, "out") ?? "", 10);
+      const fileTimecodeBlock = extractXmlBlock(fileBlock, "timecode")?.content;
+      const fileStartTimecode = firstTagText(fileTimecodeBlock ?? "", "string");
+      const fileStartFrame = timecodeToFrames(fileStartTimecode, fps);
+      const sourceAsset = findAssetByName(context.assets, sourceFileName);
+      const channelCount = Number.parseInt(firstTagText(fileBlock, "channelcount") ?? "", 10)
+        || sourceAsset?.channelCount
+        || (mediaType === "video" ? 2 : 1);
+      const recordInFrames = Number.isFinite(clipStart) && clipStart >= 0
+        ? timelineStartFrame + clipStart
+        : UNKNOWN_FRAME;
+      const recordOutFrames = Number.isFinite(clipEnd) && clipEnd >= 0
+        ? timelineStartFrame + clipEnd
+        : UNKNOWN_FRAME;
+      const sourceInFrames = Number.isFinite(fileStartFrame) && Number.isFinite(clipIn) && clipIn >= 0
+        ? fileStartFrame + clipIn
+        : UNKNOWN_FRAME;
+      const sourceOutFrames = Number.isFinite(fileStartFrame) && Number.isFinite(clipOut) && clipOut >= 0
+        ? fileStartFrame + clipOut
+        : UNKNOWN_FRAME;
+
+      clipEventIds.push(clipEventId);
+      clipEvents.push({
+        id: clipEventId,
+        timelineId: context.timelineId,
+        trackId,
+        sourceAssetId: sourceAsset?.id ?? `asset-${slugify(context.bundleId)}-xml-missing-${trackIndex}-${clipOffset + 1}`,
+        clipName,
+        sourceFileName,
+        reel: firstTagText(clipBlock, "reel") ?? undefined,
+        tape: firstTagText(clipBlock, "tape") ?? undefined,
+        scene: firstTagText(clipBlock, "scene") ?? undefined,
+        take: firstTagText(clipBlock, "take") ?? undefined,
+        eventDescription: `${context.fileKind.toUpperCase()} timeline exchange clip imported from ${sourceFileName}.`,
+        clipNotes: fileStartTimecode ? `Source timecode ${fileStartTimecode}.` : "",
+        recordIn: framesToTimecode(recordInFrames, fps),
+        recordOut: framesToTimecode(recordOutFrames, fps),
+        sourceIn: framesToTimecode(sourceInFrames, fps),
+        sourceOut: framesToTimecode(sourceOutFrames, fps),
+        recordInFrames,
+        recordOutFrames,
+        sourceInFrames,
+        sourceOutFrames,
+        channelCount,
+        channelLayout: inferLayout(channelCount),
+        isPolyWav: channelCount > 2,
+        hasBwf: sourceAsset?.hasBwf ?? false,
+        hasIXml: sourceAsset?.hasIXml ?? false,
+        isOffline: !sourceAsset || sourceAsset.status === "missing",
+        isNested: false,
+        isFlattened: true,
+        hasSpeedEffect: /<filter>[\s\S]*?<effect>/i.test(clipBlock),
+        hasFadeIn: /<transitionitem>/i.test(trackBlock) || /<filter>[\s\S]*?<name>Cross Dissolve/i.test(clipBlock),
+        hasFadeOut: /<transitionitem>/i.test(trackBlock) || /<filter>[\s\S]*?<name>Cross Dissolve/i.test(clipBlock),
+      });
+    });
+
+    tracks.push({
+      id: trackId,
+      timelineId: context.timelineId,
+      name: trackName,
+      role: trackRole,
+      index: trackIndex,
+      channelLayout: inferLayout(clipEvents.find((clipEvent) => clipEvent.trackId === trackId)?.channelCount ?? 1),
+      clipEventIds,
+    });
+  });
+
+  return {
+    tracks,
+    clipEvents,
+  };
+}
+
+function parseXmemlText(text: string, context: ParseFcpxmlContext): ParsedTimelineSource | null {
+  const normalized = text.replace(/^\uFEFF/, "");
+  if (!/<xmeml\b/i.test(normalized)) {
+    return null;
+  }
+
+  const sequenceBlock = extractXmlBlock(normalized, "sequence")?.content ?? normalized;
+  const sequenceRateBlock = extractXmlBlock(sequenceBlock, "rate")?.content;
+  const fps = parseFrameRateFromXmeml(sequenceRateBlock, context.fallbackFps);
+  const timelineName = firstTagText(sequenceBlock, "name") ?? context.fallbackName;
+  const sequenceTimecodeBlock = extractXmlBlock(sequenceBlock, "timecode")?.content ?? "";
+  const timecodeString = firstTagText(sequenceTimecodeBlock, "string") ?? context.fallbackStartTimecode;
+  const timelineStartFrame = Number.parseInt(firstTagText(sequenceTimecodeBlock, "frame") ?? "", 10);
+  const resolvedStartFrame = Number.isFinite(timelineStartFrame)
+    ? timelineStartFrame
+    : timecodeToFrames(timecodeString, fps);
+  const durationFrames = Number.parseInt(firstTagText(sequenceBlock, "duration") ?? "", 10);
+  const mediaBlock = selectStructuralXmlBlock(extractAllXmlBlocks(sequenceBlock, "media"));
+  const videoSection = selectStructuralXmlBlock(extractAllXmlBlocks(mediaBlock, "video"));
+  const audioSection = selectStructuralXmlBlock(extractAllXmlBlocks(mediaBlock, "audio"));
+  const videoHydration = parseXmemlTrackBlocks(videoSection, "video", context, fps, resolvedStartFrame, 1);
+  const audioHydration = parseXmemlTrackBlocks(
+    audioSection,
+    "audio",
+    context,
+    fps,
+    resolvedStartFrame,
+    videoHydration.tracks.length + 1,
+  );
+  const tracks = [...videoHydration.tracks, ...audioHydration.tracks];
+  const clipEvents = [...videoHydration.clipEvents, ...audioHydration.clipEvents];
+
+  return {
+    source: "xml",
+    timeline: {
+      id: context.timelineId,
+      translationModelId: context.translationModelId,
+      name: timelineName,
+      fps,
+      sampleRate: context.fallbackSampleRate,
+      dropFrame: context.fallbackDropFrame,
+      startTimecode: timecodeString,
+      durationTimecode: framesToTimecode(durationFrames, fps),
+      startFrame: resolvedStartFrame,
+      durationFrames,
+      trackIds: tracks.map((track) => track.id),
+      markerIds: [],
+    },
+    tracks,
+    clipEvents,
+    markers: [],
+  };
+}
+
 export function parseFcpxmlText(text: string, context: ParseFcpxmlContext): ParsedTimelineSource | null {
   const normalized = text.replace(/^\uFEFF/, "");
+  const parsedXmeml = context.fileKind === "xml" ? parseXmemlText(normalized, context) : null;
+  if (parsedXmeml) {
+    return parsedXmeml;
+  }
   const formatMap = new Map<string, ParsedFormat>();
 
   collectTagAttributes(normalized, "format").forEach((attributes) => {

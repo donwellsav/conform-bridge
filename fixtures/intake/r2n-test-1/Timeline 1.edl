@@ -1,0 +1,21 @@
+TITLE: Timeline 1
+FCM: NON-DROP FRAME
+
+001  001      V     C        01:00:00:00 01:00:00:01 01:00:00:00 01:00:00:01  
+timeline marker 3. start |C:ResolveColorBlue |M:Marker 3 |D:1
+
+002  001      V     C        01:00:02:17 01:00:02:18 01:00:02:17 01:00:02:18  
+timeline marker 2 |C:ResolveColorBlue |M:Marker 2 |D:1
+
+003  001      V     C        01:00:10:12 01:00:10:13 01:00:10:12 01:00:10:13  
+timline marker 4 cut |C:ResolveColorBlue |M:Marker 4 |D:1
+
+004  001      V     C        01:00:13:01 01:00:13:02 01:00:13:01 01:00:13:02  
+timeline marker 1. slow fade out a and v |C:ResolveColorBlue |M:Marker 1 |D:1
+
+005  001      V     C        01:00:19:23 01:00:20:00 01:00:19:23 01:00:20:00  
+marker 5 at fake cut |C:ResolveColorBlue |M:marker 5 |D:1
+
+006  001      V     C        01:00:30:09 01:00:30:10 01:00:30:09 01:00:30:10  
+marker 6 end |C:ResolveColorBlue |M:Marker 6 |D:1
+

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<fcpxml version="1.9">
+    <resources>
+        <format frameDuration="1001/24000s" id="r0" name="FFVideoFormatRateUndefined" width="2400" height="1350"/>
+        <format frameDuration="1001/24000s" id="r1" name="FFVideoFormat1080p2398" width="1920" height="1080"/>
+        <asset format="r1" id="r2" start="275982707/4800s" name="00030.MTS" duration="131131/2000s" hasVideo="1" hasAudio="1" audioSources="1" audioChannels="2">
+            <media-rep src="file://localhost/C:/r2n%20files/710%20Film/A/PRIVATE/AVCHD/BDMV/STREAM/00030.MTS" kind="original-media"/>
+        </asset>
+        <asset id="r3" start="728621257/83250s" name="Car Banging.M.wav" duration="9556/375s" hasAudio="1" audioSources="1" audioChannels="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Movies/Fairlight%20Sound%20Library/Media%20Files/Car%20Banging.M.wav" kind="original-media"/>
+        </asset>
+        <asset id="r4" start="0/1s" name="Car Roof Door Hits.M.wav" duration="5008/375s" hasAudio="1" audioSources="1" audioChannels="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Movies/Fairlight%20Sound%20Library/Media%20Files/Car%20Roof%20Door%20Hits.M.wav" kind="original-media"/>
+        </asset>
+        <asset id="r5" start="0/1s" name="Skateboard Hit Roll.M.wav" duration="756/125s" hasAudio="1" audioSources="1" audioChannels="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Movies/Fairlight%20Sound%20Library/Media%20Files/Skateboard%20Hit%20Roll.M.wav" kind="original-media"/>
+        </asset>
+        <asset id="r6" start="0/1s" name="Tranquility MAY 31 2017 instr.wav" duration="558499807/1998000s" hasAudio="1" audioSources="1" audioChannels="2">
+            <media-rep src="file://localhost/C:/Users/dwell/Desktop/Tranquility%20MAY%2031%202017%20instr.wav" kind="original-media"/>
+        </asset>
+    </resources>
+    <library>
+        <event name="Timeline 1 (Resolve)">
+            <project name="Timeline 1 (Resolve)">
+                <sequence format="r0" tcFormat="NDF" duration="243243/8000s" tcStart="18018/5s">
+                    <spine>
+                        <clip enabled="1" format="r1" offset="18018/5s" start="275982707/4800s" tcFormat="NDF" name="00030.MTS" duration="243243/8000s">
+                            <adjust-transform position="0 0" anchor="0 0" scale="1 1"/>
+                            <video offset="275982707/4800s" start="275982707/4800s" duration="131131/2000s" ref="r2">
+                                <audio offset="275982707/4800s" start="275982707/4800s" lane="-1" duration="131131/2000s" ref="r2" srcCh="1, 2"/>
+                            </video>
+                            <asset-clip enabled="1" offset="689982293/12000s" start="728621257/83250s" name="Car Banging.M.wav" lane="4" duration="61061/2400s" ref="r3"/>
+                            <asset-clip enabled="1" offset="6899893/120s" start="0/1s" name="Car Roof Door Hits.M.wav" lane="5" duration="1001/75s" ref="r4"/>
+                            <asset-clip enabled="1" offset="1380396017/24000s" start="0/1s" name="Skateboard Hit Roll.M.wav" lane="5" duration="29029/4800s" ref="r5"/>
+                            <asset-clip enabled="1" offset="275982707/4800s" start="46749953/1998000s" name="Tranquility MAY 31 2017 instr.wav" lane="6" duration="153153/8000s" ref="r6">
+                                <adjust-volume amount="-20"/>
+                            </asset-clip>
+                        </clip>
+                    </spine>
+                </sequence>
+            </project>
+        </event>
+    </library>
+</fcpxml>

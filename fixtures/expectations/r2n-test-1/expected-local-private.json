@@ -1,0 +1,108 @@
+{
+  "timeline": {
+    "name": "Timeline 1 (Resolve)",
+    "fps": "23.976",
+    "startTimecode": "01:00:00:00",
+    "durationTimecode": "00:00:30:08",
+    "trackCount": 7,
+    "clipCount": 8,
+    "markerCount": 6
+  },
+  "issueCodes": [
+    "AAF_DIRECT_PARSE_UNSUPPORTED",
+    "DELIVERY_ARTIFACT_BLOCKED",
+    "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+    "SOURCE_FILE_MISSING_FROM_INTAKE",
+    "UNRESOLVED_METADATA"
+  ],
+  "productionAudio": [
+    {
+      "name": "230407_002.WAV",
+      "sampleRate": 48000,
+      "bitDepth": 32,
+      "channelCount": 2,
+      "channelLayout": "stereo",
+      "scene": "230407",
+      "take": "001",
+      "startTimecode": "15:04:34:17",
+      "endTimecode": "16:22:45:00",
+      "hasBwf": true,
+      "hasIXml": true,
+      "hasSourceTimecode": true,
+      "recordingDevice": "ZOOM F3"
+    },
+    {
+      "name": "F2-BT_002.WAV",
+      "sampleRate": 48000,
+      "bitDepth": 32,
+      "channelCount": 1,
+      "channelLayout": "mono",
+      "scene": "F2-BT",
+      "take": "002",
+      "startTimecode": "14:46:52:23",
+      "endTimecode": "16:23:27:18",
+      "hasBwf": true,
+      "hasIXml": false,
+      "hasSourceTimecode": true,
+      "recordingDevice": "ZOOM F2"
+    },
+    {
+      "name": "F2_002.WAV",
+      "sampleRate": 48000,
+      "bitDepth": 32,
+      "channelCount": 1,
+      "channelLayout": "mono",
+      "scene": "F2",
+      "take": "002",
+      "startTimecode": "14:42:42:07",
+      "endTimecode": "16:22:34:00",
+      "hasBwf": true,
+      "hasIXml": false,
+      "hasSourceTimecode": true,
+      "recordingDevice": "ZOOM F2"
+    }
+  ],
+  "fieldRecorder": {
+    "counts": {
+      "candidate": 3,
+      "missing": 4
+    },
+    "candidates": [
+      {
+        "status": "candidate",
+        "candidateAssetName": "230407_002.WAV",
+        "clipName": "00030.MTS"
+      },
+      {
+        "status": "candidate",
+        "candidateAssetName": "F2-BT_002.WAV",
+        "clipName": "00030.MTS"
+      },
+      {
+        "status": "candidate",
+        "candidateAssetName": "F2_002.WAV",
+        "clipName": "00030.MTS"
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Car Banging.M.wav"
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Car Roof Door Hits.M.wav"
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Skateboard Hit Roll.M.wav"
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Tranquility MAY 31 2017 instr.wav"
+      }
+    ]
+  }
+}

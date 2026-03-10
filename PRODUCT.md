@@ -31,6 +31,7 @@ explicit workflow layers:
 
 - Current phase: `Phase 3J` complete
 - Next phase: `Phase 3K`
+- Current Phase `3K` driver: `r2n-test-1 / Timeline 1`
 - Current real transport path: `filesystem-transport-adapter` only
 - Current persistence model: browser-local review-state deltas only
 - Current writer state: no native Nuendo writer
@@ -79,6 +80,8 @@ These boundaries must stay separate.
 - Real intake fixture scanning from `fixtures/intake/*`
 - Structured parsing for FCPXML/XML, AAF, metadata CSV, marker CSV,
   `manifest.json`, and simple EDL
+- Direct WAV/BWF metadata inspection for sample rate, bit depth, channel
+  count, BWF/LIST metadata, and iXML where present
 - Canonical hydration and reconciliation
 - Operator mapping editors for track, marker, metadata, and field recorder
   review
@@ -93,6 +96,21 @@ These boundaries must stay separate.
 - Deterministic adapter dry runs, runner requests/responses/receipts,
   transport packaging, filesystem dispatch bundles, receipt-ingestion audit
   updates, and executor compatibility reports
+
+## Phase 3K Sample Strategy
+
+`Phase 3K` is currently driven by the real local sample
+`r2n-test-1 / Timeline 1`.
+
+The fixture strategy is intentionally split:
+
+- Tier 1: committed lightweight editorial turnover files and committed
+  expectation snapshots
+- Tier 2: local private companions used only for extended regression coverage
+
+That keeps the repo shareable without losing the ability to run deeper local
+checks against direct WAV/BWF/iXML metadata and first-pass field-recorder
+candidate behavior.
 
 ## Primary Users
 
@@ -110,7 +128,12 @@ These boundaries must stay separate.
 ## Known Limitations
 
 - Some AAF layouts still require compatibility fallback payloads.
-- BWF/WAV and MOV/MP4 are classified but not deeply parsed.
+- WAV/BWF parsing is now deeper than simple classification, but explicit
+  source timecode still depends on what the container actually exposes.
+- The richest `r2n-test-1` production-audio assertions only run when the
+  local private sample companions are present.
+- OTIO, OTIOZ, and DRT remain auxiliary reference artifacts only.
+- MOV/MP4 remains a classified reference-video input, not a deep media parser.
 - Deferred binary outputs remain contracts, not generated binaries.
 - Receipt compatibility is currently limited to the defined filesystem-oriented
   profiles plus a future-placeholder profile.
@@ -126,6 +149,9 @@ These boundaries must stay separate.
 - `Phase 3K`: add executor/profile variants or additional transport adapters
   only when a real external executor requires them and the current boundaries
   can stay intact
+- Use `r2n-test-1` and the next real turnover sample to tighten XML
+  reconciliation, WAV/BWF metadata extraction, and field-recorder candidate
+  confidence without changing the layered architecture
 - Continue reducing AAF compatibility fallback only when new real containers
   justify more parser coverage
 - Keep native Nuendo writing deferred until external execution
