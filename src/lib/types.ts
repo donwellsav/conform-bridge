@@ -40,6 +40,10 @@ export type MarkerColor = "blue" | "green" | "yellow" | "red" | "purple";
 export type MappingScope = "track" | "metadata" | "field_recorder" | "marker" | "delivery";
 export type MappingRuleStatus = "locked" | "review" | "issue";
 export type FieldRecorderCandidateStatus = "linked" | "candidate" | "insufficient_metadata" | "missing";
+export type PrimaryTimelineSource = "fcpxml" | "xml" | "aaf" | "edl" | "metadata";
+export type AafFixtureRole = "authoritative" | "partial-structural" | "reconciliation-only" | "unsupported" | "not_present";
+export type FixtureMatrixFieldRecorderScope = "guarded-private-optional" | "editorial-baseline-only" | "multichannel-baseline-only";
+export type FixtureMatrixFieldRecorderState = "missing-only" | "candidate-only" | "confident-linked" | "mixed" | "out-of-scope";
 export type DeliveryDestination = "nuendo";
 export type ChangeType = "insert" | "delete" | "move" | "trim" | "replace";
 export type DeliveryExecutionStatus = "generated" | "deferred" | "unavailable";
@@ -227,6 +231,76 @@ export interface SourceSnapshot {
   trackCount: number;
   unresolvedMediaCount: number;
   revisionLabel: string;
+  primaryStructuredSource?: PrimaryTimelineSource;
+  secondaryStructuredSource?: PrimaryTimelineSource;
+  structuredSourceReason?: string;
+  aafIntakeStatus?: "direct" | "adapter" | "text" | "unsupported" | "not_present";
+  aafRole?: AafFixtureRole;
+  aafRoleReason?: string;
+  aafContainerKind?: "ole-compound" | "text" | "unknown";
+  aafDirectCoverage?: "full" | "partial" | "none";
+  aafDiagnostics?: string[];
+}
+
+export interface FixtureMatrixFinding {
+  code: string;
+  severity: Severity;
+  title: string;
+}
+
+export interface FixtureMatrixMultichannelObservation {
+  clipName?: string;
+  trackName?: string;
+  role?: SourceRole;
+  channelCount?: number;
+  channelLayout?: ChannelLayout;
+  note: string;
+}
+
+export interface FixtureMatrixFieldRecorderSummary {
+  scope: FixtureMatrixFieldRecorderScope;
+  strongestObservedState: FixtureMatrixFieldRecorderState;
+  counts: Record<string, number>;
+  note: string;
+}
+
+export interface FixtureMatrixAafSummary {
+  role: AafFixtureRole;
+  intakeStatus: "direct" | "adapter" | "text" | "unsupported" | "not_present";
+  containerKind?: "ole-compound" | "text" | "unknown";
+  directCoverage?: "full" | "partial" | "none";
+  reason: string;
+  diagnostics: string[];
+}
+
+export interface FixtureMatrixEntry {
+  fixtureId: string;
+  jobId: string;
+  timelineName: string;
+  authoritativeStructuredSource: PrimaryTimelineSource;
+  secondaryStructuredSource?: PrimaryTimelineSource;
+  sourceArbitrationReason: string;
+  aaf: FixtureMatrixAafSummary;
+  counts: {
+    tracks: number;
+    clips: number;
+    markers: number;
+  };
+  multichannelObservations: FixtureMatrixMultichannelObservation[];
+  fieldRecorder: FixtureMatrixFieldRecorderSummary;
+  deliveryExecution: {
+    generated: number;
+    deferred: number;
+    unavailable: number;
+  };
+  majorFindings: FixtureMatrixFinding[];
+}
+
+export interface FixtureMatrixReport {
+  phase: string;
+  generatedOn: string;
+  fixtureIds: string[];
+  entries: FixtureMatrixEntry[];
 }
 
 export interface MappingSnapshot {
@@ -263,6 +337,7 @@ export interface IntakeAsset {
   soundRoll?: string;
   recordingDevice?: string;
   hasSourceTimecode?: boolean;
+  sourceTimecodeOrigin?: "direct_audio_metadata" | "editorial_csv" | "none";
   isPolyWav?: boolean;
   hasBwf?: boolean;
   hasIXml?: boolean;
@@ -526,6 +601,8 @@ export interface FieldRecorderCandidate {
   status: FieldRecorderCandidateStatus;
   candidateAssetName: string;
   note: string;
+  confidenceScore?: number;
+  reasons?: string[];
 }
 
 export interface MappingProfile {

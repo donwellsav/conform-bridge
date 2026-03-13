@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import { buildFixtureMatrixReport } from "./fixture-matrix";
 import * as fallback from "./mock-data";
 import { countMappingReviews, getFieldRecorderDecision } from "./mapping-workflow";
 import { createImportedReviewSignature, createReviewStateSourceSignature, type ReviewJobContext } from "./review-state";
@@ -31,6 +32,7 @@ import type {
   DeliveryHandoffBundle,
   DeliveryPackage,
   DeliveryStagingBundle,
+  FixtureMatrixReport,
   FieldRecorderCandidate,
   MappingProfile,
   MappingRule,
@@ -63,6 +65,7 @@ interface ImportedAppData extends ImportedIntakeData {
   writerRunTransportAdapterBundles: WriterRunTransportAdapterBundle[];
   writerRunReceiptIngestionBundles: WriterRunReceiptIngestionBundle[];
   writerRunReceiptSources: WriterRunReceiptSourceFile[];
+  fixtureMatrixReport: FixtureMatrixReport;
   dashboardMetrics: DashboardMetric[];
   activityFeed: ActivityItem[];
 }
@@ -159,6 +162,12 @@ function createImportedAppData(): ImportedAppData {
       writerRunTransportAdapterBundles: [],
       writerRunReceiptIngestionBundles: [],
       writerRunReceiptSources: [],
+      fixtureMatrixReport: {
+        phase: "Phase 4A",
+        generatedOn: "2026-03-13",
+        fixtureIds: [],
+        entries: [],
+      },
       dashboardMetrics: [],
       activityFeed: [],
     };
@@ -387,10 +396,26 @@ function createImportedAppData(): ImportedAppData {
     writerRunReceiptIngestionBundles: jobRecords.map((record) => record.writerRunReceiptIngestionBundle),
     writerRunReceiptSources: jobRecords.flatMap((record) => record.writerRunReceiptSources),
     jobs: jobRecords.map((record) => record.job),
+    fixtureMatrixReport: {
+      phase: "Phase 4A",
+      generatedOn: "2026-03-13",
+      fixtureIds: [],
+      entries: [],
+    },
     dashboardMetrics: [],
     activityFeed: [],
   };
 
+  data.fixtureMatrixReport = buildFixtureMatrixReport({
+    jobs: data.jobs,
+    translationModels: data.translationModels,
+    sourceBundles: data.sourceBundles,
+    analysisReports: data.analysisReports,
+    deliveryExecutionPlans: data.deliveryExecutionPlans,
+    tracks: data.tracks,
+    clipEvents: data.clipEvents,
+    fieldRecorderCandidates: data.fieldRecorderCandidates,
+  });
   data.dashboardMetrics = createDashboardMetrics(data);
   data.activityFeed = createActivityFeed(data);
 
@@ -434,6 +459,10 @@ export const jobs = hasImportedBundles ? importedData.jobs : fallback.jobs;
 export const dashboardMetrics = hasImportedBundles ? importedData.dashboardMetrics : fallback.dashboardMetrics;
 export const activityFeed = hasImportedBundles ? importedData.activityFeed : fallback.activityFeed;
 export const fieldRecorderWatchlist = hasImportedBundles ? importedData.fieldRecorderWatchlist : fallback.fieldRecorderWatchlist;
+export const fixtureMatrixReport = hasImportedBundles
+  ? importedData.fixtureMatrixReport
+  : { phase: "Phase 4A", generatedOn: "2026-03-13", fixtureIds: [], entries: [] };
+export const fixtureMatrix = fixtureMatrixReport.entries;
 
 const bundleMap = new Map(sourceBundles.map((bundle) => [bundle.id, bundle]));
 const templateMap = new Map(templates.map((template) => [template.id, template]));

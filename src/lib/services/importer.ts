@@ -2,9 +2,15 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, extname, join, relative, resolve } from "node:path";
 
 import { extractAafFromFileSync } from "../adapters/aaf-file";
+import {
+  describePrivateFixtureAccessRequirement,
+  shouldIncludePrivateFixtureCompanion,
+  shouldTraversePrivateFixtureDirectory,
+} from "../private-fixture-guards";
 import { parseFcpxmlText } from "../parsers/fcpxml";
 import { parseWavMetadataSync } from "../parsers/wav";
 import type {
+  AafFixtureRole,
   AnalysisGroup,
   AnalysisReport,
   AssetOrigin,
@@ -24,6 +30,7 @@ import type {
   MetadataStatus,
   PreservationIssue,
   PreservationScope,
+  PrimaryTimelineSource,
   SampleRate,
   SourceBundle,
   SourceRole,
@@ -37,6 +44,7 @@ import type {
 const FIXTURE_ROOT = resolve(process.cwd(), "fixtures", "intake");
 const UNKNOWN_TIMECODE = "unknown";
 const UNKNOWN_FRAME = -1;
+const emittedGuardrailMessages = new Set<string>();
 const SUPPORTED_EXTENSIONS = new Set([
   ".aaf",
   ".fcpxml",
@@ -70,6 +78,16 @@ interface ParsedManifest {
   outputPresetId?: string;
   expectedFiles?: string[];
   expectedProductionRolls?: string[];
+}
+
+interface FixtureInventoryEntry {
+  fileName: string;
+  entryType?: "file" | "directory";
+}
+
+interface FixtureInventory {
+  tier1Committed?: FixtureInventoryEntry[];
+  tier2LocalPrivate?: FixtureInventoryEntry[];
 }
 
 interface ParsedMetadataRow {
@@ -140,6 +158,20 @@ interface ParsedEdlSource {
   asset: IntakeAsset;
   events: ParsedEdlEvent[];
   markers: ParsedMarkerRow[];
+}
+
+interface TimelineExchangeAssessment {
+  source: "fcpxml" | "xml";
+  label: "FCPXML" | "XML";
+  score: number;
+  reasons: string[];
+}
+
+interface TimelineExchangeSelection {
+  primary: ReturnType<typeof parseFcpxmlText> | null;
+  secondary: ReturnType<typeof parseFcpxmlText> | null;
+  primaryAssessment: TimelineExchangeAssessment | null;
+  secondaryAssessment: TimelineExchangeAssessment | null;
 }
 
 export interface IntakeImportResult {
@@ -233,6 +265,26 @@ function decodeTextBuffer(buffer: Buffer) {
 
 function readTextFile(filePath: string) {
   return decodeTextBuffer(readFileSync(filePath));
+}
+
+function emitPrivateFixtureGuardrailNotice(folderPath: string, skippedFileNames: string[]) {
+  if (skippedFileNames.length === 0) {
+    return;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
+  const key = `${folderPath}::${skippedFileNames.join("|")}`;
+  if (emittedGuardrailMessages.has(key)) {
+    return;
+  }
+
+  emittedGuardrailMessages.add(key);
+  console.info(
+    `[conform-bridge] Skipping ${skippedFileNames.length} private local media companion(s) in ${basename(folderPath)} during normal import; ${describePrivateFixtureAccessRequirement(basename(folderPath), process.env)}.`,
+  );
 }
 
 function coerceFrameRate(value?: string): FrameRate {
@@ -448,6 +500,34 @@ function inferChannelLayout(value?: string): ChannelLayout | undefined {
   }
 }
 
+function inferChannelLayoutFromCount(channelCount?: number): ChannelLayout | undefined {
+  if (!channelCount || channelCount < 1) {
+    return undefined;
+  }
+
+  if (channelCount === 1) {
+    return "mono";
+  }
+
+  if (channelCount === 2) {
+    return "stereo";
+  }
+
+  if (channelCount === 3) {
+    return "lcr";
+  }
+
+  if (channelCount === 6) {
+    return "5.1";
+  }
+
+  if (channelCount <= 4) {
+    return "poly_4";
+  }
+
+  return "poly_8";
+}
+
 function inferSourceRole(value?: string): SourceRole {
   switch (value?.trim().toLowerCase()) {
     case "dx":
@@ -482,15 +562,23 @@ function inferMarkerColor(value?: string): MarkerColor {
   }
 }
 
-function readAllFiles(rootPath: string): string[] {
+function readAllFiles(rootPath: string, fixtureRootPath = rootPath): { files: string[]; skippedDirectories: string[] } {
   const entries = readdirSync(rootPath, { withFileTypes: true });
   const files: string[] = [];
+  const skippedDirectories: string[] = [];
 
   for (const entry of entries) {
     const absolutePath = join(rootPath, entry.name);
 
     if (entry.isDirectory()) {
-      files.push(...readAllFiles(absolutePath));
+      if (!shouldTraversePrivateFixtureDirectory(fixtureRootPath, entry.name)) {
+        skippedDirectories.push(normalizeRelativePath(fixtureRootPath, absolutePath));
+        continue;
+      }
+
+      const nested = readAllFiles(absolutePath, fixtureRootPath);
+      files.push(...nested.files);
+      skippedDirectories.push(...nested.skippedDirectories);
       continue;
     }
 
@@ -500,7 +588,72 @@ function readAllFiles(rootPath: string): string[] {
     }
   }
 
-  return files.sort((left, right) => left.localeCompare(right));
+  return {
+    files: files.sort((left, right) => left.localeCompare(right)),
+    skippedDirectories: skippedDirectories.sort((left, right) => left.localeCompare(right)),
+  };
+}
+
+function readFixtureInventory(folderPath: string) {
+  const fixtureId = basename(folderPath);
+  const inventoryPath = resolve(process.cwd(), "fixtures", "expectations", fixtureId, "inventory.json");
+
+  if (!existsSync(inventoryPath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(readTextFile(inventoryPath)) as FixtureInventory;
+  } catch {
+    return null;
+  }
+}
+
+function filterFixtureInventoryFiles(folderPath: string, filePaths: string[]) {
+  const inventory = readFixtureInventory(folderPath);
+  if (!inventory) {
+    return filePaths;
+  }
+
+  const allowedFiles = new Set([
+    "README.md",
+    ...(inventory.tier1Committed ?? []).map((entry) => entry.fileName),
+    ...(inventory.tier2LocalPrivate ?? [])
+      .filter((entry) => (entry.entryType ?? "file") !== "directory")
+      .map((entry) => entry.fileName),
+  ]);
+  const allowedDirectories = new Set(
+    (inventory.tier2LocalPrivate ?? [])
+      .filter((entry) => entry.entryType === "directory")
+      .map((entry) => entry.fileName),
+  );
+
+  return filePaths.filter((filePath) => {
+    const relativePath = normalizeRelativePath(folderPath, filePath);
+    if (allowedFiles.has(relativePath)) {
+      return true;
+    }
+
+    const [topLevelSegment] = relativePath.split("/");
+    return allowedDirectories.has(topLevelSegment ?? "");
+  });
+}
+
+function filterScannableFixtureFiles(folderPath: string, filePaths: string[], skippedDirectories: string[] = []) {
+  const included: string[] = [];
+  const skippedEntries = [...skippedDirectories];
+
+  for (const filePath of filePaths) {
+    const fileName = basename(filePath);
+    if (shouldIncludePrivateFixtureCompanion(folderPath, fileName)) {
+      included.push(filePath);
+    } else {
+      skippedEntries.push(fileName);
+    }
+  }
+
+  emitPrivateFixtureGuardrailNotice(folderPath, skippedEntries);
+  return filterFixtureInventoryFiles(folderPath, included);
 }
 
 function parseCsvRecords(text: string) {
@@ -634,7 +787,7 @@ export function parseMetadataCsvText(text: string): ParsedMetadataRow[] {
       trackName,
       role: inferSourceRole(getRowValue(row, "role") ?? trackName),
       channelLayout: inferChannelLayout(getRowValue(row, "channelLayout", "channel_layout"))
-        ?? (channelCount ? (channelCount > 1 ? "stereo" : "mono") : undefined),
+        ?? inferChannelLayoutFromCount(channelCount),
       clipName: getRowValue(row, "clipName", "clip_name") ?? (timelineLike ? undefined : fileName),
       sourceFileName: timelineLike ? undefined : fileName,
       reel: getRowValue(row, "reel") ?? soundRoll,
@@ -760,7 +913,7 @@ export function parseSimpleEdlText(text: string): { events: ParsedEdlEvent[]; ma
     }
 
     const resolveMarkerMatch = currentEvent
-      ? line.match(/^(.*?)\s+\|C:([^|]+)\s+\|M:([^|]+)\s+\|D:(.+)$/i)
+      ? line.match(/^(.*?)\s*\|C:([^|]+)\s+\|M:([^|]+)\s+\|D:(.+)$/i)
       : null;
 
     if (resolveMarkerMatch && currentEvent) {
@@ -859,42 +1012,223 @@ function buildMetadataSummary(rows: ParsedMetadataRow[]): ParsedMetadataSummary 
   };
 }
 
+function describeStructuredSource(source: PrimaryTimelineSource | "fcpxml" | "xml") {
+  switch (source) {
+    case "fcpxml":
+      return "FCPXML";
+    case "xml":
+      return "XML";
+    case "aaf":
+      return "AAF";
+    case "edl":
+      return "EDL";
+    case "metadata":
+      return "metadata CSV";
+    default:
+      return "structured intake source";
+  }
+}
+
+function summarizeAafExtractionDiagnostics(aafExtraction: {
+  containerKind: "ole-compound" | "text" | "unknown";
+  extractionMode: "direct" | "adapter" | "text" | "unparsed";
+  directCoverage: "full" | "partial" | "none";
+  payloadFormat?: string;
+  diagnostics: string[];
+  fallbackReason?: string;
+}) {
+  return [
+    `container=${aafExtraction.containerKind}`,
+    `extraction=${aafExtraction.extractionMode}`,
+    `direct coverage=${aafExtraction.directCoverage}`,
+    aafExtraction.payloadFormat ? `payload=${aafExtraction.payloadFormat}` : undefined,
+    aafExtraction.fallbackReason,
+    ...aafExtraction.diagnostics,
+  ].filter((value): value is string => Boolean(value && value.trim().length > 0));
+}
+
+function classifyAafRole(
+  primarySource: PrimaryTimelineSource,
+  aafExtraction: {
+    containerKind: "ole-compound" | "text" | "unknown";
+    extractionMode: "direct" | "adapter" | "text" | "unparsed";
+    directCoverage: "full" | "partial" | "none";
+    fallbackReason?: string;
+  } | null,
+): { role: AafFixtureRole; reason: string } {
+  if (!aafExtraction) {
+    return {
+      role: "not_present",
+      reason: "No AAF file was present in this sample.",
+    };
+  }
+
+  if (aafExtraction.extractionMode === "unparsed") {
+    return {
+      role: "unsupported",
+      reason: `AAF was detected as ${aafExtraction.containerKind}, but direct coverage remained ${aafExtraction.directCoverage} and canonical hydration stayed on ${describeStructuredSource(primarySource)}.`,
+    };
+  }
+
+  if (aafExtraction.extractionMode === "adapter") {
+    return {
+      role: "partial-structural",
+      reason: `AAF required compatibility fallback after only ${aafExtraction.directCoverage} direct coverage, so it remains partial structural evidence rather than a fully trusted canonical source.`,
+    };
+  }
+
+  if (primarySource === "aaf" && aafExtraction.directCoverage === "full") {
+    return {
+      role: "authoritative",
+      reason: `AAF hydrated the canonical timeline directly with ${aafExtraction.directCoverage} direct coverage.`,
+    };
+  }
+
+  if (primarySource !== "aaf" && aafExtraction.directCoverage === "full") {
+    return {
+      role: "reconciliation-only",
+      reason: `AAF parsed directly, but ${describeStructuredSource(primarySource)} remained authoritative on timing and coverage for this sample.`,
+    };
+  }
+
+  return {
+    role: "partial-structural",
+    reason: `AAF parsed with only ${aafExtraction.directCoverage} direct coverage, so it remains partial structural evidence for this sample.`,
+  };
+}
+
+function countUniqueNamedSources(clipEvents: ClipEvent[]) {
+  return new Set(
+    clipEvents
+      .map((clipEvent) => clipEvent.sourceFileName?.trim())
+      .filter((value): value is string => Boolean(value && value !== "unknown")),
+  ).size;
+}
+
+function countExplicitSourceTimecodes(clipEvents: ClipEvent[]) {
+  return clipEvents.filter((clipEvent) => clipEvent.sourceIn !== UNKNOWN_TIMECODE && clipEvent.sourceOut !== UNKNOWN_TIMECODE).length;
+}
+
+function assessTimelineExchange(
+  candidate: NonNullable<ReturnType<typeof parseFcpxmlText>>,
+  context: {
+    metadataSummary: ParsedMetadataSummary;
+    parsedEdl: { events: ParsedEdlEvent[] };
+    markerRows: ParsedMarkerRow[];
+    preferredStartTimecode?: string;
+  },
+): TimelineExchangeAssessment {
+  const label = describeStructuredSource(candidate.source) as "FCPXML" | "XML";
+  const reasons: string[] = [];
+  let score = 0;
+
+  const edlStart = context.parsedEdl.events[0]?.recordIn;
+  const preferredStart = context.metadataSummary.startTimecode ?? edlStart ?? context.preferredStartTimecode;
+  const namedSources = countUniqueNamedSources(candidate.clipEvents);
+  const explicitSourceTimecodes = countExplicitSourceTimecodes(candidate.clipEvents);
+
+  if (candidate.timeline.startTimecode !== UNKNOWN_TIMECODE) {
+    score += 30;
+    reasons.push(`${label} provides an explicit timeline start timecode (${candidate.timeline.startTimecode}).`);
+  }
+
+  if (preferredStart && candidate.timeline.startTimecode === preferredStart) {
+    score += 220;
+    reasons.push(`${label} agrees with the strongest secondary timing reference at ${preferredStart}.`);
+  }
+
+  if (context.metadataSummary.durationTimecode && candidate.timeline.durationTimecode === context.metadataSummary.durationTimecode) {
+    score += 45;
+    reasons.push(`${label} matches the metadata summary duration (${candidate.timeline.durationTimecode}).`);
+  }
+
+  if (context.markerRows.length > 0 && candidate.markers.length === context.markerRows.length) {
+    score += 35;
+    reasons.push(`${label} carries the full structured marker count (${candidate.markers.length}).`);
+  }
+
+  if (candidate.tracks.length > 0) {
+    score += candidate.tracks.length * 45;
+    reasons.push(`${label} covers ${candidate.tracks.length} imported track${candidate.tracks.length === 1 ? "" : "s"}.`);
+  }
+
+  if (candidate.clipEvents.length > 0) {
+    score += candidate.clipEvents.length * 18;
+    reasons.push(`${label} covers ${candidate.clipEvents.length} clip event${candidate.clipEvents.length === 1 ? "" : "s"}.`);
+  }
+
+  if (namedSources > 0) {
+    score += namedSources * 6;
+    reasons.push(`${label} preserves ${namedSources} distinct source file name${namedSources === 1 ? "" : "s"}.`);
+  }
+
+  if (explicitSourceTimecodes > 0) {
+    score += explicitSourceTimecodes * 4;
+    reasons.push(`${label} preserves explicit source timecode on ${explicitSourceTimecodes} clip${explicitSourceTimecodes === 1 ? "" : "s"}.`);
+  }
+
+  return {
+    source: candidate.source,
+    label,
+    score,
+    reasons,
+  };
+}
+
 function chooseTimelineExchange(
   fcpxmlParsed: ReturnType<typeof parseFcpxmlText> | null,
   xmlParsed: ReturnType<typeof parseFcpxmlText> | null,
-) {
+  context: {
+    metadataSummary: ParsedMetadataSummary;
+    parsedEdl: { events: ParsedEdlEvent[] };
+    markerRows: ParsedMarkerRow[];
+    preferredStartTimecode?: string;
+  },
+): TimelineExchangeSelection {
   const candidates = [fcpxmlParsed, xmlParsed].filter((candidate): candidate is NonNullable<typeof fcpxmlParsed> => Boolean(candidate));
 
   if (candidates.length === 0) {
     return {
       primary: null,
       secondary: null,
+      primaryAssessment: null,
+      secondaryAssessment: null,
     };
   }
 
-  const score = (candidate: NonNullable<typeof fcpxmlParsed>) => (
-    candidate.tracks.length * 100
-    + candidate.clipEvents.length * 10
-    + candidate.markers.length
-    + (candidate.timeline.startTimecode !== UNKNOWN_TIMECODE ? 1 : 0)
-  );
+  const assessments = candidates.map((candidate) => ({
+    candidate,
+    assessment: assessTimelineExchange(candidate, context),
+  }));
 
-  const [primary, secondary] = [...candidates].sort((left, right) => {
-    const scoreDifference = score(right) - score(left);
+  const [primaryEntry, secondaryEntry] = assessments.sort((left, right) => {
+    const scoreDifference = right.assessment.score - left.assessment.score;
     if (scoreDifference !== 0) {
       return scoreDifference;
     }
 
-    if (left.source === right.source) {
+    const trackDifference = right.candidate.tracks.length - left.candidate.tracks.length;
+    if (trackDifference !== 0) {
+      return trackDifference;
+    }
+
+    const clipDifference = right.candidate.clipEvents.length - left.candidate.clipEvents.length;
+    if (clipDifference !== 0) {
+      return clipDifference;
+    }
+
+    if (left.candidate.source === right.candidate.source) {
       return 0;
     }
 
-    return left.source === "fcpxml" ? -1 : 1;
+    return left.candidate.source === "xml" ? -1 : 1;
   });
 
   return {
-    primary,
-    secondary: secondary ?? null,
+    primary: primaryEntry?.candidate ?? null,
+    secondary: secondaryEntry?.candidate ?? null,
+    primaryAssessment: primaryEntry?.assessment ?? null,
+    secondaryAssessment: secondaryEntry?.assessment ?? null,
   };
 }
 
@@ -1162,8 +1496,111 @@ function createMappingRules(jobId: string, tracks: Track[], fieldRecorderCandida
   return [...trackRules, ...fieldRecorderRules];
 }
 
+function normalizeMatchToken(value?: string) {
+  const normalizedValue = value?.trim().toLowerCase();
+  if (!normalizedValue) {
+    return undefined;
+  }
+
+  if (/^\d+$/.test(normalizedValue)) {
+    return String(Number.parseInt(normalizedValue, 10));
+  }
+
+  return normalizedValue;
+}
+
+function sameMatchToken(left?: string, right?: string) {
+  const normalizedLeft = normalizeMatchToken(left);
+  const normalizedRight = normalizeMatchToken(right);
+
+  if (!normalizedLeft || !normalizedRight) {
+    return false;
+  }
+
+  return normalizedLeft === normalizedRight;
+}
+
+function conflictingMatchToken(left?: string, right?: string) {
+  const normalizedLeft = normalizeMatchToken(left);
+  const normalizedRight = normalizeMatchToken(right);
+
+  if (!normalizedLeft || !normalizedRight) {
+    return false;
+  }
+
+  return normalizedLeft !== normalizedRight;
+}
+
+function isFieldRecorderCandidateAsset(asset: IntakeAsset) {
+  return asset.fileRole === "production_audio"
+    && Boolean(asset.hasIXml || asset.scene || asset.take || asset.tape);
+}
+
+function scoreFieldRecorderEvidence(
+  clipEvent: ClipEvent,
+  asset: IntakeAsset,
+  exactFileIdentity: boolean,
+) {
+  const reasons: string[] = [];
+  let score = 0;
+  const overlappingTimecode = timecodeRangesOverlap(
+    clipEvent.sourceIn,
+    clipEvent.sourceOut,
+    asset.startTimecode,
+    asset.endTimecode,
+  );
+  const hasTimingAnchor = exactFileIdentity || overlappingTimecode;
+
+  if (exactFileIdentity) {
+    score += 65;
+    reasons.push("Source file identity matches the bundled production-audio roll.");
+  }
+
+  if (overlappingTimecode) {
+    score += 35;
+    reasons.push("Source timecode overlaps the bundled production-audio roll.");
+  }
+
+  if (hasTimingAnchor && asset.sourceTimecodeOrigin === "direct_audio_metadata") {
+    score += 20;
+    reasons.push("The WAV carries direct source timecode metadata.");
+  } else if (hasTimingAnchor && asset.sourceTimecodeOrigin === "editorial_csv") {
+    score += 8;
+    reasons.push("Usable source timecode currently comes from editorial CSV, not direct WAV metadata.");
+  }
+
+  if (sameMatchToken(clipEvent.scene, asset.scene)) {
+    score += 14;
+    reasons.push("Scene metadata agrees between the canonical clip and the production-audio roll.");
+  } else if (conflictingMatchToken(clipEvent.scene, asset.scene)) {
+    reasons.push("Scene metadata conflicts between the canonical clip and the production-audio roll.");
+  }
+
+  if (sameMatchToken(clipEvent.take, asset.take)) {
+    score += 14;
+    reasons.push("Take metadata agrees between the canonical clip and the production-audio roll.");
+  } else if (conflictingMatchToken(clipEvent.take, asset.take)) {
+    reasons.push("Take metadata conflicts between the canonical clip and the production-audio roll.");
+  }
+
+  if (sameMatchToken(clipEvent.reel, asset.reel) || sameMatchToken(clipEvent.tape, asset.tape)) {
+    score += 16;
+    reasons.push("Reel or tape identity agrees with the production-audio roll.");
+  }
+
+  if (sameMatchToken(clipEvent.reel, asset.soundRoll) || sameMatchToken(clipEvent.tape, asset.soundRoll)) {
+    score += 10;
+    reasons.push("Sound-roll naming overlaps with the canonical clip identity.");
+  }
+
+  return {
+    score,
+    reasons,
+  };
+}
+
 function createFieldRecorderCandidates(jobId: string, clipEvents: ClipEvent[], assets: IntakeAsset[]) {
-  const productionAudioAssets = assets.filter((asset) => asset.fileRole === "production_audio");
+  const productionAudioAssets = assets.filter(isFieldRecorderCandidateAsset);
   const seenEvaluationKeys = new Set<string>();
 
   return clipEvents
@@ -1182,9 +1619,6 @@ function createFieldRecorderCandidates(jobId: string, clipEvents: ClipEvent[], a
     })
     .flatMap((clipEvent, index) => {
       const exactAsset = productionAudioAssets.find((asset) => asset.name.toLowerCase() === clipEvent.sourceFileName.toLowerCase());
-      const overlappingAssets = productionAudioAssets.filter((asset) =>
-        timecodeRangesOverlap(clipEvent.sourceIn, clipEvent.sourceOut, asset.startTimecode, asset.endTimecode),
-      );
       const baseMatchKeys = {
         reel: clipEvent.reel,
         tape: clipEvent.tape,
@@ -1193,13 +1627,31 @@ function createFieldRecorderCandidates(jobId: string, clipEvents: ClipEvent[], a
         timecode: clipEvent.sourceIn !== UNKNOWN_TIMECODE ? clipEvent.sourceIn : clipEvent.recordIn,
       } satisfies Partial<Record<"tape" | "reel" | "scene" | "take" | "timecode", string>>;
 
-      if (exactAsset) {
-        const confident = Boolean(
-          exactAsset.hasBwf
-          || exactAsset.hasIXml
-          || (exactAsset.scene && exactAsset.take)
-          || exactAsset.hasSourceTimecode,
+      const evaluatedAssets = productionAudioAssets
+        .map((asset) => ({
+          asset,
+          ...scoreFieldRecorderEvidence(clipEvent, asset, asset.name.toLowerCase() === clipEvent.sourceFileName.toLowerCase()),
+        }))
+        .filter((candidate) => candidate.score > 0)
+        .sort((left, right) =>
+          right.score - left.score
+          || left.asset.name.localeCompare(right.asset.name),
         );
+
+      if (exactAsset) {
+        const exactMatch = evaluatedAssets.find((candidate) => candidate.asset.id === exactAsset.id)
+          ?? {
+            asset: exactAsset,
+            ...scoreFieldRecorderEvidence(clipEvent, exactAsset, true),
+          };
+        const confident = exactMatch.score >= 120
+          && exactMatch.reasons.some((reason) => reason.includes("Source file identity"))
+          && !exactMatch.reasons.some((reason) => reason.includes("conflicts"))
+          && (
+            exactMatch.reasons.some((reason) => reason.includes("Scene metadata agrees"))
+            || exactMatch.reasons.some((reason) => reason.includes("Take metadata agrees"))
+            || exactMatch.reasons.some((reason) => reason.includes("Reel or tape identity agrees"))
+          );
 
         return [{
           id: `frc-${slugify(jobId)}-${index + 1}`,
@@ -1211,24 +1663,30 @@ function createFieldRecorderCandidates(jobId: string, clipEvents: ClipEvent[], a
           },
           status: confident ? "linked" : "insufficient_metadata",
           candidateAssetName: exactAsset.name,
+          confidenceScore: exactMatch.score,
+          reasons: exactMatch.reasons,
           note: confident
-            ? "Source clip identity already resolves to a bundled production-audio roll with usable BWF/iXML or slate metadata."
-            : "A bundled production-audio roll matches by file identity, but direct WAV metadata is still not sufficient for a confident field recorder relink.",
+            ? `Confident relink candidate. ${exactMatch.reasons.join(" ")}`
+            : `Exact file identity exists, but the evidence is still below a confident relink threshold. ${exactMatch.reasons.join(" ")}`,
         } satisfies FieldRecorderCandidate];
       }
 
-      if (overlappingAssets.length > 0) {
-        return overlappingAssets.map((asset, overlapIndex): FieldRecorderCandidate => ({
+      const plausibleCandidates = evaluatedAssets.filter((candidate) => candidate.score >= 35);
+
+      if (plausibleCandidates.length > 0) {
+        return plausibleCandidates.map((candidate, overlapIndex): FieldRecorderCandidate => ({
           id: `frc-${slugify(jobId)}-${index + 1}-${overlapIndex + 1}`,
           jobId,
           clipEventId: clipEvent.id,
           matchKeys: {
             ...baseMatchKeys,
-            sound_roll: asset.soundRoll ?? asset.name,
+            sound_roll: candidate.asset.soundRoll ?? candidate.asset.name,
           },
           status: "candidate",
-          candidateAssetName: asset.name,
-          note: "Source timecode overlaps a bundled production-audio roll, but the clip lacks enough matching slate metadata to promote this candidate beyond manual review.",
+          candidateAssetName: candidate.asset.name,
+          confidenceScore: candidate.score,
+          reasons: candidate.reasons,
+          note: `Plausible candidate only. ${candidate.reasons.join(" ")} Manual review remains required before trusting this relink.`,
         }));
       }
 
@@ -1239,6 +1697,8 @@ function createFieldRecorderCandidates(jobId: string, clipEvents: ClipEvent[], a
         && !clipEvent.scene
         && !clipEvent.take;
 
+      const bestAttempt = evaluatedAssets[0];
+
       return [{
         id: `frc-${slugify(jobId)}-${index + 1}`,
         jobId,
@@ -1246,9 +1706,13 @@ function createFieldRecorderCandidates(jobId: string, clipEvents: ClipEvent[], a
         matchKeys: baseMatchKeys,
         status: insufficientMetadata ? "insufficient_metadata" : "missing",
         candidateAssetName: insufficientMetadata ? "<insufficient source metadata>" : "<no matching production roll>",
+        confidenceScore: bestAttempt?.score ?? 0,
+        reasons: bestAttempt?.reasons ?? [],
         note: insufficientMetadata
           ? "The canonical clip does not carry enough reel, slate, or source-timecode metadata to evaluate field recorder relink candidates."
-          : "No bundled production-audio roll currently overlaps or matches this clip event.",
+          : bestAttempt
+            ? `A weak candidate was inspected but did not clear the manual-review threshold. ${bestAttempt.reasons.join(" ")}`
+            : "No bundled production-audio roll currently overlaps or matches this clip event.",
       } satisfies FieldRecorderCandidate];
     });
 }
@@ -1481,8 +1945,6 @@ function hydrateFromMetadataRows(
   };
 }
 
-type PrimaryTimelineSource = "fcpxml" | "xml" | "aaf" | "edl" | "metadata";
-
 interface PrimaryHydrationResult {
   primarySource: PrimaryTimelineSource;
   timeline: Timeline;
@@ -1653,18 +2115,6 @@ function mergeMarkersWithRows(
   });
 }
 
-function describeStructuredSource(primarySource: PrimaryTimelineSource) {
-  switch (primarySource) {
-    case "fcpxml":
-    case "xml":
-      return "FCPXML/XML";
-    case "aaf":
-      return "AAF";
-    default:
-      return "structured intake source";
-  }
-}
-
 function createReconciliationIssues(
   jobId: string,
   primarySource: PrimaryTimelineSource,
@@ -1673,6 +2123,7 @@ function createReconciliationIssues(
   markers: Marker[],
   metadataRows: ParsedMetadataRow[],
   markerRows: ParsedMarkerRow[],
+  markerReferenceSourceLabel: string,
   assets: IntakeAsset[],
 ) {
   if (primarySource !== "fcpxml" && primarySource !== "xml" && primarySource !== "aaf") {
@@ -1739,6 +2190,11 @@ function createReconciliationIssues(
   }
 
   if (markerRows.length > 0 && markers.length > 0 && markerRows.length !== markers.length) {
+    const markerReferenceTitle = markerReferenceSourceLabel === "marker EDL"
+      ? "Marker EDL"
+      : markerReferenceSourceLabel === "marker CSV"
+        ? "Marker CSV"
+        : "Marker source";
     issues.push({
       id: `issue-${slugify(jobId)}-marker-count-mismatch`,
       jobId,
@@ -1746,13 +2202,13 @@ function createReconciliationIssues(
       severity: "warning",
       scope: "markers",
       code: "MARKER_COUNT_MISMATCH",
-      title: `Marker CSV count does not match the ${primarySourceLabel}`,
-      description: `The imported ${primarySourceLabel} marker set disagrees with the marker CSV, so marker CSV data is used only for enrichment.`,
-      sourceLocation: `${primarySourceLabel} vs marker CSV`,
+      title: `${markerReferenceTitle} count does not match the ${primarySourceLabel}`,
+      description: `The imported ${primarySourceLabel} marker set disagrees with the ${markerReferenceSourceLabel}, so that marker source is used only for enrichment.`,
+      sourceLocation: `${primarySourceLabel} vs ${markerReferenceSourceLabel}`,
       impact: "Marker exports may require operator review before delivery.",
       recommendedAction: "Review marker coverage and decide which editorial source should be corrected upstream.",
       requiresDecision: false,
-      affectedItems: [`timeline markers=${markers.length}`, `marker csv=${markerRows.length}`],
+      affectedItems: [`timeline markers=${markers.length}`, `${markerReferenceSourceLabel}=${markerRows.length}`],
     });
   }
 
@@ -1796,15 +2252,42 @@ function createTimelineAgreementIssues(
   timeline: Timeline,
   tracks: Track[],
   clipEvents: ClipEvent[],
+  primaryAssessment: TimelineExchangeAssessment | null,
   secondarySource: PrimaryTimelineSource | null,
   secondaryTimeline: PrimaryHydrationResult["timeline"] | null,
   secondaryTracks: Track[],
   secondaryClipEvents: ClipEvent[],
+  secondaryAssessment: TimelineExchangeAssessment | null,
   metadataSummary: ParsedMetadataSummary,
   parsedEdl: { events: ParsedEdlEvent[] },
 ) {
   const issues: PreservationIssue[] = [];
   const primaryLabel = describeStructuredSource(primarySource);
+
+  if (primaryAssessment && secondaryAssessment) {
+    const arbitrationReasons = [
+      `${primaryAssessment.label} score=${primaryAssessment.score}`,
+      ...primaryAssessment.reasons,
+      `${secondaryAssessment.label} score=${secondaryAssessment.score}`,
+      ...secondaryAssessment.reasons,
+    ];
+
+    issues.push({
+      id: `issue-${slugify(jobId)}-primary-structured-source`,
+      jobId,
+      category: "preserved",
+      severity: "info",
+      scope: "timeline",
+      code: "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+      title: `${primaryAssessment.label} selected as the primary structured source`,
+      description: `${primaryAssessment.label} won structured-source arbitration over ${secondaryAssessment.label} using deterministic timing and coverage signals.`,
+      sourceLocation: `${primaryAssessment.label} vs ${secondaryAssessment.label}`,
+      impact: `Canonical hydration stays anchored to ${primaryAssessment.label}; the losing structured source remains available for reconciliation only.`,
+      recommendedAction: `Keep ${primaryAssessment.label} authoritative for this turnover unless upstream exports are corrected and re-imported.`,
+      requiresDecision: false,
+      affectedItems: arbitrationReasons,
+    });
+  }
 
   if (secondaryTimeline) {
     const secondaryLabel = secondarySource ? describeStructuredSource(secondarySource) : "secondary structured source";
@@ -1827,6 +2310,13 @@ function createTimelineAgreementIssues(
     }
 
     if (disagreements.length > 0) {
+      const arbitrationSummary = primaryAssessment && secondaryAssessment
+        ? [
+            `${primaryAssessment.label} stayed primary because it scored ${primaryAssessment.score} vs ${secondaryAssessment.score}.`,
+            ...primaryAssessment.reasons.slice(0, 3),
+          ]
+        : [];
+
       issues.push({
         id: `issue-${slugify(jobId)}-secondary-structured-source`,
         jobId,
@@ -1835,12 +2325,12 @@ function createTimelineAgreementIssues(
         scope: "timeline",
         code: "SECONDARY_TIMELINE_SOURCE_MISMATCH",
         title: "Structured timeline sources disagree",
-        description: "Both FCPXML and XML were available, but the secondary structured source disagrees with the primary canonical timeline on timing or layout.",
-        sourceLocation: `${primaryLabel} vs secondary structured source`,
+        description: `Both ${primaryLabel} and ${secondaryLabel} were available, but the secondary structured source disagrees with the primary canonical timeline on timing or layout.`,
+        sourceLocation: `${primaryLabel} vs ${secondaryLabel}`,
         impact: "Operators should review start timecode, duration, and track coverage before trusting the turnover without manual sign-off.",
         recommendedAction: "Keep the richer structured source primary and review the disagreement against editorial exports.",
         requiresDecision: false,
-        affectedItems: disagreements,
+        affectedItems: [...arbitrationSummary, ...disagreements],
       });
     }
   }
@@ -2126,7 +2616,9 @@ function createAafReconciliationIssues(
 
 function createAafDiagnosticIssues(
   jobId: string,
+  primarySource: PrimaryTimelineSource,
   aafExtraction: {
+    containerKind: "ole-compound" | "text" | "unknown";
     extractionMode: "direct" | "adapter" | "text" | "unparsed";
     directCoverage: "full" | "partial" | "none";
     payloadFormat?: string;
@@ -2139,11 +2631,11 @@ function createAafDiagnosticIssues(
     return [] as PreservationIssue[];
   }
 
+  const primaryLabel = describeStructuredSource(primarySource);
   const diagnostics = [
-    aafExtraction.payloadFormat ? `payload=${aafExtraction.payloadFormat}` : undefined,
-    aafExtraction.fallbackReason,
-    ...aafExtraction.diagnostics,
-  ].filter((value): value is string => Boolean(value && value.trim().length > 0));
+    `canonical fallback=${primaryLabel}`,
+    ...summarizeAafExtractionDiagnostics(aafExtraction),
+  ];
 
   if (aafExtraction.extractionMode === "adapter") {
     return [{
@@ -2172,10 +2664,10 @@ function createAafDiagnosticIssues(
       scope: "intake",
       code: "AAF_DIRECT_PARSE_UNSUPPORTED",
       title: "AAF could not be parsed directly",
-      description: "The importer detected an AAF file, but direct in-repo parsing could not hydrate it and no compatibility payload was used.",
+      description: `The importer detected an AAF file, attempted direct in-repo parsing, and could not hydrate it. Canonical hydration stayed on ${primaryLabel} instead.`,
       sourceLocation: "AAF container inspection",
-      impact: "Canonical hydration fell back to other intake sources, so AAF-specific enrichment and reconciliation may be incomplete.",
-      recommendedAction: "Review the AAF diagnostics and add compatibility coverage for this file shape before relying on it.",
+      impact: `AAF-specific enrichment and reconciliation remain incomplete for this sample, so ${primaryLabel} stays authoritative.`,
+      recommendedAction: "Review the AAF diagnostics and extend direct coverage only if this exact file shape becomes a recurring workflow requirement.",
       requiresDecision: false,
       affectedItems: diagnostics.length > 0 ? diagnostics : ["unparsed AAF container"],
     } satisfies PreservationIssue];
@@ -2235,7 +2727,9 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   const timelineId = `timeline-${bundleSlug}`;
   const deliveryPackageId = `delivery-${bundleSlug}`;
 
-  const scannedAssets = readAllFiles(folderPath).map((filePath) => createIntakeAsset(bundleId, folderPath, filePath));
+  const scannedFileSet = readAllFiles(folderPath);
+  const scannedAssets = filterScannableFixtureFiles(folderPath, scannedFileSet.files, scannedFileSet.skippedDirectories)
+    .map((filePath) => createIntakeAsset(bundleId, folderPath, filePath));
   const manifestAsset = scannedAssets.find((asset) => asset.fileRole === "intake_manifest");
   const manifest = manifestAsset ? parseManifestText(readTextFile(join(folderPath, manifestAsset.relativePath ?? manifestAsset.name))) : undefined;
   const metadataAssets = scannedAssets.filter((asset) => asset.fileRole === "metadata_export" && asset.fileKind === "csv");
@@ -2255,6 +2749,11 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   const markerRows = markerAsset
     ? parseMarkerCsvText(readTextFile(join(folderPath, markerAsset.relativePath ?? markerAsset.name)))
     : markerSources.flatMap((source) => source.markers);
+  const markerReferenceSourceLabel = markerAsset
+    ? "marker CSV"
+    : markerSources.length > 0
+      ? "marker EDL"
+      : "marker source";
 
   const expectedFileNames = [...new Set([...(manifest?.expectedFiles ?? []), ...(manifest?.expectedProductionRolls ?? [])])];
   const missingExpectedAssets = expectedFileNames
@@ -2267,9 +2766,16 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     }
 
     const row = metadataRows.find((candidate) => candidate.sourceFileName?.toLowerCase() === asset.name.toLowerCase());
+    let wavMetadataSkipReason: string | undefined;
     const wavMetadata = asset.status === "present" && asset.relativePath
-      ? parseWavMetadataSync(join(folderPath, asset.relativePath))
+      ? parseWavMetadataSync(join(folderPath, asset.relativePath), {
+          onGuardedSkip: (reason) => {
+            wavMetadataSkipReason = reason;
+          },
+        })
       : null;
+    const directSourceTimecode = Boolean(wavMetadata?.hasSourceTimecode);
+    const editorialSourceTimecode = Boolean(row?.sourceIn && row?.sourceOut);
 
     const enrichedAsset: IntakeAsset = {
       ...asset,
@@ -2286,7 +2792,8 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       take: wavMetadata?.take ?? row?.take,
       soundRoll: row?.soundRoll ?? asset.name,
       recordingDevice: wavMetadata?.recordingDevice ?? row?.recordingDevice,
-      hasSourceTimecode: Boolean(row?.hasSourceTimecode),
+      hasSourceTimecode: directSourceTimecode || editorialSourceTimecode,
+      sourceTimecodeOrigin: directSourceTimecode ? "direct_audio_metadata" : editorialSourceTimecode ? "editorial_csv" : "none",
       isPolyWav: wavMetadata ? (wavMetadata.channelCount ?? 0) > 2 : row?.isPolyWav,
       hasBwf: wavMetadata?.hasBwf ?? row?.hasBwf,
       hasIXml: wavMetadata?.hasIXml ?? row?.hasIXml,
@@ -2300,6 +2807,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
           wavMetadata
             ? `Direct WAV scan${wavMetadata.hasSourceTimecode ? " found explicit source timecode metadata" : " found BWF/LIST metadata but no explicit source timecode string"}.`
             : undefined,
+          wavMetadataSkipReason,
           row?.sourceIn && row?.sourceOut
             ? `Editorial metadata CSV supplies source TC ${row.sourceIn}-${row.sourceOut}.`
             : undefined,
@@ -2348,7 +2856,12 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
         },
       )
     : null;
-  const parsedTimelineExchangeSelection = chooseTimelineExchange(parsedFcpxml, parsedXmlTimeline);
+  const parsedTimelineExchangeSelection = chooseTimelineExchange(parsedFcpxml, parsedXmlTimeline, {
+    metadataSummary,
+    parsedEdl,
+    markerRows,
+    preferredStartTimecode: startTimecode,
+  });
   const parsedTimelineExchange = parsedTimelineExchangeSelection.primary;
   const secondaryTimelineExchange = parsedTimelineExchangeSelection.secondary;
   const extractedAaf = aafAsset
@@ -2500,6 +3013,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     primaryHydration.markers,
     clipMetadataRows,
     markerRows,
+    markerReferenceSourceLabel,
     assets,
   );
   const timelineAgreementIssues = createTimelineAgreementIssues(
@@ -2508,10 +3022,12 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
     primaryHydration.timeline,
     primaryHydration.tracks,
     primaryHydration.clipEvents,
+    parsedTimelineExchangeSelection.primaryAssessment,
     secondaryTimelineExchange?.source ?? null,
     secondaryTimelineExchange?.timeline ?? null,
     secondaryTimelineExchange?.tracks ?? [],
     secondaryTimelineExchange?.clipEvents ?? [],
+    parsedTimelineExchangeSelection.secondaryAssessment,
     metadataSummary,
     parsedEdl,
   );
@@ -2530,7 +3046,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       : null,
     assets,
   );
-  const aafDiagnosticIssues = createAafDiagnosticIssues(jobId, extractedAaf);
+  const aafDiagnosticIssues = createAafDiagnosticIssues(jobId, primaryHydration.primarySource, extractedAaf);
   const tracks = primaryHydration.tracks;
   const clipEvents = primaryHydration.clipEvents;
   const timeline = primaryHydration.timeline;
@@ -2588,6 +3104,8 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
   const mappingProfile = createMappingProfile(jobId, tracks, clipEvents, fieldRecorderCandidates, timeline);
   const mappingRules = createMappingRules(jobId, tracks, fieldRecorderCandidates);
   const conformChangeEvents = createConformChangeEvents(jobId, parsedEdl.events, fps);
+  const aafRole = classifyAafRole(primaryHydration.primarySource, extractedAaf);
+  const aafDiagnostics = extractedAaf ? summarizeAafExtractionDiagnostics(extractedAaf) : [];
 
   const job = {
     id: jobId,
@@ -2610,6 +3128,21 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       trackCount: tracks.length,
       unresolvedMediaCount: clipEvents.filter((clipEvent) => clipEvent.isOffline).length,
       revisionLabel: basename(folderPath),
+      primaryStructuredSource: primaryHydration.primarySource,
+      secondaryStructuredSource: secondaryTimelineExchange?.source ?? undefined,
+      structuredSourceReason: parsedTimelineExchangeSelection.primaryAssessment
+        ? `${parsedTimelineExchangeSelection.primaryAssessment.label} selected with score ${parsedTimelineExchangeSelection.primaryAssessment.score} because ${parsedTimelineExchangeSelection.primaryAssessment.reasons.slice(1, 3).join(" ")}`
+        : undefined,
+      aafIntakeStatus: extractedAaf
+        ? extractedAaf.extractionMode === "unparsed"
+          ? "unsupported"
+          : extractedAaf.extractionMode
+        : "not_present",
+      aafRole: aafRole.role,
+      aafRoleReason: aafRole.reason,
+      aafContainerKind: extractedAaf?.containerKind,
+      aafDirectCoverage: extractedAaf?.directCoverage,
+      aafDiagnostics,
     },
     mappingSnapshot: {
       mappedTrackCount: tracks.length,
@@ -2617,7 +3150,7 @@ export function importTurnoverFolderSync(folderPath: string): IntakeImportResult
       unresolvedCount: analysis.report.summary.operatorDecisionCount,
       fieldRecorderLinkedCount: fieldRecorderCandidates.filter((candidate) => candidate.status === "linked").length,
     },
-    notes: "Imported from a real local intake fixture folder. Structured FCPXML/XML and AAF ingestion hydrate the canonical model before delivery planning is generated by exporter.ts. No native Nuendo writer is implemented yet.",
+    notes: `Imported from a real local intake fixture folder. ${describeStructuredSource(primaryHydration.primarySource)} currently anchors the canonical model for this turnover, while other intake sources remain available for reconciliation only. Delivery planning is still generated by exporter.ts, and no native Nuendo writer is implemented yet.`,
   } satisfies TranslationJob;
 
   return {

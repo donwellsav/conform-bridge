@@ -16,9 +16,11 @@ Native Nuendo writing is still intentionally out of scope.
 
 ## Current Status
 
-- Current phase: `Phase 3J` complete
-- Next phase: `Phase 3K`
-- Current Phase `3K` driver: `fixtures/intake/r2n-test-1`
+- Current phase: `Phase 4A`
+- Previous phase: `Phase 3K` complete
+- Next phase: `TBD after Phase 4A`
+- Current Phase `4A` driver: four-fixture cross-sample acceptance in
+  `fixtures/expectations/sample-matrix.json`
 - Current real transport path: `filesystem-transport-adapter` only
 - Current persistence model: browser-local review-state deltas only
 - Current real writer path: none
@@ -80,6 +82,9 @@ AAF notes:
   covered layouts.
 - Direct parsing is primary for most bundled AAF fixtures, but not for all
   real-world AAF shapes.
+- Across the four current real baseline fixtures, direct AAF hydration is
+  still unsupported. Those AAFs are tracked truthfully as
+  `unsupported`, not promoted to authoritative coverage.
 
 Auxiliary or partially parsed:
 
@@ -149,6 +154,9 @@ Deferred behind a future writer:
 The repo currently includes these intake fixtures:
 
 - `fixtures/intake/r2n-test-1`
+- `fixtures/intake/r2n-test-2`
+- `fixtures/intake/r2n-test-3`
+- `fixtures/intake/r2n-test-4`
 - `fixtures/intake/rvr-203-r3`
 - `fixtures/intake/rvr-204-edl-only`
 - `fixtures/intake/rvr-205-aaf-only`
@@ -161,6 +169,12 @@ These fixtures exercise:
 
 - a real Resolve sample with XML-primary timeline hydration and direct WAV
   metadata enrichment
+- a second real Resolve sample with XML-primary lightweight hydration,
+  XML-vs-FCPXML disagreement, and marker-EDL enrichment
+- an official Blackmagic training editorial baseline with XML-primary
+  lightweight hydration and no private field-recorder scope
+- an official Blackmagic Fairlight multichannel baseline with XML-primary
+  lightweight hydration and guarded `.dra` source-media exclusion
 - FCPXML-first timeline hydration
 - EDL fallback hydration
 - direct AAF parsing
@@ -187,6 +201,115 @@ by default so the repo remains lightweight and shareable while still allowing
 deeper local regression coverage for production-audio metadata and the first
 real field-recorder pass.
 
+Normal importer, test, lint, and build flows now keep Tier 2 out of the
+working set unless both private-sample opt-in flags are enabled explicitly.
+
+### What `r2n-test-1` Proves Now
+
+- XML-vs-FCPXML arbitration is now deterministic inside the current
+  `fcpxml/xml` priority bucket.
+- For this sample, `XML` stays authoritative because it agrees with the
+  strongest secondary timing reference and preserves richer track and clip
+  coverage than `FCPXML`.
+- Direct WAV/BWF/iXML inspection is now deeper than simple classification and
+  can preserve sample rate, bit depth, channel count, BWF/LIST metadata, iXML
+  fields, and recording-device hints.
+- Field-recorder results are now scored truthfully:
+  confident match, plausible candidate, insufficient metadata, and no match
+  remain distinct states with explicit reasons.
+
+### What `r2n-test-1` Still Does Not Prove
+
+- Arbitrary real-world AAF support is not complete. `Timeline 1.aaf` remains
+  unsupported as a direct authoritative source in this sample.
+- WAV metadata alone is still not enough for a confident field-recorder relink
+  on `r2n-test-1`; editorial CSV timing is still part of the evidence.
+- OTIO, OTIOZ, and DRT are still auxiliary reference artifacts only.
+- No native Nuendo writer exists, and binary delivery remains deferred behind
+  the writer boundary.
+
+### What `r2n-test-2` Proves In Lightweight Mode
+
+- `XML` again stays authoritative over `FCPXML`, but for a different reason:
+  richer real track and clip coverage wins even though the secondary metadata
+  timing reference points at the shorter `00:00:07:04` editorial view.
+- The lightweight sample is broad enough to preserve a 10-track / 47-clip /
+  5-marker canonical timeline without touching any private media.
+- Resolve marker EDL lines with blank note text are now parsed correctly, so
+  lightweight marker enrichment does not silently drop those marker entries.
+- `OMO PROMO FINAL.aaf` remains truthfully unsupported for direct authoritative
+  parsing on this sample.
+- Tier 1 still contains no production-audio assets, so field-recorder results
+  stay at missing-only in lightweight mode. Stronger field-recorder evidence
+  still requires the guarded private-media pass.
+
+### What `r2n-test-2` Proves With Private Media Enabled
+
+- The guarded private pass now preserves five real local WAV assets with
+  sample rate, bit depth, channel count, BWF presence, iXML presence,
+  recording-device hints, and editorial-CSV source timecode ranges.
+- Interview-camera clips now reach stronger candidate-only scores because the
+  sample exposes usable overlap plus zero-padded take agreement, but those
+  candidates still remain below confident relink because the WAV containers do
+  not expose explicit source timecode strings.
+- Generic soundtrack audio is no longer treated as a field-recorder roll, so
+  sample-2 no longer produces false-positive candidates such as logo or SFX
+  clips relinking to `ONE MIN SOUNDTRACK.wav`.
+- `r2n-test-2` therefore proves truthful candidate/no-match behavior with
+  stronger private-media evidence than `r2n-test-1`, but still does not prove
+  a confident camera-to-recorder relink.
+
+### What `r2n-test-3` Proves In Lightweight Mode
+
+- `r2n-test-3` is now an official editorial baseline fixture derived from the
+  Blackmagic Design DaVinci Resolve 20 Beginner's Guide lesson material.
+- `XML` stays authoritative over `FCPXML` because it preserves the expected
+  `01:00:00:00` start timecode and much broader track and clip coverage.
+- `AAF` remains truthfully unsupported for direct authoritative hydration on
+  this sample.
+- The lightweight sample preserves editorial structure, metadata CSV timing,
+  and delivery-planning behavior without any production-audio claims.
+- `r2n-test-3` is editorial baseline only. It does not prove field-recorder
+  behavior and does not require a private-media pass.
+
+### What `r2n-test-4` Proves In Lightweight Mode
+
+- `r2n-test-4` is now an official Fairlight multichannel baseline fixture
+  derived from the Blackmagic Design Fairlight Audio Guide lesson material.
+- `XML` stays authoritative over `FCPXML` because it preserves one additional
+  track and three additional clip events while still agreeing on start
+  timecode.
+- `AAF` remains truthfully unsupported for direct authoritative hydration on
+  this sample.
+- The lightweight metadata now preserves at least one `poly_8` clip
+  (`C4_02.mov`), so multichannel layout is no longer collapsed to `stereo`
+  when only CSV structure is available.
+- The local `.dra` source-media bundle, reference `mp4`, and `otioz` stay out
+  of normal verification, and this sample makes no field-recorder or
+  production-audio relink claims.
+
+## Phase 4A Fixture Matrix
+
+The repo now treats the four real fixtures as a deterministic acceptance
+matrix recorded in `fixtures/expectations/sample-matrix.json`.
+
+- `r2n-test-1`: real custom turnover baseline with guarded private-media
+  evidence
+- `r2n-test-2`: real breadth sample with stronger guarded private-media
+  candidate evidence
+- `r2n-test-3`: official Blackmagic editorial baseline
+- `r2n-test-4`: official Blackmagic Fairlight multichannel baseline
+
+Current matrix truths:
+
+- `XML` is authoritative on all four real samples.
+- `FCPXML` remains secondary on all four real samples.
+- Real-sample `AAF` currently means `unsupported` for direct authoritative
+  hydration on all four fixtures.
+- `OTIO`, `OTIOZ`, and `DRT` remain auxiliary reference artifacts only.
+- `r2n-test-4` is the multichannel guard fixture and preserves `poly_8`
+  structure in lightweight mode.
+
 ## Running Locally
 
 Install:
@@ -209,13 +332,37 @@ npm run lint
 npm run build
 ```
 
+Recommended local workflow when private sample companions may be present:
+
+1. targeted tests for the file or parser you are changing
+2. normal repo verification: `npm test`, `npm run lint`, `npm run build`
+3. private-sample regression only when you explicitly need the large local
+   companions
+
 Extended local sample regression, only when the private `r2n-test-1` assets
-are present:
+are present and large-media access is explicitly enabled:
 
 ```powershell
 $env:CONFORM_BRIDGE_RUN_PRIVATE_SAMPLE='1'
+$env:CONFORM_BRIDGE_ALLOW_LARGE_MEDIA='1'
 npm test
 ```
+
+To scope a guarded private run to one real sample only:
+
+```powershell
+$env:CONFORM_BRIDGE_PRIVATE_SAMPLE_TARGET='r2n-test-2'
+```
+
+Guardrails for local Codex and normal developer runs:
+
+- normal verification does not parse or copy Tier 2 private WAV, MP4, or OTIOZ
+  companions even when they are present on disk
+- direct WAV metadata parsing now uses bounded I/O instead of reading the full
+  media file into memory
+- any direct large-media read requires both
+  `CONFORM_BRIDGE_RUN_PRIVATE_SAMPLE=1` and
+  `CONFORM_BRIDGE_ALLOW_LARGE_MEDIA=1`
 
 ## Phase History
 
@@ -284,11 +431,12 @@ fallback.
 
 ## Next Recommended Work
 
-`Phase 3K` should stay sample-driven:
+`Phase 4A` should stay narrow and fixture-driven:
 
-- keep using real turnover samples such as `r2n-test-1` to tighten XML, WAV,
-  and field-recorder behavior before adding any new transport or executor
-  variant
+- use the four-sample matrix to keep XML-vs-FCPXML arbitration,
+  multichannel preservation, and reconciliation reporting stable
+- continue only with narrow AAF passes justified by the repeated unsupported
+  real-sample OLE-compound shape
 - add executor or transport variants only when a real external executor
   requires them
 - keep filesystem transport as the primary deterministic path unless a new

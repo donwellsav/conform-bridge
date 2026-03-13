@@ -1,0 +1,61 @@
+{
+  "fixtureId": "r2n-test-4",
+  "projectName": "Blackmagic Design DaVinci Resolve 20 Fairlight Audio Guide",
+  "lesson": "Channel Mapping and Linked Groups",
+  "timelineName": "Channel mapping and linked groups",
+  "frameRate": "24",
+  "startTimecode": "01:00:00:00",
+  "sampleRate": "mixed",
+  "bitDepth": "mixed",
+  "committedExpectations": [
+    "fixtures/expectations/r2n-test-4/expected-lightweight.json"
+  ],
+  "tier1Committed": [
+    {
+      "fileName": "Channel mapping and linked groups.aaf"
+    },
+    {
+      "fileName": "Channel mapping and linked groups.drt"
+    },
+    {
+      "fileName": "Channel mapping and linked groups.edl"
+    },
+    {
+      "fileName": "Channel mapping and linked groups.fcpxml"
+    },
+    {
+      "fileName": "Channel mapping and linked groups.otio"
+    },
+    {
+      "fileName": "Channel mapping and linked groups.xml"
+    },
+    {
+      "fileName": "Copy of Copy of project Media Metadata.csv"
+    }
+  ],
+  "tier2LocalPrivate": [
+    {
+      "fileName": "DR17 Fairlight Intro Tutorial.dra",
+      "entryType": "directory"
+    },
+    {
+      "fileName": "Channel mapping and linked groups.mp4",
+      "entryType": "file"
+    },
+    {
+      "fileName": "Channel mapping and linked groups.otioz",
+      "entryType": "file"
+    }
+  ],
+  "expectations": {
+    "lightweight": "committed",
+    "localPrivate": "not_planned"
+  },
+  "notes": [
+    "r2n-test-4 is an official Fairlight multichannel baseline derived from Blackmagic training material.",
+    "Tier 1 is sufficient for committed lightweight importer, reconciliation, delivery-planning, execution-prep, staging, and package-contract checks for r2n-test-4.",
+    "Tier 2 stays local-only so the Fairlight .dra bundle, reference video, and large otioz do not become part of normal repo verification.",
+    "This sample is editorial plus audio-structure baseline only. It does not claim production-audio or field-recorder proof.",
+    "The lightweight metadata preserves at least one 8-channel clip and confirms multichannel layout inference without requiring direct media reads."
+  ]
+}

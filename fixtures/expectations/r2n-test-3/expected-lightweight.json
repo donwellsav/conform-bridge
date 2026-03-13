@@ -1,0 +1,330 @@
+{
+  "timeline": {
+    "name": "OMO PROMO CATCHUP 08 (Resolve)",
+    "fps": "23.976",
+    "startTimecode": "01:00:00:00",
+    "durationTimecode": "00:00:56:01",
+    "trackCount": 5,
+    "clipCount": 26,
+    "markerCount": 0
+  },
+  "structuredSource": {
+    "primary": "xml",
+    "secondary": "fcpxml",
+    "reason": "XML selected with score 1197 because XML agrees with the strongest secondary timing reference at 01:00:00:00. XML covers 5 imported tracks.",
+    "aafIntakeStatus": "unsupported"
+  },
+  "markers": [],
+  "issueCodes": [
+    "AAF_DIRECT_PARSE_UNSUPPORTED",
+    "DELIVERY_ARTIFACT_BLOCKED",
+    "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+    "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+    "SOURCE_FILE_MISSING_FROM_INTAKE",
+    "UNRESOLVED_METADATA"
+  ],
+  "productionAudio": [],
+  "acceptanceFindings": [
+    {
+      "code": "AAF_DIRECT_PARSE_UNSUPPORTED",
+      "title": "AAF could not be parsed directly",
+      "severity": "warning",
+      "affectedItems": [
+        "canonical fallback=XML",
+        "container=ole-compound",
+        "extraction=unparsed",
+        "direct coverage=none",
+        "Direct AAF parsing does not yet recognize this container payload shape.",
+        "The AAF container did not expose a supported embedded graph or decoded OLE layout payload."
+      ]
+    },
+    {
+      "code": "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+      "title": "XML selected as the primary structured source",
+      "severity": "info",
+      "affectedItems": [
+        "XML score=1197",
+        "XML provides an explicit timeline start timecode (01:00:00:00).",
+        "XML agrees with the strongest secondary timing reference at 01:00:00:00.",
+        "XML covers 5 imported tracks.",
+        "XML covers 26 clip events.",
+        "XML preserves 25 distinct source file names.",
+        "XML preserves explicit source timecode on 26 clips.",
+        "FCPXML score=584",
+        "FCPXML provides an explicit timeline start timecode (01:00:03:14).",
+        "FCPXML covers 2 imported tracks.",
+        "FCPXML covers 17 clip events.",
+        "FCPXML preserves 15 distinct source file names.",
+        "FCPXML preserves explicit source timecode on 17 clips."
+      ]
+    },
+    {
+      "code": "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+      "title": "Structured timeline sources disagree",
+      "severity": "warning",
+      "affectedItems": [
+        "XML stayed primary because it scored 1197 vs 584.",
+        "XML provides an explicit timeline start timecode (01:00:00:00).",
+        "XML agrees with the strongest secondary timing reference at 01:00:00:00.",
+        "XML covers 5 imported tracks.",
+        "start XML=01:00:00:00 vs FCPXML=01:00:03:14",
+        "duration XML=00:00:56:01 vs FCPXML=00:00:56:03",
+        "tracks XML=5 vs FCPXML=2",
+        "clips XML=26 vs FCPXML=17"
+      ]
+    },
+    {
+      "code": "SOURCE_FILE_MISSING_FROM_INTAKE",
+      "title": "XML references source files that are missing from intake",
+      "severity": "critical",
+      "affectedItems": [
+        "F005_08201556_C001.mov",
+        "F002_08151648_C005.mov",
+        "F002_08151729_C012.mov",
+        "F002_08151655_C008.mov",
+        "CL SUBCLIP 2 - Brand",
+        "F002_08151726_C011.mov",
+        "ORGAN MOUNTAIN 1",
+        "OMO LOGO.png",
+        "E001_08020510_C005.mov",
+        "E001_08020516_C012.mov",
+        "D009_07202028_C011.mov",
+        "E001_08050841_C070.mov",
+        "A002_08061905_C048.mov",
+        "A002_08061903_C044.mov",
+        "D008_07161256_C002.mov",
+        "D008_07161601_C034.mov",
+        "E001_08292255_C028.mov",
+        "Slug",
+        "CL INTERVIEW Tk2",
+        "CL SUBCLIP 1 - Experiences",
+        "CL SUBCLIP 4 - Inspiration",
+        "CL INTERVIEW Tk7",
+        "PINE TRAIL 5",
+        "PINE TRAIL 12",
+        "ONE MIN SOUNDTRACK.wav"
+      ]
+    }
+  ],
+  "fieldRecorder": {
+    "counts": {
+      "missing": 25
+    },
+    "candidates": [
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL INTERVIEW Tk2",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL INTERVIEW Tk2",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL INTERVIEW Tk7",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL INTERVIEW Tk7",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 1 - Experiences",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 1 - Experiences",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 2 - Brand",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 4 - Inspiration",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 4 - Inspiration",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Horizontal Line Reveal",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "OMO LOGO.png",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "ONE MIN SOUNDTRACK.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "ORGAN MOUNTAIN 1",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "ORGAN MOUNTAIN 1",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINA BLANCA 44",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINA BLANCA 48",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINA BLANCA 70",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 12",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 12",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 5",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 5",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "STORE 2",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "STORE 28",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "STORE 34",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "WHITE SANDS 11",
+        "confidenceScore": 0,
+        "reasons": []
+      }
+    ]
+  },
+  "deliveryExecution": {
+    "generatedCount": 3,
+    "deferredCount": 2,
+    "unavailableCount": 3,
+    "artifactStatuses": [
+      {
+        "fileName": "manifest.json",
+        "executionStatus": "generated"
+      },
+      {
+        "fileName": "OMO_PROMO_CATCHUP_08_(Resolve)_FIELD_RECORDER_REPORT.csv",
+        "executionStatus": "unavailable"
+      },
+      {
+        "fileName": "OMO_PROMO_CATCHUP_08_(Resolve)_MARKERS.csv",
+        "executionStatus": "unavailable"
+      },
+      {
+        "fileName": "OMO_PROMO_CATCHUP_08_(Resolve)_MARKERS.edl",
+        "executionStatus": "unavailable"
+      },
+      {
+        "fileName": "OMO_PROMO_CATCHUP_08_(Resolve)_METADATA.csv",
+        "executionStatus": "generated"
+      },
+      {
+        "fileName": "OMO_PROMO_CATCHUP_08_(Resolve)_NUENDO_READY.aaf",
+        "executionStatus": "deferred"
+      },
+      {
+        "fileName": "OMO_PROMO_CATCHUP_08_(Resolve)_REF.mov",
+        "executionStatus": "deferred"
+      },
+      {
+        "fileName": "README_NUENDO_IMPORT.txt",
+        "executionStatus": "generated"
+      }
+    ]
+  }
+}

@@ -16,3 +16,23 @@ fixtures/intake/r2n-test-1/F2-BT_002.WAV
 fixtures/intake/r2n-test-1/F2_002.WAV
 fixtures/intake/r2n-test-1/Timeline 1.mp4
 fixtures/intake/r2n-test-1/Timeline 1.otioz
+
+# Local-only private assets for the full r2n-test-2 turnover.
+# The lightweight shareable turnover files stay committed. The private source
+# media tree and large companions remain opt-in only.
+fixtures/intake/r2n-test-2/OMO/
+fixtures/intake/r2n-test-2/OMO PROMO FINAL.mp4
+fixtures/intake/r2n-test-2/OMO PROMO FINAL.otioz
+
+# Local-only private assets for the Blackmagic training editorial baseline.
+# The lightweight editorial turnover files stay committed. Large companions
+# remain opt-in only.
+fixtures/intake/r2n-test-3/OMO PROMO CATCHUP 08.mp4
+fixtures/intake/r2n-test-3/OMO PROMO CATCHUP 08.otioz
+
+# Local-only private assets for the Fairlight multichannel baseline.
+# The lightweight editorial and interchange files stay committed. Large
+# companions and source-media bundles remain opt-in only.
+fixtures/intake/r2n-test-4/Channel mapping and linked groups.mp4
+fixtures/intake/r2n-test-4/Channel mapping and linked groups.otioz
+fixtures/intake/r2n-test-4/DR17 Fairlight Intro Tutorial.dra/

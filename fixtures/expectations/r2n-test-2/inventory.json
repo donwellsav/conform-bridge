@@ -1,0 +1,63 @@
+{
+  "fixtureId": "r2n-test-2",
+  "projectName": "r2n test 2",
+  "timelineName": "OMO PROMO FINAL",
+  "frameRate": "23.976",
+  "startTimecode": "01:00:00:00",
+  "sampleRate": 48000,
+  "bitDepth": 16,
+  "committedExpectations": [
+    "fixtures/expectations/r2n-test-2/expected-lightweight.json",
+    "fixtures/expectations/r2n-test-2/expected-local-private.json"
+  ],
+  "tier1Committed": [
+    {
+      "fileName": "OMO PROMO DELIVER Media Metadata.csv"
+    },
+    {
+      "fileName": "OMO PROMO FINAL w markers.edl"
+    },
+    {
+      "fileName": "OMO PROMO FINAL.aaf"
+    },
+    {
+      "fileName": "OMO PROMO FINAL.drt"
+    },
+    {
+      "fileName": "OMO PROMO FINAL.edl"
+    },
+    {
+      "fileName": "OMO PROMO FINAL.fcpxml"
+    },
+    {
+      "fileName": "OMO PROMO FINAL.otio"
+    },
+    {
+      "fileName": "OMO PROMO FINAL.xml"
+    }
+  ],
+  "tier2LocalPrivate": [
+    {
+      "fileName": "OMO",
+      "entryType": "directory"
+    },
+    {
+      "fileName": "OMO PROMO FINAL.mp4",
+      "entryType": "file"
+    },
+    {
+      "fileName": "OMO PROMO FINAL.otioz",
+      "entryType": "file"
+    }
+  ],
+  "expectations": {
+    "lightweight": "committed",
+    "localPrivate": "committed"
+  },
+  "notes": [
+    "Tier 1 is sufficient for the committed lightweight importer, reconciliation, delivery-planning, execution-prep, staging, and package-contract checks for r2n-test-2.",
+    "Tier 2 stays local-only so the private OMO media tree and large companions do not become part of normal repo verification.",
+    "expected-lightweight.json and expected-local-private.json are now sample-backed truth.",
+    "The guarded private-media pass proves richer WAV/BWF/iXML metadata and stronger candidate rationale, but not a confident camera-to-recorder relink."
+  ]
+}

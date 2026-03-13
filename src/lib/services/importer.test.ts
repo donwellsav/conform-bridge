@@ -1,9 +1,17 @@
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 
+import {
+  describePrivateFixtureSkipReason,
+  describePrivateSampleTargetOptIn,
+  getKnownPrivateFixtureCompanionDirectoryNames,
+  getKnownPrivateFixtureCompanionNames,
+  isLargeMediaOptInEnabled,
+  isPrivateSampleTargetSelected,
+} from "../private-fixture-guards";
 import * as importerModule from "./importer";
 
 const fcpxmlFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-203-r3");
@@ -15,6 +23,12 @@ const broaderAafGraphFixtureRoot = resolve(process.cwd(), "fixtures", "intake", 
 const partialFallbackAafFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "rvr-209-aaf-partial-fallback");
 const realResolveFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "r2n-test-1");
 const r2nExpectationRoot = resolve(process.cwd(), "fixtures", "expectations", "r2n-test-1");
+const secondRealResolveFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "r2n-test-2");
+const secondR2nExpectationRoot = resolve(process.cwd(), "fixtures", "expectations", "r2n-test-2");
+const thirdRealResolveFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "r2n-test-3");
+const thirdR2nExpectationRoot = resolve(process.cwd(), "fixtures", "expectations", "r2n-test-3");
+const fourthRealResolveFixtureRoot = resolve(process.cwd(), "fixtures", "intake", "r2n-test-4");
+const fourthR2nExpectationRoot = resolve(process.cwd(), "fixtures", "expectations", "r2n-test-4");
 const manifestPath = resolve(fcpxmlFixtureRoot, "editorial", "manifest.json");
 const metadataPath = resolve(fcpxmlFixtureRoot, "editorial", "RVR_203_METADATA.csv");
 const importer = ("default" in importerModule ? importerModule.default : importerModule) as typeof importerModule;
@@ -25,16 +39,39 @@ const privateSampleFileNames = [
   "Timeline 1.mp4",
   "Timeline 1.otioz",
 ];
-const privateAudioFileNames = [
-  "230407_002.WAV",
-  "F2-BT_002.WAV",
-  "F2_002.WAV",
-];
-const runPrivateSample = process.env.CONFORM_BRIDGE_RUN_PRIVATE_SAMPLE === "1";
+const secondPrivateFileNames = getKnownPrivateFixtureCompanionNames("r2n-test-2");
+const secondPrivateDirectoryNames = getKnownPrivateFixtureCompanionDirectoryNames("r2n-test-2");
+const thirdPrivateFileNames = getKnownPrivateFixtureCompanionNames("r2n-test-3");
+const fourthPrivateFileNames = getKnownPrivateFixtureCompanionNames("r2n-test-4");
+const fourthPrivateDirectoryNames = getKnownPrivateFixtureCompanionDirectoryNames("r2n-test-4");
+const runPrivateSample = isLargeMediaOptInEnabled();
 const privateSamplePresent = privateSampleFileNames.every((fileName) => existsSync(resolve(realResolveFixtureRoot, fileName)));
-const privateSampleReason = privateSamplePresent
-  ? "set CONFORM_BRIDGE_RUN_PRIVATE_SAMPLE=1 to include the private r2n-test-1 regression assets"
-  : "private r2n-test-1 regression assets are not present on disk";
+const secondPrivateSampleRequiredPaths = [
+  "OMO/INTERVIEW/AUDIO/A-002.WAV",
+  "OMO/INTERVIEW/AUDIO/A-005.WAV",
+  "OMO/INTERVIEW/AUDIO/A-007.WAV",
+  "OMO/INTERVIEW/AUDIO/A-008.WAV",
+  "OMO/MUSIC/ONE MIN SOUNDTRACK.wav",
+];
+const secondPrivateSamplePresent = secondPrivateSampleRequiredPaths.every((relativePath) =>
+  existsSync(resolve(secondRealResolveFixtureRoot, relativePath))
+);
+
+function describeFixturePrivateSampleReason(fixtureId: string, present: boolean) {
+  if (!present) {
+    return describePrivateFixtureSkipReason(fixtureId, false, { requireLargeMedia: true });
+  }
+
+  if (!runPrivateSample) {
+    return describePrivateFixtureSkipReason(fixtureId, true, { requireLargeMedia: true });
+  }
+
+  if (!isPrivateSampleTargetSelected(fixtureId)) {
+    return describePrivateSampleTargetOptIn(fixtureId);
+  }
+
+  return describePrivateFixtureSkipReason(fixtureId, true, { requireLargeMedia: true });
+}
 
 type SampleExpectation = {
   timeline: {
@@ -45,6 +82,12 @@ type SampleExpectation = {
     trackCount: number;
     clipCount: number;
     markerCount: number;
+  };
+  structuredSource?: {
+    primary: string;
+    secondary?: string;
+    reason: string;
+    aafIntakeStatus: string;
   };
   markers?: Array<{
     timecode: string;
@@ -64,14 +107,45 @@ type SampleExpectation = {
     hasBwf: boolean;
     hasIXml: boolean;
     hasSourceTimecode: boolean;
+    sourceTimecodeOrigin: string;
     recordingDevice: string;
   }>;
+  acceptanceFindings?: Array<{
+    code: string;
+    title: string;
+    severity: string;
+    affectedItems: string[];
+  }>;
+  deliveryExecution?: {
+    generatedCount: number;
+    deferredCount: number;
+    unavailableCount: number;
+    artifactStatuses: Array<{
+      fileName: string;
+      executionStatus: string;
+    }>;
+  };
+  audioStructure?: {
+    trackLayouts: Array<{
+      name: string;
+      role: string;
+      channelLayout: string;
+    }>;
+    multichannelClips: Array<{
+      clipName: string;
+      channelCount?: number;
+      channelLayout?: string;
+      sourceFileName?: string;
+    }>;
+  };
   fieldRecorder: {
     counts: Record<string, number>;
     candidates: Array<{
       status: string;
       candidateAssetName: string;
       clipName: string;
+      confidenceScore: number;
+      reasons: string[];
     }>;
   };
 };
@@ -81,9 +155,14 @@ function readJsonFixture<T>(fileName: string) {
 }
 
 function createLightweightSampleCopy() {
-  const tempRoot = mkdtempSync(join(tmpdir(), "conform-bridge-r2n-test-1-"));
+  const tempParent = mkdtempSync(join(tmpdir(), "conform-bridge-r2n-test-1-"));
+  const tempRoot = resolve(tempParent, "r2n-test-1");
+  mkdirSync(tempRoot, { recursive: true });
   const inventory = readJsonFixture<{
     tier1Committed: Array<{
+      fileName: string;
+    }>;
+    tier2LocalPrivate?: Array<{
       fileName: string;
     }>;
   }>("inventory.json");
@@ -91,8 +170,13 @@ function createLightweightSampleCopy() {
     "README.md",
     ...inventory.tier1Committed.map((entry) => entry.fileName),
   ];
+  const privateCompanionNames = new Set(
+    inventory.tier2LocalPrivate?.map((entry) => entry.fileName)
+      ?? getKnownPrivateFixtureCompanionNames("r2n-test-1"),
+  );
 
   for (const relativeFileName of committedFiles) {
+    assert.equal(privateCompanionNames.has(relativeFileName), false);
     const sourcePath = resolve(realResolveFixtureRoot, relativeFileName);
     const targetPath = resolve(tempRoot, relativeFileName);
     mkdirSync(dirname(targetPath), { recursive: true });
@@ -100,6 +184,140 @@ function createLightweightSampleCopy() {
   }
 
   return tempRoot;
+}
+
+function addPlaceholderPrivateCompanions(rootPath: string) {
+  for (const fileName of getKnownPrivateFixtureCompanionNames("r2n-test-1")) {
+    writeFileSync(resolve(rootPath, fileName), `placeholder for ${fileName}`, "utf8");
+  }
+}
+
+function readSampleTwoInventory() {
+  return JSON.parse(readFileSync(resolve(secondR2nExpectationRoot, "inventory.json"), "utf8")) as {
+    tier1Committed: Array<{
+      fileName: string;
+    }>;
+    tier2LocalPrivate: Array<{
+      fileName: string;
+      entryType: "file" | "directory";
+    }>;
+  };
+}
+
+function createSecondLightweightSampleCopy() {
+  const tempParent = mkdtempSync(join(tmpdir(), "conform-bridge-r2n-test-2-"));
+  const tempRoot = resolve(tempParent, "r2n-test-2");
+  mkdirSync(tempRoot, { recursive: true });
+  const inventory = readSampleTwoInventory();
+  const committedFiles = [
+    "README.md",
+    ...inventory.tier1Committed.map((entry) => entry.fileName),
+  ];
+
+  for (const relativeFileName of committedFiles) {
+    const sourcePath = resolve(secondRealResolveFixtureRoot, relativeFileName);
+    const targetPath = resolve(tempRoot, relativeFileName);
+    mkdirSync(dirname(targetPath), { recursive: true });
+    copyFileSync(sourcePath, targetPath);
+  }
+
+  return tempRoot;
+}
+
+function readSampleThreeInventory() {
+  return JSON.parse(readFileSync(resolve(thirdR2nExpectationRoot, "inventory.json"), "utf8")) as {
+    tier1Committed: Array<{
+      fileName: string;
+    }>;
+    tier2LocalPrivate: Array<{
+      fileName: string;
+      entryType: "file" | "directory";
+    }>;
+  };
+}
+
+function createThirdLightweightSampleCopy() {
+  const tempParent = mkdtempSync(join(tmpdir(), "conform-bridge-r2n-test-3-"));
+  const tempRoot = resolve(tempParent, "r2n-test-3");
+  mkdirSync(tempRoot, { recursive: true });
+  const inventory = readSampleThreeInventory();
+  const committedFiles = [
+    "README.md",
+    ...inventory.tier1Committed.map((entry) => entry.fileName),
+  ];
+
+  for (const relativeFileName of committedFiles) {
+    const sourcePath = resolve(thirdRealResolveFixtureRoot, relativeFileName);
+    const targetPath = resolve(tempRoot, relativeFileName);
+    mkdirSync(dirname(targetPath), { recursive: true });
+    copyFileSync(sourcePath, targetPath);
+  }
+
+  return tempRoot;
+}
+
+function readSampleFourInventory() {
+  return JSON.parse(readFileSync(resolve(fourthR2nExpectationRoot, "inventory.json"), "utf8")) as {
+    tier1Committed: Array<{
+      fileName: string;
+    }>;
+    tier2LocalPrivate: Array<{
+      fileName: string;
+      entryType: "file" | "directory";
+    }>;
+  };
+}
+
+function createFourthLightweightSampleCopy() {
+  const tempParent = mkdtempSync(join(tmpdir(), "conform-bridge-r2n-test-4-"));
+  const tempRoot = resolve(tempParent, "r2n-test-4");
+  mkdirSync(tempRoot, { recursive: true });
+  const inventory = readSampleFourInventory();
+  const committedFiles = [
+    "README.md",
+    ...inventory.tier1Committed.map((entry) => entry.fileName),
+  ];
+
+  for (const relativeFileName of committedFiles) {
+    const sourcePath = resolve(fourthRealResolveFixtureRoot, relativeFileName);
+    const targetPath = resolve(tempRoot, relativeFileName);
+    mkdirSync(dirname(targetPath), { recursive: true });
+    copyFileSync(sourcePath, targetPath);
+  }
+
+  return tempRoot;
+}
+
+function addPlaceholderPrivateCompanionsToSecondSample(rootPath: string) {
+  for (const fileName of secondPrivateFileNames.filter((candidate) =>
+    candidate === "OMO PROMO FINAL.mp4" || candidate === "OMO PROMO FINAL.otioz"
+  )) {
+    writeFileSync(resolve(rootPath, fileName), `placeholder for ${fileName}`, "utf8");
+  }
+
+  for (const directoryName of secondPrivateDirectoryNames) {
+    const placeholderDirectory = resolve(rootPath, directoryName, "INTERVIEW", "AUDIO");
+    mkdirSync(placeholderDirectory, { recursive: true });
+    writeFileSync(resolve(placeholderDirectory, "UNLISTED_PRIVATE.WAV"), "placeholder", "utf8");
+  }
+}
+
+function addPlaceholderPrivateCompanionsToThirdSample(rootPath: string) {
+  for (const fileName of thirdPrivateFileNames) {
+    writeFileSync(resolve(rootPath, fileName), `placeholder for ${fileName}`, "utf8");
+  }
+}
+
+function addPlaceholderPrivateCompanionsToFourthSample(rootPath: string) {
+  for (const fileName of fourthPrivateFileNames) {
+    writeFileSync(resolve(rootPath, fileName), `placeholder for ${fileName}`, "utf8");
+  }
+
+  for (const directoryName of fourthPrivateDirectoryNames) {
+    const placeholderDirectory = resolve(rootPath, directoryName, "MediaFiles");
+    mkdirSync(placeholderDirectory, { recursive: true });
+    writeFileSync(resolve(placeholderDirectory, "UNLISTED_PRIVATE.wav"), "placeholder", "utf8");
+  }
 }
 
 function summarizeFieldRecorderCandidates(result: importerModule.IntakeImportResult) {
@@ -113,10 +331,13 @@ function summarizeFieldRecorderCandidates(result: importerModule.IntakeImportRes
       status: candidate.status,
       candidateAssetName: candidate.candidateAssetName,
       clipName: result.clipEvents.find((clipEvent) => clipEvent.id === candidate.clipEventId)?.clipName ?? candidate.clipEventId,
+      confidenceScore: candidate.confidenceScore ?? 0,
+      reasons: candidate.reasons ?? [],
     }))
     .sort((left, right) =>
       left.clipName.localeCompare(right.clipName)
       || left.status.localeCompare(right.status)
+      || left.confidenceScore - right.confidenceScore
       || left.candidateAssetName.localeCompare(right.candidateAssetName),
     );
 
@@ -125,7 +346,7 @@ function summarizeFieldRecorderCandidates(result: importerModule.IntakeImportRes
 
 function summarizeProductionAudio(result: importerModule.IntakeImportResult) {
   return result.sourceBundle.assets
-    .filter((asset) => asset.fileRole === "production_audio" && asset.status === "present" && privateAudioFileNames.includes(asset.name))
+    .filter((asset) => asset.fileRole === "production_audio" && asset.status === "present")
     .map((asset) => ({
       name: asset.name,
       sampleRate: asset.sampleRate ?? 0,
@@ -139,9 +360,67 @@ function summarizeProductionAudio(result: importerModule.IntakeImportResult) {
       hasBwf: Boolean(asset.hasBwf),
       hasIXml: Boolean(asset.hasIXml),
       hasSourceTimecode: Boolean(asset.hasSourceTimecode),
+      sourceTimecodeOrigin: asset.sourceTimecodeOrigin ?? "none",
       recordingDevice: asset.recordingDevice ?? "",
     }))
     .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function summarizeAcceptanceFindings(result: importerModule.IntakeImportResult) {
+  const acceptedCodes = new Set([
+    "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+    "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+    "AAF_DIRECT_PARSE_UNSUPPORTED",
+    "MARKER_COUNT_MISMATCH",
+    "SOURCE_FILE_MISSING_FROM_INTAKE",
+    "TIMELINE_METADATA_MISMATCH",
+    "TIMELINE_EDL_MISMATCH",
+  ]);
+
+  return result.analysisReport.groups
+    .flatMap((group) => group.findings)
+    .filter((finding) => acceptedCodes.has(finding.code))
+    .map((finding) => ({
+      code: finding.code,
+      title: finding.title,
+      severity: finding.severity,
+      affectedItems: [...finding.affectedItems],
+    }))
+    .sort((left, right) => left.code.localeCompare(right.code));
+}
+
+function summarizeAudioStructure(result: importerModule.IntakeImportResult) {
+  const multichannelClips = result.clipEvents
+    .filter((clipEvent) =>
+      (clipEvent.channelCount ?? 0) > 2
+      || clipEvent.channelLayout === "poly_4"
+      || clipEvent.channelLayout === "poly_8"
+      || clipEvent.channelLayout === "5.1"
+      || clipEvent.channelLayout === "lcr",
+    )
+    .map((clipEvent) => ({
+      clipName: clipEvent.clipName,
+      channelCount: clipEvent.channelCount,
+      channelLayout: clipEvent.channelLayout,
+      sourceFileName: clipEvent.sourceFileName,
+    }))
+    .sort((left, right) =>
+      left.clipName.localeCompare(right.clipName)
+      || (left.sourceFileName ?? "").localeCompare(right.sourceFileName ?? ""),
+    );
+
+  if (multichannelClips.length === 0) {
+    return undefined;
+  }
+
+  return {
+    trackLayouts: result.tracks.map((track) => ({
+      name: track.name,
+      role: track.role,
+      channelLayout: track.channelLayout,
+    })),
+    multichannelClips,
+  };
 }
 
 function summarizeRealSample(result: importerModule.IntakeImportResult): SampleExpectation {
@@ -149,6 +428,7 @@ function summarizeRealSample(result: importerModule.IntakeImportResult): SampleE
   const markers = result.markers
     .map((marker) => ({ timecode: marker.timecode, name: marker.name }))
     .sort((left, right) => left.timecode.localeCompare(right.timecode) || left.name.localeCompare(right.name));
+  const audioStructure = summarizeAudioStructure(result);
 
   return {
     timeline: {
@@ -160,9 +440,17 @@ function summarizeRealSample(result: importerModule.IntakeImportResult): SampleE
       clipCount: result.clipEvents.length,
       markerCount: result.markers.length,
     },
+    structuredSource: {
+      primary: result.job.sourceSnapshot.primaryStructuredSource ?? "unknown",
+      secondary: result.job.sourceSnapshot.secondaryStructuredSource,
+      reason: result.job.sourceSnapshot.structuredSourceReason ?? "",
+      aafIntakeStatus: result.job.sourceSnapshot.aafIntakeStatus ?? "not_present",
+    },
     markers,
     issueCodes,
     productionAudio: summarizeProductionAudio(result),
+    acceptanceFindings: summarizeAcceptanceFindings(result),
+    ...(audioStructure ? { audioStructure } : {}),
     fieldRecorder: summarizeFieldRecorderCandidates(result),
   };
 }
@@ -190,6 +478,44 @@ test("parseMetadataCsvText preserves known values and explicit unknowns", () => 
   assert.equal(rows[1]?.take, undefined);
   assert.equal(rows[1]?.hasIXml, false);
   assert.equal(rows[2]?.isOffline, true);
+});
+
+test("parseMetadataCsvText infers multichannel layouts from audio-channel counts when the CSV does not provide an explicit layout label", () => {
+  const rows = importer.parseMetadataCsvText([
+    "File Name,Audio Channels,Audio Sample Rate,Start TC,End TC",
+    "C4_02.mov,8,48000,11:12:10:18,11:12:28:06",
+  ].join("\n"));
+
+  assert.equal(rows[0]?.channelCount, 8);
+  assert.equal(rows[0]?.channelLayout, "poly_8");
+});
+
+test("parseSimpleEdlText preserves Resolve marker lines even when the marker note text is blank", () => {
+  const parsed = importer.parseSimpleEdlText([
+    "TITLE: MARKERS",
+    "FCM: NON-DROP FRAME",
+    "",
+    "001  001      V     C        01:00:00:00 01:00:00:01 01:00:00:00 01:00:00:01",
+    "start |C:ResolveColorBlue |M:start |D:1",
+    "",
+    "002  001      V     C        01:00:25:06 01:00:25:07 01:00:25:06 01:00:25:07",
+    "|C:ResolveColorBlue |M:WHOOSHES HERE |D:1",
+  ].join("\n"));
+
+  assert.deepEqual(parsed.markers, [
+    {
+      timecode: "01:00:00:00",
+      color: "blue",
+      name: "start",
+      note: "start",
+    },
+    {
+      timecode: "01:00:25:06",
+      color: "blue",
+      name: "WHOOSHES HERE",
+      note: "",
+    },
+  ]);
 });
 
 test("importTurnoverFolderSync prefers FCPXML over metadata and EDL, then records reconciliation issues", () => {
@@ -388,22 +714,200 @@ test("importTurnoverFolderSync succeeds on the shareable r2n-test-1 fixture tier
   }
 });
 
-if (privateSamplePresent && runPrivateSample) {
+test("importTurnoverFolderSync keeps the normal r2n-test-1 working set lightweight even if private companion file names are present locally", {
+  skip: runPrivateSample ? "large-media opt-in is enabled for this run" : undefined,
+}, () => {
+  const lightweightRoot = createLightweightSampleCopy();
+
+  try {
+    addPlaceholderPrivateCompanions(lightweightRoot);
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+    const expectation = readJsonFixture<SampleExpectation>("expected-lightweight.json");
+
+    assert.deepEqual(summarizeRealSample(result), {
+      ...expectation,
+      productionAudio: [],
+    });
+    assert.ok(!result.sourceBundle.assets.some((asset) => privateSampleFileNames.includes(asset.name)));
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+test("importTurnoverFolderSync keeps the normal r2n-test-2 working set lightweight by skipping explicit private directories and large companions", {
+  skip: runPrivateSample ? "large-media opt-in is enabled for this run" : undefined,
+}, () => {
+  const lightweightRoot = createSecondLightweightSampleCopy();
+
+  try {
+    assert.ok(secondPrivateFileNames.includes("OMO PROMO FINAL.mp4"));
+    assert.ok(secondPrivateFileNames.includes("OMO PROMO FINAL.otioz"));
+    assert.ok(secondPrivateDirectoryNames.includes("OMO"));
+
+    addPlaceholderPrivateCompanionsToSecondSample(lightweightRoot);
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+
+    assert.ok(result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO FINAL.fcpxml"));
+    assert.ok(result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO FINAL.xml"));
+    assert.ok(!result.sourceBundle.assets.some((asset) => asset.relativePath?.startsWith("OMO/")));
+    assert.ok(!result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO FINAL.mp4"));
+    assert.ok(!result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO FINAL.otioz"));
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+test("importTurnoverFolderSync succeeds on the shareable r2n-test-2 fixture tier and matches the committed lightweight expectation", () => {
+  const lightweightRoot = createSecondLightweightSampleCopy();
+
+  try {
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+    const expectation = JSON.parse(readFileSync(resolve(secondR2nExpectationRoot, "expected-lightweight.json"), "utf8")) as SampleExpectation;
+    const importExpectation = { ...expectation };
+    delete importExpectation.deliveryExecution;
+
+    assert.deepEqual(summarizeRealSample(result), importExpectation);
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+test("importTurnoverFolderSync keeps the normal r2n-test-3 working set lightweight by skipping explicit large companions", {
+  skip: runPrivateSample ? "large-media opt-in is enabled for this run" : undefined,
+}, () => {
+  const lightweightRoot = createThirdLightweightSampleCopy();
+
+  try {
+    assert.ok(thirdPrivateFileNames.includes("OMO PROMO CATCHUP 08.mp4"));
+    assert.ok(thirdPrivateFileNames.includes("OMO PROMO CATCHUP 08.otioz"));
+
+    addPlaceholderPrivateCompanionsToThirdSample(lightweightRoot);
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+
+    assert.ok(result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO CATCHUP 08.fcpxml"));
+    assert.ok(result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO CATCHUP 08.xml"));
+    assert.ok(!result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO CATCHUP 08.mp4"));
+    assert.ok(!result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO CATCHUP 08.otioz"));
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+test("importTurnoverFolderSync ignores undeclared extra files when a real fixture inventory is present", () => {
+  const lightweightRoot = createThirdLightweightSampleCopy();
+
+  try {
+    writeFileSync(resolve(lightweightRoot, "Channel mapping and linked groups.edl"), [
+      "TITLE: STRAY MARKERS",
+      "FCM: NON-DROP FRAME",
+      "",
+      "001  001      V     C        01:01:59:06 01:01:59:07 01:01:59:06 01:01:59:07",
+      "|C:ResolveColorBlue |M:Marker 1 |D:1",
+    ].join("\n"));
+
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+    const expectation = JSON.parse(readFileSync(resolve(thirdR2nExpectationRoot, "expected-lightweight.json"), "utf8")) as SampleExpectation;
+    const importExpectation = { ...expectation };
+    delete importExpectation.deliveryExecution;
+
+    assert.deepEqual(summarizeRealSample(result), importExpectation);
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+test("importTurnoverFolderSync succeeds on the shareable r2n-test-3 fixture tier and matches the committed lightweight expectation", () => {
+  const lightweightRoot = createThirdLightweightSampleCopy();
+
+  try {
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+    const expectation = JSON.parse(readFileSync(resolve(thirdR2nExpectationRoot, "expected-lightweight.json"), "utf8")) as SampleExpectation;
+    const importExpectation = { ...expectation };
+    delete importExpectation.deliveryExecution;
+
+    assert.deepEqual(summarizeRealSample(result), importExpectation);
+    assert.equal(result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO CATCHUP 08.mp4"), false);
+    assert.equal(result.sourceBundle.assets.some((asset) => asset.name === "OMO PROMO CATCHUP 08.otioz"), false);
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+test("importTurnoverFolderSync keeps the normal r2n-test-4 working set lightweight by skipping explicit Fairlight project and large companions", {
+  skip: runPrivateSample ? "large-media opt-in is enabled for this run" : undefined,
+}, () => {
+  const lightweightRoot = createFourthLightweightSampleCopy();
+
+  try {
+    assert.ok(fourthPrivateFileNames.includes("Channel mapping and linked groups.mp4"));
+    assert.ok(fourthPrivateFileNames.includes("Channel mapping and linked groups.otioz"));
+    assert.ok(fourthPrivateDirectoryNames.includes("DR17 Fairlight Intro Tutorial.dra"));
+
+    addPlaceholderPrivateCompanionsToFourthSample(lightweightRoot);
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+
+    assert.ok(result.sourceBundle.assets.some((asset) => asset.name === "Channel mapping and linked groups.fcpxml"));
+    assert.ok(result.sourceBundle.assets.some((asset) => asset.name === "Channel mapping and linked groups.xml"));
+    assert.ok(!result.sourceBundle.assets.some((asset) => asset.relativePath?.startsWith("DR17 Fairlight Intro Tutorial.dra/")));
+    assert.ok(!result.sourceBundle.assets.some((asset) => asset.name === "Channel mapping and linked groups.mp4"));
+    assert.ok(!result.sourceBundle.assets.some((asset) => asset.name === "Channel mapping and linked groups.otioz"));
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+test("importTurnoverFolderSync succeeds on the shareable r2n-test-4 fixture tier and matches the committed lightweight expectation", () => {
+  const lightweightRoot = createFourthLightweightSampleCopy();
+
+  try {
+    const result = importer.importTurnoverFolderSync(lightweightRoot);
+    const expectation = JSON.parse(readFileSync(resolve(fourthR2nExpectationRoot, "expected-lightweight.json"), "utf8")) as SampleExpectation;
+    const importExpectation = { ...expectation };
+    delete importExpectation.deliveryExecution;
+
+    assert.deepEqual(summarizeRealSample(result), importExpectation);
+    assert.equal(result.sourceBundle.assets.some((asset) => asset.relativePath?.startsWith("DR17 Fairlight Intro Tutorial.dra/")), false);
+    assert.equal(result.clipEvents.some((clipEvent) => clipEvent.sourceFileName === "C4_02.mov" && clipEvent.channelLayout === "poly_8"), true);
+  } finally {
+    rmSync(lightweightRoot, { recursive: true, force: true });
+  }
+});
+
+if (privateSamplePresent && runPrivateSample && isPrivateSampleTargetSelected("r2n-test-1")) {
   test("importTurnoverFolderSync enriches r2n-test-1 from local private sample assets and matches the committed local-private expectation", () => {
     const result = importer.importTurnoverFolderSync(realResolveFixtureRoot);
     const expectation = readJsonFixture<SampleExpectation>("expected-local-private.json");
     const summary = summarizeRealSample(result);
     const stereoRoll = result.sourceBundle.assets.find((asset) => asset.name === "230407_002.WAV");
 
-    assert.deepEqual(summary.issueCodes, expectation.issueCodes);
-    assert.deepEqual(summary.timeline, expectation.timeline);
-    assert.deepEqual(summary.productionAudio, expectation.productionAudio);
-    assert.deepEqual(summary.fieldRecorder, expectation.fieldRecorder);
+    assert.deepEqual(summary, expectation);
     assert.match(stereoRoll?.note ?? "", /Direct WAV scan found BWF\/LIST metadata but no explicit source timecode string/i);
     assert.match(stereoRoll?.note ?? "", /Editorial metadata CSV supplies source TC/i);
   });
 } else {
   test("importTurnoverFolderSync enriches r2n-test-1 from local private sample assets and matches the committed local-private expectation", {
-    skip: privateSampleReason,
+    skip: describeFixturePrivateSampleReason("r2n-test-1", privateSamplePresent),
+  }, () => {});
+}
+
+if (secondPrivateSamplePresent && runPrivateSample && isPrivateSampleTargetSelected("r2n-test-2")) {
+  test("importTurnoverFolderSync enriches r2n-test-2 from local private sample assets and matches the committed local-private expectation", () => {
+    const result = importer.importTurnoverFolderSync(secondRealResolveFixtureRoot);
+    const expectation = JSON.parse(
+      readFileSync(resolve(secondR2nExpectationRoot, "expected-local-private.json"), "utf8"),
+    ) as SampleExpectation;
+    const summary = summarizeRealSample(result);
+    const interviewRoll = result.sourceBundle.assets.find((asset) => asset.name === "A-002.WAV");
+
+    assert.deepEqual(summary, expectation);
+    assert.match(interviewRoll?.note ?? "", /iXML detected/i);
+    assert.ok(!result.fieldRecorderCandidates.some((candidate) =>
+      candidate.candidateAssetName === "ONE MIN SOUNDTRACK.wav" && candidate.clipEventId !== "clip-bundle-r2n-test-2-xml-10-1"
+    ));
+    assert.ok(!result.fieldRecorderCandidates.some((candidate) => candidate.status === "linked"));
+  });
+} else {
+  test("importTurnoverFolderSync enriches r2n-test-2 from local private sample assets and matches the committed local-private expectation", {
+    skip: describeFixturePrivateSampleReason("r2n-test-2", secondPrivateSamplePresent),
   }, () => {});
 }

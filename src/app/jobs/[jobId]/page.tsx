@@ -37,6 +37,38 @@ import {
   jobs,
 } from "@/lib/data-source";
 
+function describeStructuredSource(source?: string) {
+  switch (source) {
+    case "fcpxml":
+      return "FCPXML";
+    case "xml":
+      return "XML";
+    case "aaf":
+      return "AAF";
+    case "edl":
+      return "EDL";
+    case "metadata":
+      return "metadata CSV";
+    default:
+      return "structured source";
+  }
+}
+
+function describeAafRole(role?: string) {
+  switch (role) {
+    case "authoritative":
+      return "Authoritative";
+    case "partial-structural":
+      return "Partial structural";
+    case "reconciliation-only":
+      return "Reconciliation only";
+    case "unsupported":
+      return "Unsupported";
+    default:
+      return "Not present";
+  }
+}
+
 export function generateStaticParams() {
   return jobs.map((job) => ({ jobId: job.id }));
 }
@@ -69,15 +101,34 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
     notFound();
   }
 
+  const reportFindings = report.groups.flatMap((group) => group.findings);
   const productionAudioAssets = bundle.assets.filter((asset) => asset.fileRole === "production_audio" && asset.status === "present");
-  const structuredIssueCount = report.groups
-    .flatMap((group) => group.findings)
+  const structuredIssueCount = reportFindings
     .filter((finding) =>
-      finding.code === "SECONDARY_TIMELINE_SOURCE_MISMATCH"
+      finding.code === "PRIMARY_STRUCTURED_SOURCE_SELECTED"
+      || finding.code === "SECONDARY_TIMELINE_SOURCE_MISMATCH"
       || finding.code === "TIMELINE_METADATA_MISMATCH"
       || finding.code === "TIMELINE_EDL_MISMATCH"
+      || finding.code === "MARKER_COUNT_MISMATCH"
       || finding.code.startsWith("AAF_"),
     ).length;
+  const structuredSourceIssue = reportFindings.find((finding) => finding.code === "PRIMARY_STRUCTURED_SOURCE_SELECTED");
+  const markerReconciliationIssue = reportFindings.find((finding) => finding.code === "MARKER_COUNT_MISMATCH");
+  const aafRoleIssue = reportFindings.find((finding) => finding.code === "AAF_DIRECT_PARSE_UNSUPPORTED" || finding.code === "AAF_ADAPTER_FALLBACK");
+  const structuredSourceLabel = describeStructuredSource(job.sourceSnapshot.primaryStructuredSource);
+  const secondaryStructuredSourceLabel = job.sourceSnapshot.secondaryStructuredSource
+    ? describeStructuredSource(job.sourceSnapshot.secondaryStructuredSource)
+    : null;
+  const sourceTimecodeOriginLabel = (origin?: string) => {
+    switch (origin) {
+      case "direct_audio_metadata":
+        return "direct WAV metadata";
+      case "editorial_csv":
+        return "editorial CSV";
+      default:
+        return "unknown";
+    }
+  };
   const fieldRecorderCounts = reviewContext.fieldRecorderCandidates.reduce(
     (counts, candidate) => {
       counts[candidate.status] += 1;
@@ -90,6 +141,11 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
       missing: 0,
     },
   );
+  const candidateOnlyCount = reviewContext.fieldRecorderCandidates.filter((candidate) => candidate.status === "candidate").length;
+  const generatedArtifactSummary = `${executionPlan.generatedCount} generated / ${executionPlan.deferredCount} deferred`;
+  const structuredReconciliationNote = markerReconciliationIssue?.affectedItems.slice(0, 2).join(" ")
+    ?? structuredSourceIssue?.affectedItems.slice(0, 2).join(" ")
+    ?? "Structured-source arbitration now records why the preferred timeline source won.";
 
   return (
     <div className="space-y-6">
@@ -135,30 +191,49 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
         </div>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-5">
+      <section className="grid gap-4 xl:grid-cols-7">
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Acceptance counts</p>
           <p className="mt-3 text-sm font-semibold text-foreground">{reviewContext.tracks.length} tracks / {reviewContext.clipEvents.length} clips / {reviewContext.markers.length} markers</p>
           <p className="mt-2 text-xs text-muted">Hydrated from the preferred structured timeline source, then reconciled against the rest of the intake.</p>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Primary structured source</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{structuredSourceLabel}</p>
+          <p className="mt-2 text-xs text-muted">
+            {secondaryStructuredSourceLabel ? `Secondary ${secondaryStructuredSourceLabel} remains reconciliation-only.` : "No competing structured source was imported for this turnover."}
+          </p>
+          <p className="mt-2 text-xs text-muted">{job.sourceSnapshot.structuredSourceReason ?? structuredSourceIssue?.description}</p>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-panel p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Structured reconciliation</p>
-          <p className="mt-3 text-sm font-semibold text-foreground">{structuredIssueCount} warnings</p>
-          <p className="mt-2 text-xs text-muted">Cross-checks currently cover `fcpxml/xml`, `aaf`, `edl`, metadata CSV, and marker data.</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{structuredIssueCount} findings</p>
+          <p className="mt-2 text-xs text-muted">{structuredReconciliationNote}</p>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Production audio pass</p>
           <p className="mt-3 text-sm font-semibold text-foreground">{productionAudioAssets.length} rolls / {productionAudioAssets.filter((asset) => asset.hasBwf).length} BWF / {productionAudioAssets.filter((asset) => asset.hasIXml).length} iXML</p>
-          <p className="mt-2 text-xs text-muted">Direct WAV inspection supplements editorial CSV metadata when BWF/LIST/iXML data is present.</p>
+          <p className="mt-2 text-xs text-muted">Direct WAV inspection is used when available. Editorial CSV can still supply usable source timecode when the WAV container does not.</p>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Field recorder quality</p>
           <p className="mt-3 text-sm font-semibold text-foreground">{fieldRecorderCounts.linked} linked / {fieldRecorderCounts.candidate} candidate</p>
           <p className="mt-2 text-xs text-muted">{fieldRecorderCounts.insufficient_metadata} insufficient metadata / {fieldRecorderCounts.missing} no match</p>
+          <p className="mt-2 text-xs text-muted">{candidateOnlyCount > 0 ? "Candidate-only results remain below confident relink threshold." : "No candidate-only production-audio overlaps are currently open."}</p>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-panel p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted">AAF intake role</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{describeAafRole(job.sourceSnapshot.aafRole)}</p>
+          <p className="mt-2 text-xs text-muted">{job.sourceSnapshot.aafRoleReason ?? aafRoleIssue?.description ?? "AAF is not driving canonical hydration for this turnover."}</p>
+          <p className="mt-2 text-xs text-muted">
+            {job.sourceSnapshot.aafIntakeStatus ?? "not_present"}
+            {job.sourceSnapshot.aafContainerKind ? ` / ${job.sourceSnapshot.aafContainerKind}` : ""}
+            {job.sourceSnapshot.aafDirectCoverage ? ` / coverage ${job.sourceSnapshot.aafDirectCoverage}` : ""}
+          </p>
         </div>
         <div className="rounded-2xl border border-border/80 bg-panel p-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted">Generated safely now</p>
-          <p className="mt-3 text-sm font-semibold text-foreground">{executionPlan.generatedCount} generated / {executionPlan.deferredCount} deferred</p>
+          <p className="mt-3 text-sm font-semibold text-foreground">{generatedArtifactSummary}</p>
           <p className="mt-2 text-xs text-muted">Native Nuendo writing remains deferred; binary artifacts stay in staged and handoff contracts only.</p>
         </div>
       </section>
@@ -180,7 +255,7 @@ export default async function JobDetailPage({ params }: { params: Promise<{ jobI
                         {asset.sampleRate ?? "unknown"} Hz / {asset.bitDepth ? `${asset.bitDepth}-bit` : "bit depth unknown"} / {asset.channelCount ?? "unknown"} ch / {asset.channelLayout ?? "layout unknown"}
                       </p>
                       <p>
-                        scene {asset.scene ?? "<missing>"} / take {asset.take ?? "<missing>"} / source TC {asset.startTimecode ?? "<missing>"}-{asset.endTimecode ?? "<missing>"}
+                        scene {asset.scene ?? "<missing>"} / take {asset.take ?? "<missing>"} / source TC {asset.startTimecode ?? "<missing>"}-{asset.endTimecode ?? "<missing>"} ({sourceTimecodeOriginLabel(asset.sourceTimecodeOrigin)})
                       </p>
                     </div>
                   ) : null}

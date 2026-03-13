@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<fcpxml version="1.9">
+    <resources>
+        <format height="720" name="FFVideoFormat720p24" frameDuration="1/24s" width="1280" id="r0"/>
+        <asset hasAudio="1" name="SHOT_020_20170831_vr1_000.mov" duration="10/1s" start="0/1s" format="r0" id="r1" audioChannels="2" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/SHOT_020_20170831_vr1_000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A019_01051857_C003_S000.mov" duration="493/24s" start="38708/1s" format="r0" id="r2" audioChannels="1" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A019_01051857_C003_S000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A020_01051924_C003_S000.mov" duration="307/24s" start="241927/6s" format="r0" id="r3" audioChannels="1" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A020_01051924_C003_S000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A019_01051857_C003_S000_S000.mov" duration="463/24s" start="465113/12s" format="r0" id="r4" audioChannels="1" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A019_01051857_C003_S000_S000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="SHOT_060_20170901_vr1_000.mov" duration="121/24s" start="0/1s" format="r0" id="r5" audioChannels="2" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/SHOT_060_20170901_vr1_000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="C4_02.mov" duration="35/2s" start="161323/4s" format="r0" id="r6" audioChannels="8" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/C4_02.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A020_01051933_C004.mov" duration="29/3s" start="245923/6s" format="r0" id="r7" audioChannels="1" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A020_01051933_C004.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A020_01051933_C004.mov" duration="29/3s" start="245923/6s" format="r0" id="r8" audioChannels="1" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A020_01051933_C004.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="SHOT_090_20171205_vr005.0000.mov" duration="41/24s" start="0/1s" format="r0" id="r9" audioChannels="2" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/SHOT_090_20171205_vr005.0000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="SHOT_091_20170901_vr1_00.mov" duration="71/24s" start="0/1s" format="r0" id="r10" audioChannels="2" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/SHOT_091_20170901_vr1_00.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="0014_HYPERLIGHT_SHOT_0030_v04.929082.mov" duration="197/24s" start="154847/4s" format="r0" id="r11" audioChannels="2" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/0014_HYPERLIGHT_SHOT_0030_v04.929082.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="0014_HYPERLIGHT_SHOT_0050_v5.930300.mov" duration="47/6s" start="77525/2s" format="r0" id="r12" audioChannels="2" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/0014_HYPERLIGHT_SHOT_0050_v5.930300.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="0014_HYPERLIGHT_SHOT_0050_v8.930488.mov" duration="127/24s" start="116311/3s" format="r0" id="r13" audioChannels="2" hasVideo="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/0014_HYPERLIGHT_SHOT_0050_v8.930488.mov" kind="original-media"/>
+        </asset>
+        <asset name="0014_HYPERLIGHT_SHOT_0070_v11.88191.mov" duration="7/1s" start="29397/8s" format="r0" id="r14" hasVideo="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/0014_HYPERLIGHT_SHOT_0070_v11.88191.mov" kind="original-media"/>
+        </asset>
+        <asset name="0014_HYPERLIGHT_SHOT_0080_v03.982038.mov" duration="163/24s" start="163673/4s" format="r0" id="r15" hasVideo="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/0014_HYPERLIGHT_SHOT_0080_v03.982038.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A019_01051857_C003_S000.mov" duration="493/24s" start="38708/1s" id="r16" audioChannels="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A019_01051857_C003_S000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A019_01051857_C003_S000.mov" duration="493/24s" start="38708/1s" id="r17" audioChannels="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A019_01051857_C003_S000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A019_01051857_C003_S000.mov" duration="493/24s" start="38708/1s" id="r18" audioChannels="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A019_01051857_C003_S000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A019_01051857_C003_S000_S000.mov" duration="463/24s" start="465113/12s" id="r19" audioChannels="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A019_01051857_C003_S000_S000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="A019_01051857_C003_S000_S000.mov" duration="463/24s" start="465113/12s" id="r20" audioChannels="1" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/A019_01051857_C003_S000_S000.mov" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="ADA NEW VO 20170607.m4a" duration="62492003/999000s" start="0/1s" id="r21" audioChannels="2" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/ADA%20NEW%20VO%2020170607.m4a" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="ADA NEW VO 20170607.m4a" duration="62492003/999000s" start="0/1s" id="r22" audioChannels="2" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/ADA%20NEW%20VO%2020170607.m4a" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="ADA NEW VO 20170607.m4a" duration="62492003/999000s" start="0/1s" id="r23" audioChannels="2" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/ADA%20NEW%20VO%2020170607.m4a" kind="original-media"/>
+        </asset>
+        <asset hasAudio="1" name="Cult-Nation_Hyperlight_STEREO_STEM_SFX.wav" duration="1060/1s" start="35998/1s" id="r24" audioChannels="2" audioSources="1">
+            <media-rep src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/r2n-test-4/DR17%20Fairlight%20Intro%20Tutorial.dra/MediaFiles/Cult-Nation_Hyperlight_STEREO_STEM_SFX.wav" kind="original-media"/>
+        </asset>
+    </resources>
+    <library>
+        <event name="Channel mapping and linked groups (Resolve)">
+            <project name="Channel mapping and linked groups (Resolve)">
+                <sequence tcStart="3600/1s" tcFormat="NDF" duration="1315/24s" format="r0">
+                    <spine>
+                        <clip tcFormat="NDF" name="SHOT_020_20170831_vr1_000.mov" duration="79/12s" start="41/12s" format="r0" offset="3600/1s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <video duration="10/1s" start="0/1s" ref="r1" offset="0/1s"/>
+                            <clip name="A019_01051857_C003_S000.mov" duration="6/1s" start="464539/12s" lane="3" offset="113/12s" enabled="1">
+                                <adjust-volume amount="18.8"/>
+                                <audio duration="493/24s" start="38708/1s" srcCh="1" ref="r16" offset="38708/1s"/>
+                            </clip>
+                            <asset-clip name="Cult-Nation_Hyperlight_STEREO_STEM_SFX.wav" duration="217/4s" start="144157/4s" lane="5" ref="r24" offset="95/24s" enabled="1"/>
+                        </clip>
+                        <clip tcFormat="NDF" name="A019_01051857_C003_S000.mov" duration="173/24s" start="232273/6s" format="r0" offset="43279/12s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <video duration="493/24s" start="38708/1s" ref="r2" offset="38708/1s"/>
+                            <clip tcFormat="NDF" name="0014_HYPERLIGHT_SHOT_0030_v04.929082.mov" duration="173/24s" start="154849/4s" format="r0" lane="1" offset="232273/6s" enabled="1">
+                                <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                                <video duration="197/24s" start="154847/4s" ref="r11" offset="154847/4s"/>
+                            </clip>
+                            <clip name="A019_01051857_C003_S000.mov" duration="97/24s" start="309741/8s" lane="3" offset="309741/8s" enabled="0">
+                                <adjust-volume amount="17.3"/>
+                                <audio duration="493/24s" start="38708/1s" srcCh="1" ref="r17" offset="38708/1s"/>
+                            </clip>
+                            <asset-clip name="ADA NEW VO 20170607.m4a" duration="13/3s" start="9/2s" lane="4" ref="r21" offset="154869/4s" enabled="1"/>
+                        </clip>
+                        <clip tcFormat="NDF" name="A020_01051924_C003_S000.mov" duration="45/8s" start="161299/4s" format="r0" offset="86731/24s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <video duration="307/24s" start="241927/6s" ref="r3" offset="241927/6s"/>
+                            <clip name="A019_01051857_C003_S000.mov" duration="79/24s" start="116165/3s" lane="3" offset="967849/24s" enabled="1">
+                                <adjust-volume amount="13.8"/>
+                                <audio duration="493/24s" start="38708/1s" srcCh="1" ref="r18" offset="38708/1s"/>
+                            </clip>
+                        </clip>
+                        <asset-clip tcFormat="NDF" name="A019_01051857_C003_S000_S000.mov" duration="97/8s" start="38763/1s" format="r0" audioStart="38763/1s" ref="r4" offset="43433/12s" audioDuration="23/12s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <adjust-volume amount="18.8"/>
+                            <clip tcFormat="NDF" name="0014_HYPERLIGHT_SHOT_0050_v5.930300.mov" duration="29/4s" start="38763/1s" format="r0" lane="1" offset="38763/1s" enabled="1">
+                                <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                                <video duration="47/6s" start="77525/2s" ref="r12" offset="77525/2s"/>
+                            </clip>
+                            <clip tcFormat="NDF" name="0014_HYPERLIGHT_SHOT_0050_v8.930488.mov" duration="41/8s" start="116311/3s" format="r0" lane="1" offset="155081/4s" enabled="1">
+                                <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                                <video duration="127/24s" start="116311/3s" ref="r13" offset="116311/3s"/>
+                            </clip>
+                            <clip name="A019_01051857_C003_S000_S000.mov" duration="71/12s" start="465179/12s" lane="3" offset="465179/12s" enabled="0">
+                                <adjust-volume amount="19.6"/>
+                                <audio duration="463/24s" start="465113/12s" srcCh="1" ref="r19" offset="465113/12s"/>
+                            </clip>
+                            <clip name="A019_01051857_C003_S000_S000.mov" duration="101/24s" start="310167/8s" lane="3" offset="232625/6s" enabled="1">
+                                <adjust-volume amount="18.8"/>
+                                <audio duration="463/24s" start="465113/12s" srcCh="1" ref="r20" offset="465113/12s"/>
+                            </clip>
+                            <asset-clip name="ADA NEW VO 20170607.m4a" duration="139/24s" start="109/12s" lane="4" ref="r22" offset="232591/6s" enabled="1"/>
+                        </asset-clip>
+                        <clip tcFormat="NDF" name="SHOT_060_20170901_vr1_000.mov" duration="97/24s" start="0/1s" format="r0" offset="87157/24s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <video duration="121/24s" start="0/1s" ref="r5" offset="0/1s"/>
+                            <asset-clip tcFormat="NDF" name="0014_HYPERLIGHT_SHOT_0070_v11.88191.mov" duration="7/1s" start="29397/8s" format="r0" lane="1" ref="r14" offset="4/1s" enabled="1">
+                                <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            </asset-clip>
+                        </clip>
+                        <asset-clip tcFormat="NDF" name="C4_02.mov" duration="131/12s" start="80669/2s" format="r0" audioStart="80669/2s" ref="r6" offset="43627/12s" audioDuration="259/24s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <adjust-volume amount="4.6">
+                                <param name="amount" value="4.6">
+                                    <keyframeAnimation>
+                                        <keyframe value="4.6" time="80679/2s"/>
+                                        <keyframe value="-37.1" time="242039/6s"/>
+                                        <keyframe value="-38" time="484129/12s"/>
+                                        <keyframe value="4.6" time="968263/24s"/>
+                                    </keyframeAnimation>
+                                </param>
+                            </adjust-volume>
+                            <asset-clip tcFormat="NDF" name="0014_HYPERLIGHT_SHOT_0080_v03.982038.mov" duration="77/12s" start="163673/4s" format="r0" lane="1" ref="r15" offset="968195/24s" enabled="1">
+                                <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            </asset-clip>
+                            <asset-clip name="ADA NEW VO 20170607.m4a" duration="5/1s" start="449/24s" lane="4" ref="r23" offset="484073/12s" enabled="1">
+                                <adjust-volume amount="-0.4"/>
+                            </asset-clip>
+                        </asset-clip>
+                        <clip tcFormat="NDF" name="A020_01051933_C004.mov" duration="5/12s" start="327927/8s" format="r0" offset="7293/2s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <video duration="29/3s" start="245923/6s" ref="r7" offset="245923/6s"/>
+                        </clip>
+                        <asset-clip tcFormat="NDF" name="A020_01051933_C004.mov" duration="15/8s" start="163965/4s" format="r0" audioStart="983779/24s" ref="r8" offset="43763/12s" audioDuration="59/24s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <adjust-volume amount="10.4"/>
+                        </asset-clip>
+                        <clip tcFormat="NDF" name="SHOT_090_20171205_vr005.0000.mov" duration="37/24s" start="1/24s" format="r0" offset="87571/24s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <video duration="41/24s" start="0/1s" ref="r9" offset="0/1s"/>
+                        </clip>
+                        <clip tcFormat="NDF" name="SHOT_091_20170901_vr1_00.mov" duration="23/8s" start="0/1s" format="r0" offset="10951/3s" enabled="1">
+                            <adjust-transform position="0 0" scale="1 1" anchor="0 0"/>
+                            <video duration="71/24s" start="0/1s" ref="r10" offset="0/1s"/>
+                        </clip>
+                        <gap name="Gap" duration="19/12s" start="3600/1s" offset="87677/24s"/>
+                    </spine>
+                </sequence>
+            </project>
+        </event>
+    </library>
+</fcpxml>
