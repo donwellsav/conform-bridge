@@ -1,0 +1,56 @@
+{
+  "fixtureId": "r2n-test-3",
+  "projectName": "Blackmagic Design DaVinci Resolve 20 Beginner's Guide",
+  "lesson": "Lesson 02",
+  "timelineName": "OMO PROMO CATCHUP 08",
+  "frameRate": "23.976",
+  "startTimecode": "01:00:00:00",
+  "sampleRate": 48000,
+  "bitDepth": 32,
+  "committedExpectations": [
+    "fixtures/expectations/r2n-test-3/expected-lightweight.json"
+  ],
+  "tier1Committed": [
+    {
+      "fileName": "OMO PROMO CATCHUP 08 CMX3600 EDL.edl"
+    },
+    {
+      "fileName": "OMO PROMO CATCHUP 08.aaf"
+    },
+    {
+      "fileName": "OMO PROMO CATCHUP 08.drt"
+    },
+    {
+      "fileName": "OMO PROMO CATCHUP 08.fcpxml"
+    },
+    {
+      "fileName": "OMO PROMO CATCHUP 08.otio"
+    },
+    {
+      "fileName": "OMO PROMO CATCHUP 08.xml"
+    },
+    {
+      "fileName": "test3 Media Metadata.csv"
+    }
+  ],
+  "tier2LocalPrivate": [
+    {
+      "fileName": "OMO PROMO CATCHUP 08.mp4",
+      "entryType": "file"
+    },
+    {
+      "fileName": "OMO PROMO CATCHUP 08.otioz",
+      "entryType": "file"
+    }
+  ],
+  "expectations": {
+    "lightweight": "committed",
+    "localPrivate": "not_planned"
+  },
+  "notes": [
+    "r2n-test-3 is an official editorial baseline sample derived from Blackmagic training material.",
+    "Tier 1 is sufficient for committed lightweight importer, reconciliation, delivery-planning, execution-prep, staging, and package-contract checks for r2n-test-3.",
+    "Tier 2 stays local-only so the reference mp4 and large otioz do not become part of normal repo verification.",
+    "This sample is editorial baseline only. It does not claim production-audio or field-recorder proof."
+  ]
+}

@@ -1,0 +1,545 @@
+{
+  "timeline": {
+    "name": "OMO PROMO FINAL (Resolve)",
+    "fps": "23.976",
+    "startTimecode": "01:00:00:00",
+    "durationTimecode": "00:00:56:01",
+    "trackCount": 10,
+    "clipCount": 47,
+    "markerCount": 5
+  },
+  "structuredSource": {
+    "primary": "xml",
+    "secondary": "fcpxml",
+    "reason": "XML selected with score 1710 because XML covers 10 imported tracks. XML covers 47 clip events.",
+    "aafIntakeStatus": "unsupported"
+  },
+  "markers": [
+    {
+      "timecode": "01:00:00:00",
+      "name": "start"
+    },
+    {
+      "timecode": "01:00:25:06",
+      "name": "WHOOSHES HERE"
+    },
+    {
+      "timecode": "01:00:27:11",
+      "name": "FOOTSTEPS HERE"
+    },
+    {
+      "timecode": "01:00:41:05",
+      "name": "SHIRT HANGING"
+    },
+    {
+      "timecode": "01:00:56:02",
+      "name": "Marker 5"
+    }
+  ],
+  "issueCodes": [
+    "AAF_DIRECT_PARSE_UNSUPPORTED",
+    "DELIVERY_ARTIFACT_BLOCKED",
+    "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+    "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+    "SOURCE_FILE_MISSING_FROM_INTAKE",
+    "TIMELINE_METADATA_MISMATCH",
+    "UNRESOLVED_METADATA"
+  ],
+  "productionAudio": [
+    {
+      "name": "A-002.WAV",
+      "sampleRate": 48000,
+      "bitDepth": 24,
+      "channelCount": 4,
+      "channelLayout": "poly_4",
+      "scene": "A",
+      "take": "002",
+      "startTimecode": "15:43:48:13",
+      "endTimecode": "15:44:51:01",
+      "hasBwf": true,
+      "hasIXml": true,
+      "hasSourceTimecode": true,
+      "sourceTimecodeOrigin": "editorial_csv",
+      "recordingDevice": "SoundDev: MixPre-10T QD061907001"
+    },
+    {
+      "name": "A-005.WAV",
+      "sampleRate": 48000,
+      "bitDepth": 24,
+      "channelCount": 4,
+      "channelLayout": "poly_4",
+      "scene": "A",
+      "take": "005",
+      "startTimecode": "15:52:21:00",
+      "endTimecode": "15:53:28:14",
+      "hasBwf": true,
+      "hasIXml": true,
+      "hasSourceTimecode": true,
+      "sourceTimecodeOrigin": "editorial_csv",
+      "recordingDevice": "SoundDev: MixPre-10T QD061907001"
+    },
+    {
+      "name": "A-007.WAV",
+      "sampleRate": 48000,
+      "bitDepth": 24,
+      "channelCount": 4,
+      "channelLayout": "poly_4",
+      "scene": "A",
+      "take": "007",
+      "startTimecode": "16:22:41:19",
+      "endTimecode": "16:23:50:11",
+      "hasBwf": true,
+      "hasIXml": true,
+      "hasSourceTimecode": true,
+      "sourceTimecodeOrigin": "editorial_csv",
+      "recordingDevice": "SoundDev: MixPre-10T QD061907001"
+    },
+    {
+      "name": "A-008.WAV",
+      "sampleRate": 48000,
+      "bitDepth": 24,
+      "channelCount": 4,
+      "channelLayout": "poly_4",
+      "scene": "A",
+      "take": "008",
+      "startTimecode": "16:25:52:01",
+      "endTimecode": "16:26:54:21",
+      "hasBwf": true,
+      "hasIXml": true,
+      "hasSourceTimecode": true,
+      "sourceTimecodeOrigin": "editorial_csv",
+      "recordingDevice": "SoundDev: MixPre-10T QD061907001"
+    },
+    {
+      "name": "ONE MIN SOUNDTRACK.wav",
+      "sampleRate": 48000,
+      "bitDepth": 16,
+      "channelCount": 2,
+      "channelLayout": "stereo",
+      "scene": "",
+      "take": "",
+      "startTimecode": "01:00:00:00",
+      "endTimecode": "01:00:56:02",
+      "hasBwf": true,
+      "hasIXml": false,
+      "hasSourceTimecode": true,
+      "sourceTimecodeOrigin": "editorial_csv",
+      "recordingDevice": "DaVinci Resolve"
+    }
+  ],
+  "acceptanceFindings": [
+    {
+      "code": "AAF_DIRECT_PARSE_UNSUPPORTED",
+      "title": "AAF could not be parsed directly",
+      "severity": "warning",
+      "affectedItems": [
+        "canonical fallback=XML",
+        "container=ole-compound",
+        "extraction=unparsed",
+        "direct coverage=none",
+        "Direct AAF parsing does not yet recognize this container payload shape.",
+        "The AAF container did not expose a supported embedded graph or decoded OLE layout payload."
+      ]
+    },
+    {
+      "code": "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+      "title": "XML selected as the primary structured source",
+      "severity": "info",
+      "affectedItems": [
+        "XML score=1710",
+        "XML provides an explicit timeline start timecode (01:00:00:00).",
+        "XML covers 10 imported tracks.",
+        "XML covers 47 clip events.",
+        "XML preserves 34 distinct source file names.",
+        "XML preserves explicit source timecode on 45 clips.",
+        "FCPXML score=1457",
+        "FCPXML provides an explicit timeline start timecode (00:00:00:00).",
+        "FCPXML agrees with the strongest secondary timing reference at 00:00:00:00.",
+        "FCPXML matches the metadata summary duration (00:00:07:04).",
+        "FCPXML covers 6 imported tracks.",
+        "FCPXML covers 34 clip events.",
+        "FCPXML preserves 24 distinct source file names.",
+        "FCPXML preserves explicit source timecode on 34 clips."
+      ]
+    },
+    {
+      "code": "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+      "title": "Structured timeline sources disagree",
+      "severity": "warning",
+      "affectedItems": [
+        "XML stayed primary because it scored 1710 vs 1457.",
+        "XML provides an explicit timeline start timecode (01:00:00:00).",
+        "XML covers 10 imported tracks.",
+        "XML covers 47 clip events.",
+        "start XML=01:00:00:00 vs FCPXML=00:00:00:00",
+        "duration XML=00:00:56:01 vs FCPXML=00:00:07:04",
+        "tracks XML=10 vs FCPXML=6",
+        "clips XML=47 vs FCPXML=34"
+      ]
+    },
+    {
+      "code": "SOURCE_FILE_MISSING_FROM_INTAKE",
+      "title": "XML references source files that are missing from intake",
+      "severity": "critical",
+      "affectedItems": [
+        "CL SUBCLIP 1 - Experiences",
+        "CL SUBCLIP 2 - Brand",
+        "Compound Clip 1",
+        "OMO LOGO.png",
+        "CL INTERVIEW Tk2",
+        "CL SUBCLIP 4 - Inspiration",
+        "CL INTERVIEW Tk7",
+        "OMO VO_003_1FTYSS.wav",
+        "PINE TRAIL 8",
+        "PINE TRAIL 5",
+        "PINE TRAIL 12",
+        "Exterior Atmos Wind.wav",
+        "Exterior Atmos Birds.wav",
+        "Interior atmos.wav",
+        "Outdoor Crowd Walla.wav",
+        "Boots On Rough Dirt Footsteps.wav",
+        "Pen Clicks.wav",
+        "Slow Whoosh.wav"
+      ]
+    },
+    {
+      "code": "TIMELINE_METADATA_MISMATCH",
+      "title": "Metadata CSV timeline timing disagrees with the canonical timeline",
+      "severity": "warning",
+      "affectedItems": [
+        "start canonical=01:00:00:00",
+        "start metadata=00:00:00:00",
+        "duration metadata=00:00:07:04"
+      ]
+    }
+  ],
+  "fieldRecorder": {
+    "counts": {
+      "missing": 39,
+      "candidate": 3
+    },
+    "candidates": [
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Boots On Rough Dirt Footsteps.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Boots On Rough Dirt Footsteps.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "candidate",
+        "candidateAssetName": "A-002.WAV",
+        "clipName": "CL INTERVIEW Tk2",
+        "confidenceScore": 57,
+        "reasons": [
+          "Source timecode overlaps the bundled production-audio roll.",
+          "Usable source timecode currently comes from editorial CSV, not direct WAV metadata.",
+          "Scene metadata conflicts between the canonical clip and the production-audio roll.",
+          "Take metadata agrees between the canonical clip and the production-audio roll."
+        ]
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL INTERVIEW Tk2",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "candidate",
+        "candidateAssetName": "A-007.WAV",
+        "clipName": "CL INTERVIEW Tk7",
+        "confidenceScore": 57,
+        "reasons": [
+          "Source timecode overlaps the bundled production-audio roll.",
+          "Usable source timecode currently comes from editorial CSV, not direct WAV metadata.",
+          "Scene metadata conflicts between the canonical clip and the production-audio roll.",
+          "Take metadata agrees between the canonical clip and the production-audio roll."
+        ]
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL INTERVIEW Tk7",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "candidate",
+        "candidateAssetName": "A-008.WAV",
+        "clipName": "CL SUBCLIP 1 - Experiences",
+        "confidenceScore": 57,
+        "reasons": [
+          "Source timecode overlaps the bundled production-audio roll.",
+          "Usable source timecode currently comes from editorial CSV, not direct WAV metadata.",
+          "Scene metadata conflicts between the canonical clip and the production-audio roll.",
+          "Take metadata agrees between the canonical clip and the production-audio roll."
+        ]
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 1 - Experiences",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 1 - Experiences",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 1 - Experiences",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 1 - Experiences",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 1 - Experiences",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 2 - Brand",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 4 - Inspiration",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "CL SUBCLIP 4 - Inspiration",
+        "confidenceScore": 14,
+        "reasons": [
+          "Scene metadata conflicts between the canonical clip and the production-audio roll.",
+          "Take metadata agrees between the canonical clip and the production-audio roll."
+        ]
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Compound Clip 1",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Exterior Atmos Birds.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Exterior Atmos Wind.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Interior atmos.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Interior atmos.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "OMO LOGO.png",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "OMO VO_003",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "ONE MIN SOUNDTRACK.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "ORGAN MOUNTAIN 1",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Outdoor Crowd Walla.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Pen Clicks.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINA BLANCA 44",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINA BLANCA 48",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINA BLANCA 70",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 12",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 12",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 5",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 5",
+        "confidenceScore": 14,
+        "reasons": [
+          "Scene metadata conflicts between the canonical clip and the production-audio roll.",
+          "Take metadata agrees between the canonical clip and the production-audio roll."
+        ]
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 8",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "PINE TRAIL 8",
+        "confidenceScore": 14,
+        "reasons": [
+          "Scene metadata conflicts between the canonical clip and the production-audio roll.",
+          "Take metadata agrees between the canonical clip and the production-audio roll."
+        ]
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Slow Whoosh.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Slow Whoosh.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Slow Whoosh.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "STORE 2",
+        "confidenceScore": 14,
+        "reasons": [
+          "Scene metadata conflicts between the canonical clip and the production-audio roll.",
+          "Take metadata agrees between the canonical clip and the production-audio roll."
+        ]
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "STORE 28",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "STORE 34",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "WHITE SANDS 11",
+        "confidenceScore": 0,
+        "reasons": []
+      }
+    ]
+  }
+}

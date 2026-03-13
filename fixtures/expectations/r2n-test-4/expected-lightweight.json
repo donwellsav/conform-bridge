@@ -1,0 +1,377 @@
+{
+  "timeline": {
+    "name": "Channel mapping and linked groups (Resolve)",
+    "fps": "24",
+    "startTimecode": "01:00:00:00",
+    "durationTimecode": "00:00:54:19",
+    "trackCount": 5,
+    "clipCount": 27,
+    "markerCount": 0
+  },
+  "structuredSource": {
+    "primary": "xml",
+    "secondary": "fcpxml",
+    "reason": "XML selected with score 1165 because XML agrees with the strongest secondary timing reference at 01:00:00:00. XML covers 5 imported tracks.",
+    "aafIntakeStatus": "unsupported"
+  },
+  "markers": [],
+  "issueCodes": [
+    "AAF_DIRECT_PARSE_UNSUPPORTED",
+    "DELIVERY_ARTIFACT_BLOCKED",
+    "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+    "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+    "SOURCE_FILE_MISSING_FROM_INTAKE",
+    "UNRESOLVED_METADATA"
+  ],
+  "productionAudio": [],
+  "acceptanceFindings": [
+    {
+      "code": "AAF_DIRECT_PARSE_UNSUPPORTED",
+      "title": "AAF could not be parsed directly",
+      "severity": "warning",
+      "affectedItems": [
+        "canonical fallback=XML",
+        "container=ole-compound",
+        "extraction=unparsed",
+        "direct coverage=none",
+        "Direct AAF parsing does not yet recognize this container payload shape.",
+        "The AAF container did not expose a supported embedded graph or decoded OLE layout payload."
+      ]
+    },
+    {
+      "code": "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+      "title": "XML selected as the primary structured source",
+      "severity": "info",
+      "affectedItems": [
+        "XML score=1165",
+        "XML provides an explicit timeline start timecode (01:00:00:00).",
+        "XML agrees with the strongest secondary timing reference at 01:00:00:00.",
+        "XML covers 5 imported tracks.",
+        "XML covers 27 clip events.",
+        "XML preserves 16 distinct source file names.",
+        "XML preserves explicit source timecode on 27 clips.",
+        "FCPXML score=1054",
+        "FCPXML provides an explicit timeline start timecode (01:00:00:00).",
+        "FCPXML agrees with the strongest secondary timing reference at 01:00:00:00.",
+        "FCPXML covers 4 imported tracks.",
+        "FCPXML covers 24 clip events.",
+        "FCPXML preserves 16 distinct source file names.",
+        "FCPXML preserves explicit source timecode on 24 clips."
+      ]
+    },
+    {
+      "code": "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+      "title": "Structured timeline sources disagree",
+      "severity": "warning",
+      "affectedItems": [
+        "XML stayed primary because it scored 1165 vs 1054.",
+        "XML provides an explicit timeline start timecode (01:00:00:00).",
+        "XML agrees with the strongest secondary timing reference at 01:00:00:00.",
+        "XML covers 5 imported tracks.",
+        "tracks XML=5 vs FCPXML=4",
+        "clips XML=27 vs FCPXML=24"
+      ]
+    },
+    {
+      "code": "SOURCE_FILE_MISSING_FROM_INTAKE",
+      "title": "XML references source files that are missing from intake",
+      "severity": "critical",
+      "affectedItems": [
+        "SHOT_020_20170831_vr1_000.mov",
+        "A019_01051857_C003_S000.mov",
+        "A020_01051924_C003_S000.mov",
+        "A019_01051857_C003_S000_S000.mov",
+        "SHOT_060_20170901_vr1_000.mov",
+        "C4_02.mov",
+        "A020_01051933_C004.mov",
+        "SHOT_090_20171205_vr005.0000.mov",
+        "SHOT_091_20170901_vr1_00.mov",
+        "0014_HYPERLIGHT_SHOT_0030_v04.929082.mov",
+        "0014_HYPERLIGHT_SHOT_0050_v5.930300.mov",
+        "0014_HYPERLIGHT_SHOT_0050_v8.930488.mov",
+        "0014_HYPERLIGHT_SHOT_0070_v11.88191.mov",
+        "0014_HYPERLIGHT_SHOT_0080_v03.982038.mov",
+        "ADA NEW VO 20170607.m4a",
+        "Cult-Nation_Hyperlight_STEREO_STEM_SFX.wav"
+      ]
+    }
+  ],
+  "fieldRecorder": {
+    "counts": {
+      "missing": 27
+    },
+    "candidates": [
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "0014_HYPERLIGHT_SHOT_0030_v04.929082.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "0014_HYPERLIGHT_SHOT_0050_v5.930300.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "0014_HYPERLIGHT_SHOT_0050_v8.930488.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "0014_HYPERLIGHT_SHOT_0070_v11.88191.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "0014_HYPERLIGHT_SHOT_0080_v03.982038.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A019_01051857_C003_S000_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A019_01051857_C003_S000_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A019_01051857_C003_S000_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A019_01051857_C003_S000_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A019_01051857_C003_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A019_01051857_C003_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A019_01051857_C003_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A019_01051857_C003_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A020_01051924_C003_S000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A020_01051933_C004.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A020_01051933_C004.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "A020_01051933_C004.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "ADA NEW VO 20170607.m4a",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "ADA NEW VO 20170607.m4a",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "ADA NEW VO 20170607.m4a",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "C4_02.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "C4_02.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "Cult-Nation_Hyperlight_STEREO_STEM_SFX.wav",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "SHOT_020_20170831_vr1_000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "SHOT_060_20170901_vr1_000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "SHOT_090_20171205_vr005.0000.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      },
+      {
+        "status": "missing",
+        "candidateAssetName": "<no matching production roll>",
+        "clipName": "SHOT_091_20170901_vr1_00.mov",
+        "confidenceScore": 0,
+        "reasons": []
+      }
+    ]
+  },
+  "deliveryExecution": {
+    "generatedCount": 3,
+    "deferredCount": 2,
+    "unavailableCount": 3,
+    "artifactStatuses": [
+      {
+        "fileName": "Channel_mapping_and_linked_groups_(Resolve)_FIELD_RECORDER_REPORT.csv",
+        "executionStatus": "unavailable"
+      },
+      {
+        "fileName": "Channel_mapping_and_linked_groups_(Resolve)_MARKERS.csv",
+        "executionStatus": "unavailable"
+      },
+      {
+        "fileName": "Channel_mapping_and_linked_groups_(Resolve)_MARKERS.edl",
+        "executionStatus": "unavailable"
+      },
+      {
+        "fileName": "Channel_mapping_and_linked_groups_(Resolve)_METADATA.csv",
+        "executionStatus": "generated"
+      },
+      {
+        "fileName": "Channel_mapping_and_linked_groups_(Resolve)_NUENDO_READY.aaf",
+        "executionStatus": "deferred"
+      },
+      {
+        "fileName": "Channel_mapping_and_linked_groups_(Resolve)_REF.mov",
+        "executionStatus": "deferred"
+      },
+      {
+        "fileName": "manifest.json",
+        "executionStatus": "generated"
+      },
+      {
+        "fileName": "README_NUENDO_IMPORT.txt",
+        "executionStatus": "generated"
+      }
+    ]
+  },
+  "audioStructure": {
+    "trackLayouts": [
+      {
+        "name": "Video 1",
+        "role": "guide",
+        "channelLayout": "stereo"
+      },
+      {
+        "name": "Video 2",
+        "role": "guide",
+        "channelLayout": "stereo"
+      },
+      {
+        "name": "Audio 3",
+        "role": "guide",
+        "channelLayout": "mono"
+      },
+      {
+        "name": "Audio 4",
+        "role": "guide",
+        "channelLayout": "stereo"
+      },
+      {
+        "name": "Audio 5",
+        "role": "fx",
+        "channelLayout": "stereo"
+      }
+    ],
+    "multichannelClips": [
+      {
+        "clipName": "C4_02.mov",
+        "channelCount": 8,
+        "channelLayout": "poly_8",
+        "sourceFileName": "C4_02.mov"
+      },
+      {
+        "clipName": "C4_02.mov",
+        "channelCount": 8,
+        "channelLayout": "poly_8",
+        "sourceFileName": "C4_02.mov"
+      }
+    ]
+  }
+}

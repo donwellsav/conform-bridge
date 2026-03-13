@@ -2,9 +2,11 @@
 
 ## Current Roadmap Position
 
-- Current phase: `Phase 3J` complete
-- Next phase: `Phase 3K`
-- Current Phase `3K` driver: `fixtures/intake/r2n-test-1`
+- Current phase: `Phase 4A`
+- Previous phase: `Phase 3K` complete
+- Next phase: `TBD after Phase 4A`
+- Current Phase `4A` driver: four-fixture acceptance matrix in
+  `fixtures/expectations/sample-matrix.json`
 - Current real transport path: `filesystem-transport-adapter` only
 - Current persistence model: browser-local review-state deltas only
 - Ongoing parser focus: reduce remaining AAF compatibility fallback only when
@@ -62,20 +64,24 @@
 - [ ] Keep native Nuendo/session writing out of scope until the external
   execution boundary is proven stable
 
-## Current Focus For Phase 3K
+## Current Focus For Phase 4A
 
-- [x] Add `r2n-test-1` as a first-class real local intake fixture
-- [x] Run the full importer pipeline against `r2n-test-1`
-- [x] Add a first direct WAV/BWF metadata pass for production-audio assets
-- [x] Split `r2n-test-1` into committed lightweight fixtures plus local
-  private sample companions
-- [x] Keep normal repo verification independent of the private sample
-- [x] Add committed expectation snapshots for lightweight and local-private
-  `r2n-test-1` outcomes
-- [x] Keep OTIO, OTIOZ, and DRT auxiliary until explicit parser support is
-  justified
-- [ ] Validate the same field-recorder and reconciliation logic against at
-  least one more real turnover sample before calling Phase `3K` closed
+- [x] Establish the four real baseline fixtures as a deterministic acceptance
+  matrix
+- [x] Commit `fixtures/expectations/sample-matrix.json` with authoritative
+  source, AAF status, reconciliation findings, multichannel observations, and
+  delivery counts per real sample
+- [x] Keep XML-vs-FCPXML arbitration stable across `r2n-test-1..4`
+- [x] Classify the AAF role on all four real samples truthfully instead of
+  implying unsupported real AAFs are authoritative
+- [x] Preserve multichannel layout truthfully on the Fairlight baseline
+  fixture `r2n-test-4`
+- [x] Keep private large-media guard behavior stable while real fixture
+  coverage grows
+- [x] Ignore undeclared stray files when a real fixture inventory is present
+- [ ] Continue one narrow AAF pass only if the repeated unsupported
+  `ole-compound` real-sample shape exposes a shared extractable structural
+  improvement
 - Keep executor compatibility sample-driven instead of speculative
 - Add new executor or transport profiles only when they consume the current
   normalized package, handoff, runner, and receipt contracts unchanged

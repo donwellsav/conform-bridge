@@ -1,0 +1,18 @@
+TITLE: OMO PROMO FINAL w markers
+FCM: NON-DROP FRAME
+
+001  001      V     C        01:00:00:00 01:00:00:01 01:00:00:00 01:00:00:01  
+start |C:ResolveColorBlue |M:start |D:1
+
+002  001      V     C        01:00:25:06 01:00:25:07 01:00:25:06 01:00:25:07  
+ |C:ResolveColorBlue |M:WHOOSHES HERE |D:1
+
+003  001      V     C        01:00:27:11 01:00:27:12 01:00:27:11 01:00:27:12  
+ |C:ResolveColorBlue |M:FOOTSTEPS HERE |D:1
+
+004  001      V     C        01:00:41:05 01:00:41:06 01:00:41:05 01:00:41:06  
+ |C:ResolveColorBlue |M:SHIRT HANGING |D:1
+
+005  001      V     C        01:00:56:02 01:00:56:03 01:00:56:02 01:00:56:03  
+end |C:ResolveColorBlue |M:Marker 5 |D:1
+

@@ -1,0 +1,297 @@
+{
+  "phase": "Phase 4A",
+  "generatedOn": "2026-03-13",
+  "fixtureIds": [
+    "r2n-test-1",
+    "r2n-test-2",
+    "r2n-test-3",
+    "r2n-test-4"
+  ],
+  "entries": [
+    {
+      "fixtureId": "r2n-test-1",
+      "jobId": "job-r2n-test-1",
+      "timelineName": "Timeline 1 (Resolve)",
+      "authoritativeStructuredSource": "xml",
+      "secondaryStructuredSource": "fcpxml",
+      "sourceArbitrationReason": "XML selected with score 751 because XML agrees with the strongest secondary timing reference at 01:00:00:00. XML covers 7 imported tracks.",
+      "aaf": {
+        "role": "unsupported",
+        "intakeStatus": "unsupported",
+        "containerKind": "ole-compound",
+        "directCoverage": "none",
+        "reason": "AAF was detected as ole-compound, but direct coverage remained none and canonical hydration stayed on XML.",
+        "diagnostics": [
+          "container=ole-compound",
+          "extraction=unparsed",
+          "direct coverage=none",
+          "Direct AAF parsing does not yet recognize this container payload shape.",
+          "The AAF container did not expose a supported embedded graph or decoded OLE layout payload."
+        ]
+      },
+      "counts": {
+        "tracks": 7,
+        "clips": 8,
+        "markers": 6
+      },
+      "multichannelObservations": [
+        {
+          "trackName": "Video 1",
+          "role": "guide",
+          "channelLayout": "poly_4",
+          "note": "Track Video 1 preserves poly_4 routing."
+        },
+        {
+          "clipName": "00030.MTS",
+          "channelCount": 4,
+          "channelLayout": "poly_4",
+          "note": "Clip 00030.MTS preserves 4ch poly_4."
+        }
+      ],
+      "fieldRecorder": {
+        "scope": "guarded-private-optional",
+        "strongestObservedState": "candidate-only",
+        "counts": {
+          "missing": 5
+        },
+        "note": "Guarded private regression reached candidate-only relink evidence on three rolls, but no confident relink because usable source TC still came from editorial CSV."
+      },
+      "deliveryExecution": {
+        "generated": 5,
+        "deferred": 2,
+        "unavailable": 1
+      },
+      "majorFindings": [
+        {
+          "code": "AAF_DIRECT_PARSE_UNSUPPORTED",
+          "severity": "warning",
+          "title": "AAF could not be parsed directly"
+        },
+        {
+          "code": "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+          "severity": "info",
+          "title": "XML selected as the primary structured source"
+        },
+        {
+          "code": "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+          "severity": "warning",
+          "title": "Structured timeline sources disagree"
+        },
+        {
+          "code": "SOURCE_FILE_MISSING_FROM_INTAKE",
+          "severity": "critical",
+          "title": "XML references source files that are missing from intake"
+        }
+      ]
+    },
+    {
+      "fixtureId": "r2n-test-2",
+      "jobId": "job-r2n-test-2",
+      "timelineName": "OMO PROMO FINAL (Resolve)",
+      "authoritativeStructuredSource": "xml",
+      "secondaryStructuredSource": "fcpxml",
+      "sourceArbitrationReason": "XML selected with score 1710 because XML covers 10 imported tracks. XML covers 47 clip events.",
+      "aaf": {
+        "role": "unsupported",
+        "intakeStatus": "unsupported",
+        "containerKind": "ole-compound",
+        "directCoverage": "none",
+        "reason": "AAF was detected as ole-compound, but direct coverage remained none and canonical hydration stayed on XML.",
+        "diagnostics": [
+          "container=ole-compound",
+          "extraction=unparsed",
+          "direct coverage=none",
+          "Direct AAF parsing does not yet recognize this container payload shape.",
+          "The AAF container did not expose a supported embedded graph or decoded OLE layout payload."
+        ]
+      },
+      "counts": {
+        "tracks": 10,
+        "clips": 47,
+        "markers": 5
+      },
+      "multichannelObservations": [
+        {
+          "note": "No multichannel clip evidence was preserved from the lightweight interchange sources on this sample."
+        }
+      ],
+      "fieldRecorder": {
+        "scope": "guarded-private-optional",
+        "strongestObservedState": "candidate-only",
+        "counts": {
+          "missing": 42
+        },
+        "note": "Guarded private regression reached stronger candidate-only interview-roll evidence than sample 1, but direct WAV metadata still did not prove a confident relink."
+      },
+      "deliveryExecution": {
+        "generated": 5,
+        "deferred": 2,
+        "unavailable": 1
+      },
+      "majorFindings": [
+        {
+          "code": "AAF_DIRECT_PARSE_UNSUPPORTED",
+          "severity": "warning",
+          "title": "AAF could not be parsed directly"
+        },
+        {
+          "code": "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+          "severity": "info",
+          "title": "XML selected as the primary structured source"
+        },
+        {
+          "code": "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+          "severity": "warning",
+          "title": "Structured timeline sources disagree"
+        },
+        {
+          "code": "SOURCE_FILE_MISSING_FROM_INTAKE",
+          "severity": "critical",
+          "title": "XML references source files that are missing from intake"
+        },
+        {
+          "code": "TIMELINE_METADATA_MISMATCH",
+          "severity": "warning",
+          "title": "Metadata CSV timeline timing disagrees with the canonical timeline"
+        }
+      ]
+    },
+    {
+      "fixtureId": "r2n-test-3",
+      "jobId": "job-r2n-test-3",
+      "timelineName": "OMO PROMO CATCHUP 08 (Resolve)",
+      "authoritativeStructuredSource": "xml",
+      "secondaryStructuredSource": "fcpxml",
+      "sourceArbitrationReason": "XML selected with score 1197 because XML agrees with the strongest secondary timing reference at 01:00:00:00. XML covers 5 imported tracks.",
+      "aaf": {
+        "role": "unsupported",
+        "intakeStatus": "unsupported",
+        "containerKind": "ole-compound",
+        "directCoverage": "none",
+        "reason": "AAF was detected as ole-compound, but direct coverage remained none and canonical hydration stayed on XML.",
+        "diagnostics": [
+          "container=ole-compound",
+          "extraction=unparsed",
+          "direct coverage=none",
+          "Direct AAF parsing does not yet recognize this container payload shape.",
+          "The AAF container did not expose a supported embedded graph or decoded OLE layout payload."
+        ]
+      },
+      "counts": {
+        "tracks": 5,
+        "clips": 26,
+        "markers": 0
+      },
+      "multichannelObservations": [
+        {
+          "note": "No multichannel clip evidence was preserved from the lightweight interchange sources on this sample."
+        }
+      ],
+      "fieldRecorder": {
+        "scope": "editorial-baseline-only",
+        "strongestObservedState": "out-of-scope",
+        "counts": {
+          "missing": 25
+        },
+        "note": "This sample is an editorial baseline only. Field-recorder counts remain visible, but they are not treated as acceptance proof for this fixture."
+      },
+      "deliveryExecution": {
+        "generated": 3,
+        "deferred": 2,
+        "unavailable": 3
+      },
+      "majorFindings": [
+        {
+          "code": "AAF_DIRECT_PARSE_UNSUPPORTED",
+          "severity": "warning",
+          "title": "AAF could not be parsed directly"
+        },
+        {
+          "code": "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+          "severity": "info",
+          "title": "XML selected as the primary structured source"
+        },
+        {
+          "code": "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+          "severity": "warning",
+          "title": "Structured timeline sources disagree"
+        },
+        {
+          "code": "SOURCE_FILE_MISSING_FROM_INTAKE",
+          "severity": "critical",
+          "title": "XML references source files that are missing from intake"
+        }
+      ]
+    },
+    {
+      "fixtureId": "r2n-test-4",
+      "jobId": "job-r2n-test-4",
+      "timelineName": "Channel mapping and linked groups (Resolve)",
+      "authoritativeStructuredSource": "xml",
+      "secondaryStructuredSource": "fcpxml",
+      "sourceArbitrationReason": "XML selected with score 1165 because XML agrees with the strongest secondary timing reference at 01:00:00:00. XML covers 5 imported tracks.",
+      "aaf": {
+        "role": "unsupported",
+        "intakeStatus": "unsupported",
+        "containerKind": "ole-compound",
+        "directCoverage": "none",
+        "reason": "AAF was detected as ole-compound, but direct coverage remained none and canonical hydration stayed on XML.",
+        "diagnostics": [
+          "container=ole-compound",
+          "extraction=unparsed",
+          "direct coverage=none",
+          "Direct AAF parsing does not yet recognize this container payload shape.",
+          "The AAF container did not expose a supported embedded graph or decoded OLE layout payload."
+        ]
+      },
+      "counts": {
+        "tracks": 5,
+        "clips": 27,
+        "markers": 0
+      },
+      "multichannelObservations": [
+        {
+          "clipName": "C4_02.mov",
+          "channelCount": 8,
+          "channelLayout": "poly_8",
+          "note": "Clip C4_02.mov preserves 8ch poly_8."
+        }
+      ],
+      "fieldRecorder": {
+        "scope": "multichannel-baseline-only",
+        "strongestObservedState": "out-of-scope",
+        "counts": {
+          "missing": 27
+        },
+        "note": "This sample is a Fairlight multichannel baseline only. Field-recorder output remains out of scope for acceptance on this fixture."
+      },
+      "deliveryExecution": {
+        "generated": 3,
+        "deferred": 2,
+        "unavailable": 3
+      },
+      "majorFindings": [
+        {
+          "code": "AAF_DIRECT_PARSE_UNSUPPORTED",
+          "severity": "warning",
+          "title": "AAF could not be parsed directly"
+        },
+        {
+          "code": "PRIMARY_STRUCTURED_SOURCE_SELECTED",
+          "severity": "info",
+          "title": "XML selected as the primary structured source"
+        },
+        {
+          "code": "SECONDARY_TIMELINE_SOURCE_MISMATCH",
+          "severity": "warning",
+          "title": "Structured timeline sources disagree"
+        },
+        {
+          "code": "SOURCE_FILE_MISSING_FROM_INTAKE",
+          "severity": "critical",
+          "title": "XML references source files that are missing from intake"
+        }
+      ]
+    }
+  ]
+}

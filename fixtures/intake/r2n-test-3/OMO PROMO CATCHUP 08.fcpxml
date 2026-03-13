@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+<fcpxml version="1.9">
+    <resources>
+        <format width="1920" frameDuration="1001/24000s" height="1080" name="FFVideoFormat1080p2398" id="r0"/>
+        <format width="3000" height="3000" name="FFVideoFormatRateUndefined" id="r9"/>
+        <format width="1920" frameDuration="1/24s" height="1080" name="FFVideoFormat1080p24" id="r11"/>
+        <format width="1920" frameDuration="1/60s" height="1080" name="FFVideoFormat1080p60" id="r14"/>
+        <format width="1920" frameDuration="1/30s" height="1080" name="FFVideoFormat1080p30" id="r19"/>
+        <effect name="Cross Dissolve" id="r7" uid="FxPlug:4731E73A-8DAC-4113-9A30-AE85B1761265"/>
+        <asset start="114761647/2000s" hasVideo="1" name="F005_08201556_C001.mov" id="r1" format="r0" duration="263263/6000s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/F005_08201556_C001.mov"/>
+        </asset>
+        <asset audioSources="1" start="1360468109/24000s" hasVideo="1" name="F002_08151648_C005.mov" audioChannels="1" id="r2" format="r0" hasAudio="1" duration="121121/2000s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/INTERVIEW/VIDEO/F002_08151648_C005.mov"/>
+        </asset>
+        <asset audioSources="1" start="1421927507/24000s" hasVideo="1" name="F002_08151729_C012.mov" audioChannels="1" id="r3" format="r0" hasAudio="1" duration="213213/8000s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/INTERVIEW/VIDEO/F002_08151729_C012.mov"/>
+        </asset>
+        <asset audioSources="1" start="137590453/2400s" hasVideo="1" name="F002_08151655_C008.mov" audioChannels="0" id="r4" format="r0" hasAudio="1" duration="1001/64s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/INTERVIEW/VIDEO/F002_08151655_C008.mov"/>
+        </asset>
+        <asset audioSources="1" start="284533249/4800s" hasVideo="1" name="F002_08151729_C012.mov" audioChannels="1" id="r5" format="r0" hasAudio="1" duration="29029/4800s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/INTERVIEW/VIDEO/F002_08151729_C012.mov"/>
+        </asset>
+        <asset audioSources="1" start="94453359/1600s" hasVideo="1" name="F002_08151726_C011.mov" audioChannels="1" id="r6" format="r0" hasAudio="1" duration="1602601/24000s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/INTERVIEW/VIDEO/F002_08151726_C011.mov"/>
+        </asset>
+        <asset start="114761647/2000s" hasVideo="1" name="F005_08201556_C001.mov" id="r8" format="r0" duration="263263/6000s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/F005_08201556_C001.mov"/>
+        </asset>
+        <asset start="0/1s" hasVideo="1" name="OMO LOGO.png" id="r10" format="r9" duration="0/1s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/GRAPHICS/OMO%20LOGO.png"/>
+        </asset>
+        <asset audioSources="1" start="111955/6s" hasVideo="1" name="E001_08020510_C005.mov" audioChannels="2" id="r12" format="r11" hasAudio="1" duration="305/12s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/E001_08020510_C005.mov"/>
+        </asset>
+        <asset audioSources="1" start="228151/12s" hasVideo="1" name="E001_08020516_C012.mov" audioChannels="2" id="r13" format="r11" hasAudio="1" duration="431/24s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/E001_08020516_C012.mov"/>
+        </asset>
+        <asset audioSources="1" start="283623/4s" hasVideo="1" name="D009_07202028_C011.mov" audioChannels="2" id="r15" format="r14" hasAudio="1" duration="127/6s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/D009_07202028_C011.mov"/>
+        </asset>
+        <asset audioSources="1" start="939001/30s" hasVideo="1" name="E001_08050841_C070.mov" audioChannels="2" id="r16" format="r14" hasAudio="1" duration="236/15s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/E001_08050841_C070.mov"/>
+        </asset>
+        <asset audioSources="1" start="2061931/30s" hasVideo="1" name="A002_08061905_C048.mov" audioChannels="2" id="r17" format="r14" hasAudio="1" duration="19/2s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/A002_08061905_C048.mov"/>
+        </asset>
+        <asset audioSources="1" start="342996/5s" hasVideo="1" name="A002_08061903_C044.mov" audioChannels="2" id="r18" format="r14" hasAudio="1" duration="131/12s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/A002_08061903_C044.mov"/>
+        </asset>
+        <asset audioSources="1" start="139763/3s" hasVideo="1" name="D008_07161256_C002.mov" audioChannels="2" id="r20" format="r19" hasAudio="1" duration="497/15s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/D008_07161256_C002.mov"/>
+        </asset>
+        <asset audioSources="1" start="865448/15s" hasVideo="1" name="D008_07161601_C034.mov" audioChannels="2" id="r21" format="r19" hasAudio="1" duration="586/15s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/D008_07161601_C034.mov"/>
+        </asset>
+        <asset audioSources="1" start="661113453/8000s" hasVideo="1" name="E001_08292255_C028.mov" audioChannels="2" id="r22" format="r0" hasAudio="1" duration="137137/6000s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/B-ROLL/E001_08292255_C028.mov"/>
+        </asset>
+        <asset audioSources="1" start="18018/5s" name="ONE MIN SOUNDTRACK.wav" audioChannels="2" id="r23" hasAudio="1" duration="56083277/999000s">
+            <media-rep kind="original-media" src="file://localhost/C:/Users/dwell/Documents/Playground/fixtures/intake/R20%20Beginners%20Guide/MEDIA/OMO/MUSIC/ONE%20MIN%20SOUNDTRACK.wav"/>
+        </asset>
+    </resources>
+    <library>
+        <event name="OMO PROMO CATCHUP 08 (Resolve)">
+            <project name="OMO PROMO CATCHUP 08 (Resolve)">
+                <sequence tcFormat="NDF" format="r0" duration="673673/12000s" tcStart="18018/5s">
+                    <spine>
+                        <asset-clip start="229638409/4000s" tcFormat="NDF" name="ORGAN MOUNTAIN 1" offset="18018/5s" format="r0" ref="r1" enabled="1" duration="37037/4800s">
+                            <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                            <video start="0/1s" name="OMO LOGO.png" offset="11482471/200s" ref="r10" enabled="1" lane="1" duration="119119/24000s">
+                                <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                            </video>
+                            <asset-clip start="18018/5s" name="ONE MIN SOUNDTRACK.wav" offset="229638409/4000s" ref="r23" enabled="1" lane="4" duration="673673/12000s">
+                                <adjust-volume amount="-18.0371"/>
+                            </asset-clip>
+                        </asset-clip>
+                        <asset-clip start="453556103/8000s" audioStart="340162823/6000s" audioDuration="1001/150s" tcFormat="NDF" name="CL INTERVIEW Tk2" offset="17334317/4800s" format="r0" ref="r2" enabled="1" duration="143143/24000s">
+                            <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                            <asset-clip start="149303/8s" tcFormat="NDF" name="PINE TRAIL 5" offset="340196857/6000s" format="r11" ref="r12" enabled="1" lane="1" duration="13013/3000s">
+                                <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                            </asset-clip>
+                        </asset-clip>
+                        <gap start="3600/1s" name="Gap" offset="10851841/3000s" duration="1001/500s"/>
+                        <asset-clip start="1422039619/24000s" tcFormat="NDF" name="CL SUBCLIP 1 - Experiences" offset="10857847/3000s" format="r0" ref="r3" enabled="1" duration="101101/8000s">
+                            <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                            <asset-clip start="456481/24s" tcFormat="NDF" name="PINE TRAIL 12" offset="1422071651/24000s" format="r11" ref="r13" enabled="1" lane="1" duration="33033/8000s">
+                                <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                            </asset-clip>
+                            <clip start="2127331/30s" tcFormat="NDF" name="WHITE SANDS 11" offset="5688683/96s" format="r14" enabled="1" lane="1" duration="71071/24000s">
+                                <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                                <video start="283623/4s" offset="283623/4s" ref="r15" duration="127/6s"/>
+                            </clip>
+                            <clip start="313027/10s" tcFormat="NDF" name="PINA BLANCA 70" offset="474080607/8000s" format="r14" enabled="1" lane="1" duration="23023/8000s">
+                                <timeMap frameSampling="floor">
+                                    <timept interp="linear" time="939001/30s" value="939001/30s"/>
+                                    <timept interp="linear" time="10435995211/333000s" value="31284434233/999000s"/>
+                                </timeMap>
+                                <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                                <video start="939001/30s" offset="939001/30s" ref="r16" duration="236/15s"/>
+                            </clip>
+                            <clip start="2062001/30s" tcFormat="NDF" name="PINA BLANCA 48" offset="47410363/800s" format="r14" enabled="1" lane="1" duration="3003/1600s">
+                                <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                                <video start="2061931/30s" offset="2061931/30s" ref="r17" duration="19/2s"/>
+                            </clip>
+                        </asset-clip>
+                        <gap start="3600/1s" name="Gap" offset="87166079/24000s" duration="1001/500s">
+                            <clip start="68604/1s" tcFormat="NDF" name="PINA BLANCA 44" offset="86413013/24000s" format="r14" enabled="1" lane="1" duration="17017/6000s">
+                                <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                                <video start="342996/5s" offset="342996/5s" ref="r18" duration="131/12s"/>
+                            </clip>
+                        </gap>
+                        <asset-clip start="1376021647/24000s" tcFormat="NDF" name="CL SUBCLIP 4 - Inspiration" offset="87214127/24000s" format="r0" ref="r4" enabled="1" duration="17017/2400s">
+                            <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                            <spine offset="1376117743/24000s" lane="1">
+                                <clip start="93191/2s" tcFormat="NDF" name="STORE 2" offset="0/1s" format="r19" enabled="1" duration="49049/12000s">
+                                    <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                                    <video start="139763/3s" offset="139763/3s" ref="r20" duration="497/15s"/>
+                                </clip>
+                                <transition name="Blur Dissolve" offset="23023/6000s" duration="11011/24000s">
+                                    <filter-video name="Transition" ref="r7"/>
+                                </transition>
+                                <clip start="1731677/30s" tcFormat="NDF" name="STORE 34" offset="49049/12000s" format="r19" enabled="1" duration="1001/240s">
+                                    <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                                    <video start="865448/15s" offset="865448/15s" ref="r21" duration="586/15s"/>
+                                </clip>
+                                <transition name="Blur Dissolve" offset="1001/125s" duration="11011/24000s">
+                                    <filter-video name="Transition" ref="r7"/>
+                                </transition>
+                                <clip start="396719323/4800s" tcFormat="NDF" name="STORE 28" offset="33033/4000s" format="r0" enabled="1" duration="113113/24000s">
+                                    <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                                    <video start="661113453/8000s" offset="661113453/8000s" ref="r22" duration="137137/6000s"/>
+                                </clip>
+                            </spine>
+                        </asset-clip>
+                        <gap start="3600/1s" name="Gap" offset="29128099/8000s" duration="1001/500s"/>
+                        <asset-clip start="88917829/1500s" tcFormat="NDF" name="CL SUBCLIP 2 - Brand" offset="5828823/1600s" format="r0" ref="r5" enabled="1" duration="13013/3000s">
+                            <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                        </asset-clip>
+                        <gap start="3600/1s" name="Gap" offset="87536449/24000s" duration="1001/500s"/>
+                        <asset-clip start="118171053/2000s" tcFormat="NDF" name="CL INTERVIEW Tk7" offset="87584497/24000s" format="r0" ref="r6" enabled="1" duration="77077/24000s">
+                            <adjust-transform scale="1.30629 1.30629" anchor="0 0" position="0 0"/>
+                        </asset-clip>
+                        <transition name="Blur Dissolve" offset="5478473/1500s" duration="11011/24000s">
+                            <filter-video name="Transition" ref="r7"/>
+                        </transition>
+                        <asset-clip start="229638409/4000s" tcFormat="NDF" name="ORGAN MOUNTAIN 1" offset="43830787/12000s" format="r0" ref="r8" enabled="1" duration="43043/6000s">
+                            <adjust-transform scale="1 1" anchor="0 0" position="0 0"/>
+                        </asset-clip>
+                    </spine>
+                </sequence>
+            </project>
+        </event>
+    </library>
+</fcpxml>

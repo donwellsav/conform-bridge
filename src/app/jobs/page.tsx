@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { reviewJobContexts, sourceBundles } from "@/lib/data-source";
+import { fixtureMatrix, reviewJobContexts, sourceBundles } from "@/lib/data-source";
 
 export default function JobsPage() {
   return (
@@ -40,6 +40,31 @@ export default function JobsPage() {
                   <p className="mt-2 text-sm text-muted">{bundle.assets.length} intake assets, {bundle.handlesFrames} frame handles, {bundle.sampleRate} Hz</p>
                 </div>
               ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard eyebrow="Fixture matrix" title="Real-sample acceptance truth" description="Cross-sample interchange reality from the four real baseline fixtures.">
+            <div className="space-y-3">
+              {fixtureMatrix.map((entry) => {
+                const multichannelNote = entry.multichannelObservations.find((observation) => !observation.note.startsWith("No multichannel"))?.note
+                  ?? entry.multichannelObservations[0]?.note;
+
+                return (
+                  <div key={entry.fixtureId} className="rounded-2xl border border-border/70 bg-panel p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-semibold text-foreground">{entry.fixtureId}</p>
+                      <Badge variant={entry.aaf.role === "unsupported" ? "warning" : entry.aaf.role === "authoritative" ? "accent" : "neutral"}>
+                        {entry.aaf.role}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-muted">
+                      {entry.authoritativeStructuredSource.toUpperCase()} primary, {entry.counts.tracks} tracks, {entry.counts.clips} clips, {entry.counts.markers} markers
+                    </p>
+                    <p className="mt-2 text-xs text-muted">{entry.aaf.reason}</p>
+                    <p className="mt-2 text-xs text-muted">{multichannelNote}</p>
+                  </div>
+                );
+              })}
             </div>
           </SectionCard>
 
